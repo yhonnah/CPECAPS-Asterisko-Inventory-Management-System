@@ -106,8 +106,10 @@ $auditLogs = $pdo->query("
         </div>
         <div class="flex items-center gap-4 text-sm">
             <span>User: <b><?= htmlspecialchars($username) ?></b></span>
+            <!-- Closing Shift Count -->
+            <a href="count.php" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-2.5 py-1 rounded font-semibold transition">Closing Count</a>
             <!-- Test button direct URL protection -->
-            <a href="financial_report.php" class="text-amber-300 underline text-xs">Financials</a>
+            <a href="financial_report.php" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-2.5 py-1 rounded font-semibold transition">Financials</a>
 
             <!-- Dark Mode Toggle -->
             <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
