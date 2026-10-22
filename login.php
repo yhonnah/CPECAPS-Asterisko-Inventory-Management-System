@@ -91,9 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="mt-6 text-xs text-stone-500 dark:text-stone-400 border-t border-stone-200 dark:border-stone-700 pt-4">
             <p class="font-semibold mb-1">Demo Accounts (Password: <code class="bg-stone-200 dark:bg-stone-700 dark:text-stone-200 px-1">aste123</code>):</p>
             <ul class="space-y-1">
-                <li>• <b>manager_bao</b> (Admin - Full Access)</li>
-                <li>• <b>barista_marcie</b> (Staff - No Prices/Finance)</li>
-                <li>• <b>owner_pao</b> (Owner - Finance & Stock)</li>
+                <li>• <b>manager</b> (Admin - Full Access)</li>
+                <li>• <b>barista</b> (Staff - No Prices/Finance)</li>
+                <li>• <b>owner</b> (Owner - Finance & Stock)</li>
             </ul>
         </div>
     </div>
