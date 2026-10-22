@@ -1,6 +1,6 @@
 <?php
 require 'db.php';
-require 'auth_guard.php';
+require 'authguard.php';
 
 // Only Admin and Owner can view financial endpoints. Staff will be blocked & logged!
 requireRole(['Admin', 'Owner'], $pdo);
