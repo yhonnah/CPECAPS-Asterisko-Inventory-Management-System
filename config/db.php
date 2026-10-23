@@ -4,7 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // 1. Load configuration from .env file if present
-$envPath = __DIR__ . '/.env';
+$envPath = dirname(__DIR__) . '/.env';
+if (!file_exists($envPath)) {
+    $envPath = __DIR__ . '/.env';
+}
 if (file_exists($envPath) && is_readable($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {

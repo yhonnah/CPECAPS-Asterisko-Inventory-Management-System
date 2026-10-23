@@ -1,6 +1,6 @@
 <?php
-require 'db.php';
-require 'authguard.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/authguard.php';
 
 // Accessible only to Admin and Owner
 requireRole(['Admin', 'Owner'], $pdo);
@@ -9,7 +9,7 @@ $username = $_SESSION['username'];
 $role = $_SESSION['role'];
 $message = '';
 $messageType = '';
-$backupDir = __DIR__ . '/backups/';
+$backupDir = dirname(__DIR__) . '/backups/';
 
 if (!is_dir($backupDir)) {
     mkdir($backupDir, 0755, true);

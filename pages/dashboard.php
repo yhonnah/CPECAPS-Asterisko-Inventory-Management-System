@@ -1,6 +1,6 @@
 <?php
-require 'db.php';
-require 'authguard.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/authguard.php';
 requireLogin();
 
 $role = $_SESSION['role'];
@@ -481,7 +481,7 @@ $auditLogs = $auditStmt->fetchAll(PDO::FETCH_ASSOC);
 
             for (const payload of queue) {
                 try {
-                    const res = await fetch('sync.php', {
+                    const res = await fetch('../api/sync.php', {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',

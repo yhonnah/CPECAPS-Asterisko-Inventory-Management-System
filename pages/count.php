@@ -1,6 +1,6 @@
 <?php
-require 'db.php';
-require 'authguard.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/authguard.php';
 requireLogin();
 
 $role = $_SESSION['role'];
@@ -482,7 +482,7 @@ $items = $pdo->query("
 
             // Send payload to backend sync.php
             async function sendSyncPayload(payload) {
-                const response = await fetch('sync.php', {
+                const response = await fetch('../api/sync.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

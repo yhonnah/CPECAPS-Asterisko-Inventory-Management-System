@@ -1,6 +1,6 @@
 <?php
-require 'db.php';
-require 'authguard.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/authguard.php';
 requireLogin();
 
 $username = $_SESSION['username'];
@@ -22,7 +22,7 @@ if (isset($_FILES['invoice_image']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = 'inv_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-    $targetDir = __DIR__ . '/uploads/invoices/';
+    $targetDir = dirname(__DIR__) . '/uploads/invoices/';
     $targetPath = $targetDir . $filename;
 
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
@@ -671,7 +671,7 @@ $recentConfirmed = $pdo->query("
             document.getElementById('form_image_path').value = draft.image_path || '';
 
             if (draft.image_path) {
-                imagePreview.src = draft.image_path;
+                imagePreview.src = draft.image_path.startsWith('../') ? draft.image_path : '../' + draft.image_path;
                 imagePreviewContainer.classList.remove('hidden');
             }
 

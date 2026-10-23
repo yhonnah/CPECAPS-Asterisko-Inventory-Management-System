@@ -6,7 +6,8 @@ if (session_status() === PHP_SESSION_NONE) {
 if (!function_exists('requireLogin')) {
     function requireLogin() {
         if (!isset($_SESSION['user_id'])) {
-            header("Location: login.php");
+            $loginUrl = file_exists('login.php') ? 'login.php' : 'pages/login.php';
+            header("Location: " . $loginUrl);
             exit;
         }
     }
@@ -26,13 +27,14 @@ if (!function_exists('requireRole')) {
             $username = $_SESSION['username'] ?? 'Anonymous';
             $stmt->execute(["Blocked access to restricted endpoint: $attemptedUrl", $username]);
 
+            $dashUrl = file_exists('dashboard.php') ? 'dashboard.php' : 'pages/dashboard.php';
             http_response_code(403);
             die("
                 <div style='font-family:sans-serif; padding:2rem; max-width:500px; margin:auto;'>
                     <h2 style='color:#b91c1c;'>403 Access Denied</h2>
                     <p>Your role (<b>" . htmlspecialchars($_SESSION['role'] ?? 'Unknown') . "</b>) is restricted from accessing supplier pricing or financial summaries.</p>
                     <p style='color:#666; font-size:0.9rem;'>This attempt has been recorded in the immutable Audit Trail.</p>
-                    <a href='dashboard.php'>&larr; Return to Dashboard</a>
+                    <a href='{$dashUrl}'>&larr; Return to Dashboard</a>
                 </div>
             ");
         }
@@ -66,12 +68,13 @@ if (!function_exists('validateCsrfToken')) {
                 ]);
                 exit;
             }
+            $dashUrl = file_exists('dashboard.php') ? 'dashboard.php' : 'pages/dashboard.php';
             die("
                 <div style='font-family:sans-serif; padding:2rem; max-width:500px; margin:auto;'>
                     <h2 style='color:#b91c1c;'>403 Security Validation Failed</h2>
                     <p>The form submission security token (CSRF) is invalid or expired. Please refresh and try again.</p>
                     <p style='color:#666; font-size:0.9rem;'>This protection prevents unauthorized cross-site request forgery.</p>
-                    <a href='dashboard.php'>&larr; Return to Dashboard</a>
+                    <a href='{$dashUrl}'>&larr; Return to Dashboard</a>
                 </div>
             ");
         }

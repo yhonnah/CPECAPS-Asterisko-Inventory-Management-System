@@ -1,6 +1,6 @@
 <?php
-require 'db.php';
-require 'authguard.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/authguard.php';
 
 // Accessible by Admin, Owner (and Staff if authorized)
 requireRole(['Admin', 'Owner'], $pdo);
