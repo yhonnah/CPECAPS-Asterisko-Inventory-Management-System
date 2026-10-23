@@ -122,15 +122,32 @@ An offline-first, role-guarded web inventory management system developed for Ast
    ```bash
    cp .env.example .env
    ```
-3. Open `.env` and fill in your database credentials:
+3. Open `.env` and fill in your database credentials (or use the sample cloud database credentials below):
    ```env
-   DB_HOST=your-database-host.com
-   DB_PORT=3306
+   DB_HOST=aste-inventory-aste-inventory-system.j.aivencloud.com
+   DB_PORT=13670
    DB_NAME=aste-inventory
-   DB_USER=your_db_user
-   DB_PASS=your_db_password
+   DB_USER=avnadmin
+   DB_PASS=AVNS_5-LQ3ixBakUHi93eYVK
    DB_SSL_MODE=require
    ```
+
+#### Connecting via MySQL Workbench
+1. Open MySQL Workbench and click the **+** icon to create a new connection.
+2. Enter the sample database credentials:
+   - **Host Name / IP:** `aste-inventory-aste-inventory-system.j.aivencloud.com`
+   - **Port:** `13670`
+   - **User Name:** `avnadmin`
+   - **Default Schema:** `aste-inventory`
+3. Click **Store in Vault...** for the password and enter:
+   ```text
+   AVNS_5-LQ3ixBakUHi93eYVK
+   ```
+4. Configuration review:
+
+   ![correct login screen](assets/login.png)
+
+5. Click **OK** to connect.
 4. Import the database schema from `database/aste_inventory.sql` using MySQL Workbench or CLI.
 
 ### Running the Local Server
