@@ -1,0 +1,12 @@
+# Environment & OS files
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.local
+
+# Dynamic Backups and Uploads
+backups/*.sql
+!backups/.gitkeep
+uploads/invoices/*
+!uploads/invoices/.gitkeep

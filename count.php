@@ -8,10 +8,10 @@ $username = $_SESSION['username'];
 
 // Fetch all active stock items for closing count
 $items = $pdo->query("
-    SELECT id, name, category, quantity, unit, reorder_point 
+    SELECT id, NAME, NAME AS name, category, quantity, unit, reorder_point 
     FROM stock_items 
     WHERE is_active = 1 
-    ORDER BY category, name
+    ORDER BY category, NAME
 ")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
@@ -39,19 +39,19 @@ $items = $pdo->query("
     <!-- Top Navigation Bar -->
     <nav class="bg-stone-900 dark:bg-black text-white px-4 py-3 flex justify-between items-center border-b border-stone-800">
         <div class="flex items-center gap-3">
-            <a href="dashboard.php" class="text-amber-400 hover:text-amber-300 text-sm font-semibold flex items-center gap-1">
+            <a href="dashboard.php" class="text-emerald-400 hover:text-emerald-300 text-sm font-semibold flex items-center gap-1">
                 &larr; Dashboard
             </a>
             <span class="text-stone-600">|</span>
             <span class="font-bold text-base sm:text-lg">Closing Shift Count</span>
-            <span class="text-xs bg-amber-600 px-2 py-0.5 rounded uppercase font-semibold"><?= htmlspecialchars($role) ?></span>
+            <span class="text-xs bg-emerald-600 px-2 py-0.5 rounded uppercase font-semibold"><?= htmlspecialchars($role) ?></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
             <span class="hidden sm:inline">Barista: <b><?= htmlspecialchars($username) ?></b></span>
 
             <!-- Dark Mode Toggle -->
             <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
-                    class="p-1.5 rounded-full bg-stone-700 hover:bg-stone-600 text-amber-300 transition">
+                    class="p-1.5 rounded-full bg-stone-700 hover:bg-stone-600 text-emerald-300 transition">
                 <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="4"/>
                     <path stroke-linecap="round" d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
@@ -80,7 +80,7 @@ $items = $pdo->query("
                 </div>
             </div>
             <div id="pending-queue-badge" class="hidden">
-                <span class="bg-amber-500 text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                <span class="bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
                     <span id="pending-count">0</span> queued
                 </span>
             </div>
@@ -112,10 +112,20 @@ $items = $pdo->query("
             </div>
 
             <!-- Global Shift Reason / Batch Notes -->
-            <div class="mt-4">
-                <label class="block text-xs font-semibold uppercase text-stone-600 dark:text-stone-400 mb-1">Shift Notes / Audit Reason</label>
-                <input type="text" id="batch-reason" placeholder="e.g., Evening closing shift count, register turnover"
-                       class="w-full p-2.5 text-sm border border-stone-300 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-600 focus:outline-none">
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-stone-600 dark:text-stone-400 mb-1">Shift Type *</label>
+                    <select id="shift-type" class="w-full p-2.5 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium">
+                        <option value="Closing Shift">Closing Shift Count</option>
+                        <option value="Opening Shift">Opening Shift Count</option>
+                        <option value="Shift Handover">Mid-Shift Handover Count</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold uppercase text-stone-600 dark:text-stone-400 mb-1">Shift Notes / Reason for Count</label>
+                    <input type="text" id="batch-reason" placeholder="e.g., Regular turnover, count verification, discrepancy review"
+                           class="w-full p-2.5 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                </div>
             </div>
         </div>
 
@@ -143,7 +153,7 @@ $items = $pdo->query("
                     <button type="button" id="btn-reset" class="w-1/2 sm:w-auto px-4 py-2 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition">
                         Reset Inputs
                     </button>
-                    <button type="submit" id="btn-submit" class="w-1/2 sm:w-auto px-6 py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-sm font-semibold transition shadow flex items-center justify-center gap-2">
+                    <button type="submit" id="btn-submit" class="w-1/2 sm:w-auto px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-semibold transition shadow flex items-center justify-center gap-2">
                         <span id="btn-submit-text">Submit Closing Count</span>
                     </button>
                 </div>
@@ -165,6 +175,7 @@ $items = $pdo->query("
     <script>
         const SERVER_ITEMS = <?= json_encode($items, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
         const CURRENT_USER = <?= json_encode($username) ?>;
+        const CSRF_TOKEN = <?= json_encode(getCsrfToken()) ?>;
     </script>
 
     <!-- Offline logic and navigator.onLine monitoring -->
@@ -293,7 +304,7 @@ $items = $pdo->query("
                     row.innerHTML = `
                         <div class="sm:w-5/12 mb-2 sm:mb-0">
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-stone-900 dark:text-stone-100">${escapeHtml(item.name)}</span>
+                                <span class="font-bold text-stone-900 dark:text-stone-100">${escapeHtml(item.NAME || item.name)}</span>
                                 <span class="text-[10px] uppercase font-semibold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-1.5 py-0.5 rounded">
                                     ${escapeHtml(item.category || 'General')}
                                 </span>
@@ -313,7 +324,7 @@ $items = $pdo->query("
                                            data-item-id="${item.id}"
                                            data-system-stock="${systemStock}"
                                            placeholder="0.00" 
-                                           class="input-physical w-full p-2 text-sm font-mono border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                                           class="input-physical w-full p-2 text-sm font-mono border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                                     <span class="absolute right-2 top-2 text-xs text-stone-400 pointer-events-none">${escapeHtml(unit)}</span>
                                 </div>
                             </div>
@@ -330,7 +341,7 @@ $items = $pdo->query("
                                 <input type="text" 
                                        data-item-id="${item.id}"
                                        placeholder="Notes (optional, e.g. spill)"
-                                       class="input-note w-full p-2 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                                       class="input-note w-full p-2 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                             </div>
                         </div>
                     `;
@@ -434,9 +445,13 @@ $items = $pdo->query("
                     return;
                 }
 
+                const shiftType = document.getElementById('shift-type') ? document.getElementById('shift-type').value : 'Closing Shift';
+                const userNotes = batchReasonInput.value.trim();
+                const shiftReason = userNotes ? `[${shiftType}] ${userNotes}` : `[${shiftType}] Physical count`;
+
                 const payload = {
                     acting_user: CURRENT_USER,
-                    reason: batchReasonInput.value.trim() || 'Closing shift physical count',
+                    reason: shiftReason,
                     items: entries,
                     timestamp: new Date().toISOString()
                 };
@@ -471,7 +486,8 @@ $items = $pdo->query("
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-CSRF-Token': CSRF_TOKEN
                     },
                     body: JSON.stringify(payload)
                 });

@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require_once 'authguard.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -9,6 +10,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode([
         'success' => false,
         'error' => 'Method Not Allowed. Expected POST request.'
+    ]);
+    exit;
+}
+
+// Session authentication guard
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Unauthorized session. Please log in to perform synchronization.'
     ]);
     exit;
 }
@@ -30,15 +41,19 @@ if (!$payload) {
     exit;
 }
 
-// Acting user matches session pattern or payload
-$username = $_SESSION['username'] ?? $payload['acting_user'] ?? $payload['username'] ?? 'barista';
-$batch_reason = trim($payload['reason'] ?? 'Physical count background sync');
+// Validate CSRF token
+$csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $payload['csrf_token'] ?? $_POST['csrf_token'] ?? null;
+validateCsrfToken($csrfToken);
 
-// Normalize items array (single item or list)
+// Acting user strictly tied to authenticated session
+$username = $_SESSION['username'] ?? 'barista';
+$batch_reason = trim($payload['reason'] ?? 'Offline background sync');
+
+// Normalize items array
 $items = [];
 if (isset($payload['items']) && is_array($payload['items'])) {
     $items = $payload['items'];
-} elseif (isset($payload['item_id']) && isset($payload['physical_count'])) {
+} elseif (isset($payload['item_id'])) {
     $items = [$payload];
 } elseif (array_is_list($payload)) {
     $items = $payload;
@@ -46,23 +61,22 @@ if (isset($payload['items']) && is_array($payload['items'])) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error' => 'Missing item data. Expected items array or item_id with physical_count.'
+        'error' => 'Missing item data.'
     ]);
     exit;
 }
 
 try {
-    // ACID Transaction (matching dashboard.php pattern)
     $pdo->beginTransaction();
 
     $results = [];
     $discrepancies = 0;
 
-    $selectStmt = $pdo->prepare("SELECT id, name, quantity, unit, reorder_point FROM stock_items WHERE id = ? FOR UPDATE");
+    $selectStmt = $pdo->prepare("SELECT id, NAME, NAME AS name, quantity, unit, reorder_point FROM stock_items WHERE id = ? FOR UPDATE");
     $updateStmt = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
     $auditStmt  = $pdo->prepare("
         INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
-        VALUES (?, ?, ?, 'count_correction', ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
 
     foreach ($items as $entry) {
@@ -71,83 +85,93 @@ try {
             throw new Exception("Invalid item ID.");
         }
 
-        if (!isset($entry['physical_count']) || !is_numeric($entry['physical_count'])) {
-            throw new Exception("Invalid physical count for item ID {$item_id}.");
-        }
-
-        $physical_count = round((float)$entry['physical_count'], 2);
-        if ($physical_count < 0) {
-            throw new Exception("Physical count cannot be negative for item ID {$item_id}.");
-        }
-
-        // 1. Lock row and get current quantity
+        // Lock row and fetch current quantity
         $selectStmt->execute([$item_id]);
         $item = $selectStmt->fetch(PDO::FETCH_ASSOC);
-
         if (!$item) {
             throw new Exception("Item not found (ID: {$item_id}).");
         }
 
         $prev_qty = (float)$item['quantity'];
-        $new_qty  = $physical_count;
-        $variance = round($new_qty - $prev_qty, 2);
-        $has_discrepancy = (abs($variance) >= 0.001);
+        $change_type = $entry['change_type'] ?? 'count_correction';
 
-        if ($has_discrepancy) {
-            $discrepancies++;
+        // Check if conflict detection is needed
+        $isConflict = false;
+        if (isset($entry['cached_stock']) && abs((float)$entry['cached_stock'] - $prev_qty) >= 0.001) {
+            $isConflict = true;
         }
 
-        // Format variance details for reason string
-        $item_note = trim($entry['reason'] ?? $entry['notes'] ?? $batch_reason);
-        $variance_sign = ($variance > 0) ? "+{$variance}" : "{$variance}";
-        
-        $reason = $has_discrepancy
-            ? "Count variance: {$variance_sign} {$item['unit']} (Physical: {$new_qty}, Recorded: {$prev_qty})"
-            : "Physical count verified: {$new_qty} {$item['unit']}";
+        if (isset($entry['physical_count'])) {
+            $new_qty = round((float)$entry['physical_count'], 2);
+            $variance = round($new_qty - $prev_qty, 2);
+            $has_discrepancy = (abs($variance) >= 0.001);
+            if ($has_discrepancy) $discrepancies++;
 
-        if ($item_note !== '') {
-            $reason .= " | {$item_note}";
+            $item_note = trim($entry['reason'] ?? $entry['notes'] ?? $batch_reason);
+            $variance_sign = ($variance > 0) ? "+{$variance}" : "{$variance}";
+            $reason = $has_discrepancy
+                ? "Count variance: {$variance_sign} {$item['unit']} (Physical: {$new_qty}, Recorded: {$prev_qty})"
+                : "Physical count verified: {$new_qty} {$item['unit']}";
+            if ($item_note !== '') $reason .= " | {$item_note}";
+            if ($isConflict) $reason .= " [OFFLINE SYNC CONFLICT: Recorded stock changed while offline. Flagged for review]";
+            $change_type = 'count_correction';
+
+        } elseif (isset($entry['deduction_amount']) || $change_type === 'deduction' || $change_type === 'waste') {
+            $amount = round((float)($entry['amount'] ?? $entry['deduction_amount'] ?? 0), 2);
+            if ($amount <= 0) throw new Exception("Invalid deduction amount for item ID {$item_id}.");
+
+            $new_qty = max(0, round($prev_qty - $amount, 2));
+            $variance = -$amount;
+            $has_discrepancy = false;
+            $note = trim($entry['reason'] ?? 'Offline shift deduction');
+            $reason = ($change_type === 'waste' ? "Offline Waste (-{$amount} {$item['unit']})" : "Offline Deduction (-{$amount} {$item['unit']})") . " | {$note}";
+            if ($isConflict) $reason .= " [OFFLINE SYNC CONFLICT: Flagged for review]";
+
+        } elseif ($change_type === 'delivery') {
+            $amount = round((float)($entry['amount'] ?? 0), 2);
+            $new_qty = round($prev_qty + $amount, 2);
+            $variance = $amount;
+            $has_discrepancy = false;
+            $reason = "Offline Delivery (+{$amount} {$item['unit']}) | " . trim($entry['reason'] ?? '');
+            if ($isConflict) $reason .= " [OFFLINE SYNC CONFLICT: Flagged for review]";
+        } else {
+            throw new Exception("Unknown sync operation for item ID {$item_id}.");
         }
 
-        // Max length in audit_logs schema is 255
+        // Limit reason length for schema
         if (mb_strlen($reason) > 255) {
             $reason = mb_substr($reason, 0, 252) . '...';
         }
 
-        // 2. Update stock_items table
+        // Apply update
         $updateStmt->execute([$new_qty, $item_id]);
 
-        // 3. Insert immutable record into audit_logs
-        $auditStmt->execute([$item_id, $prev_qty, $new_qty, $reason, $username]);
+        // Insert audit log
+        $auditStmt->execute([$item_id, $prev_qty, $new_qty, $change_type, $reason, $username]);
 
         $results[] = [
             'item_id' => $item_id,
-            'name' => $item['name'],
+            'name' => $item['NAME'] ?? $item['name'] ?? '',
             'unit' => $item['unit'],
             'previous_stock' => $prev_qty,
             'physical_count' => $new_qty,
             'variance' => $variance,
-            'variance_formatted' => ($variance > 0 ? '+' : '') . number_format($variance, 2) . " {$item['unit']}",
-            'has_discrepancy' => $has_discrepancy,
-            'discrepancy_type' => $variance > 0 ? 'surplus' : ($variance < 0 ? 'shortage' : 'none'),
-            'reorder_point' => (float)$item['reorder_point'],
-            'is_low_stock' => ($new_qty <= (float)$item['reorder_point'])
+            'is_conflict' => $isConflict,
+            'change_type' => $change_type
         ];
     }
 
-    // Commit transaction
     $pdo->commit();
 
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Stock synchronized and logged to audit trail successfully.',
+        'message' => 'Entries synchronized and logged to audit trail.',
         'synced_at' => date('Y-m-d H:i:s'),
         'acting_user' => $username,
         'summary' => [
             'total_items' => count($results),
-            'discrepancies' => $discrepancies,
-            'matches' => count($results) - $discrepancies
+            'discrepancies' => $discrepancies
         ],
         'results' => $results
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
