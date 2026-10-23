@@ -17,7 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user && password_verify($password, $user['password_hash'])) {
-            session_regenerate_id(true);
+            if (isset($user['is_active']) && (int)$user['is_active'] === 0) {
+                $error = 'Your account has been deactivated. Please contact the Owner.';
+            } else {
+                session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
@@ -25,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             header("Location: dashboard.php");
             exit();
+            }
         } else {
             $error = 'Invalid username or password.';
         }

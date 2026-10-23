@@ -94,7 +94,8 @@ An offline-first, role-guarded web inventory management system developed for Ast
 │   ├── financial_report.php            # Monthly financials & Excel export
 │   ├── manage_items.php                # Master stock items catalog
 │   ├── manage_suppliers.php            # Supplier profiles & lead times
-│   └── backup.php                      # On-demand SQL backup utility
+│   ├── manage_users.php                # Owner user & staff credential administration
+│   └── backup.php                      # Owner on-demand SQL backup utility
 │
 ├── database/
 │   └── aste_inventory.sql              # Database schema & initial seed data
@@ -166,9 +167,9 @@ All demo accounts use password: **`aste123`**
 
 | Username | Role | Permissions |
 | :--- | :--- | :--- |
-| **`manager`** | Admin | Full Access (Stock, Financials, POs, Backups, Master Settings) |
-| **`owner`** | Owner | Executive Access (Stock, Financials, POs, Backups) |
-| **`barista`** | Staff | Operational Access (Counts, Deductions, Waste, Delivery Intake; Prices Masked) |
+| **`owner`** | Owner | Elevated Executive Access (User & Staff Administration, Database Backups, Financials, POs, Master Settings) |
+| **`manager`** | Admin | Operational Management (Stock Tracking, Financials, POs, Item & Supplier Settings, Discrepancies) |
+| **`barista`** | Staff | Floor Operations (Counts, Deductions, Waste, Delivery Intake; Prices & Admin Settings Masked) |
 
 ---
 

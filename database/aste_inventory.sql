@@ -13,6 +13,8 @@ CREATE TABLE "users" (
   "username" varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   "password_hash" varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   "role" enum('Admin','Staff','Owner') COLLATE utf8mb4_general_ci NOT NULL,
+  "is_active" tinyint(1) NOT NULL DEFAULT 1,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("id"),
   UNIQUE KEY "username" ("username")
 );

@@ -149,7 +149,10 @@ $auditLogs = $auditStmt->fetchAll(PDO::FETCH_ASSOC);
                     <a href="financial_report.php" class="bg-emerald-700/80 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded font-semibold transition">Financials</a>
                     <a href="manage_items.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Items</a>
                     <a href="manage_suppliers.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Suppliers</a>
-                    <a href="backup.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Backups</a>
+                    <?php if ($role === 'Owner'): ?>
+                        <a href="backup.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Backups</a>
+                        <a href="manage_users.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Users</a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 

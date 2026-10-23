@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 
-// Accessible only to Admin and Owner
-requireRole(['Admin', 'Owner'], $pdo);
+// Accessible only to Owner
+requireRole(['Owner'], $pdo);
 
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
