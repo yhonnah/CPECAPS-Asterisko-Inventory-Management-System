@@ -19,7 +19,7 @@ $items = $pdo->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Closing Shift Count - Asterisko Inventory</title>
+    <title>Stock Count - Asterisko Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -46,7 +46,7 @@ $items = $pdo->query("
                 &larr; Dashboard
             </a>
             <span class="text-stone-600">|</span>
-            <span class="font-bold text-base sm:text-lg">Closing Shift Count</span>
+            <span class="font-bold text-base sm:text-lg">Stock Count</span>
             <span class="text-xs bg-emerald-600 px-2 py-0.5 rounded uppercase font-semibold"><?= htmlspecialchars($role) ?></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
@@ -96,7 +96,7 @@ $items = $pdo->query("
         <div class="bg-white dark:bg-stone-900 rounded-xl shadow p-5 border border-stone-200 dark:border-stone-800">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
                 <div>
-                    <h1 class="text-xl font-bold text-stone-900 dark:text-stone-100">End-of-Shift Physical Count</h1>
+                    <h1 class="text-xl font-bold text-stone-900 dark:text-stone-100">Physical Stock Count</h1>
                     <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                         Input actual physical quantities. Discrepancies will be automatically calculated as variance and recorded to the immutable audit log.
                     </p>
@@ -119,9 +119,9 @@ $items = $pdo->query("
                 <div>
                     <label class="block text-xs font-semibold uppercase text-stone-600 dark:text-stone-400 mb-1">Shift Type *</label>
                     <select id="shift-type" class="w-full p-2.5 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium">
-                        <option value="Closing Shift">Closing Shift Count</option>
-                        <option value="Opening Shift">Opening Shift Count</option>
-                        <option value="Shift Handover">Mid-Shift Handover Count</option>
+                        <option value="Closing Shift">Closing Stock Count</option>
+                        <option value="Opening Shift">Opening Stock Count</option>
+                        <option value="Shift Handover">Shift Handover Stock Count</option>
                     </select>
                 </div>
                 <div class="sm:col-span-2">
@@ -150,7 +150,7 @@ $items = $pdo->query("
             <!-- Form Action Footer -->
             <div class="bg-white dark:bg-stone-900 rounded-xl shadow p-4 border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row justify-between items-center gap-3">
                 <div class="text-xs text-stone-500 dark:text-stone-400">
-                    <span id="footer-status-text">Ready to record shift count.</span>
+                    <span id="footer-status-text">Ready to record stock count.</span>
                 </div>
                 <div class="flex items-center gap-3 w-full sm:w-auto">
                     <button type="button" id="btn-reset" class="w-1/2 sm:w-auto px-4 py-2 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition">

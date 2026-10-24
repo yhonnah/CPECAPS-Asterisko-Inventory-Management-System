@@ -33,12 +33,12 @@ if (file_exists($envPath) && is_readable($envPath)) {
 }
 
 // 2. Resolve database credentials from environment or defaults
-$host    = getenv('DB_HOST') ?: 'aste-inventory-aste-inventory-system.j.aivencloud.com';
-$port    = getenv('DB_PORT') ?: '13670';
-$dbname  = getenv('DB_NAME') ?: 'aste-inventory';
-$user    = getenv('DB_USER') ?: 'avnadmin';
-$pass    = getenv('DB_PASS') ?: 'AVNS_5-LQ3ixBakUHi93eYVK';
-$sslmode = getenv('DB_SSL_MODE') ?: 'require';
+$host    = getenv('DB_HOST') !== false ? getenv('DB_HOST') : 'aste-inventory-aste-inventory-system.j.aivencloud.com';
+$port    = getenv('DB_PORT') !== false ? getenv('DB_PORT') : '13670';
+$dbname  = getenv('DB_NAME') !== false ? getenv('DB_NAME') : 'aste-inventory';
+$user    = getenv('DB_USER') !== false ? getenv('DB_USER') : 'avnadmin';
+$pass    = getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'AVNS_5-LQ3ixBakUHi93eYVK';
+$sslmode = getenv('DB_SSL_MODE') !== false ? getenv('DB_SSL_MODE') : 'require';
 
 try {
     $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";

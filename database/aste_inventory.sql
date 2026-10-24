@@ -1,6 +1,6 @@
 -- Asterisko Inventory Management System SQL Dump
 -- Generated: 2026-10-22 18:25:18
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO,ANSI_QUOTES";
 START TRANSACTION;
 SET time_zone = "+00:00";
 

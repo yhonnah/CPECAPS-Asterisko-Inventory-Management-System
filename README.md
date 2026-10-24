@@ -92,7 +92,7 @@ An offline-first, role-guarded web inventory management system developed for Ast
 │   ├── login.php                       # Sign-in portal
 │   ├── logout.php                      # Session sign-out handler
 │   ├── dashboard.php                   # Stock management, quick actions & audit trail
-│   ├── count.php                       # Physical shift counting interface
+│   ├── count.php                       # Physical stock counting interface
 │   ├── waste.php                       # Spoilage & FIFO waste tracking
 │   ├── delivery_intake.php             # Invoice OCR photo intake & item mapping
 │   ├── purchase_orders.php             # Purchase order & pre-order generator

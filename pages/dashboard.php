@@ -143,7 +143,7 @@ $auditLogs = $auditStmt->fetchAll(PDO::FETCH_ASSOC);
                 <a href="dashboard.php" class="bg-emerald-600 text-white px-2.5 py-1.5 rounded font-semibold">Dashboard</a>
                 <a href="delivery_intake.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Intake (OCR)</a>
                 <a href="waste.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Waste Log</a>
-                <a href="count.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Shift Count</a>
+                <a href="count.php" class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-2.5 py-1.5 rounded transition">Stock Count</a>
 
                 <!-- Links restricted to Managers & Owners -->
                 <?php if ($role !== 'Staff'): ?>
