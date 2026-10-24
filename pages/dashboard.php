@@ -345,7 +345,7 @@ $auditLogs = $auditStmt->fetchAll(PDO::FETCH_ASSOC);
                                class="w-full p-1.5 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800">
                     </div>
                     <div class="flex gap-1.5">
-                        <button type="submit" class="w-full bg-stone-800 hover:bg-stone-700 text-white font-semibold py-1.5 rounded">Filter</button>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded transition">Filter</button>
                         <a href="dashboard.php" class="px-2.5 py-1.5 border border-stone-300 dark:border-stone-700 rounded text-center">Reset</a>
                     </div>
                 </form>

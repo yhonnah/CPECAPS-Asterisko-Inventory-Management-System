@@ -248,34 +248,47 @@ table {
     width: 100%;
 }
 
-thead {
-    background-color: var(--asterisko-navy);
-    color: var(--asterisko-white);
+thead,
+table thead,
+thead.bg-stone-50,
+thead.bg-stone-100 {
+    background-color: var(--asterisko-navy) !important;
+    color: var(--asterisko-white) !important;
 }
 
-thead th {
+thead th,
+table thead th {
+    background-color: transparent !important;
     color: var(--asterisko-white) !important;
-    font-weight: 600;
+    font-weight: 700;
     padding: 12px 16px;
     text-align: left;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
 }
 
 tbody tr {
-    background-color: var(--asterisko-white);
-    color: var(--asterisko-text);
+    background-color: var(--asterisko-white) !important;
+    color: var(--asterisko-text) !important;
     transition: background-color 0.2s ease;
 }
 
 tbody tr:hover {
-    background-color: #FFF7ED;
+    background-color: #FFF7ED !important;
 }
 
 tbody td {
     border-bottom: 1px solid var(--asterisko-border);
     padding: 12px 16px;
+    color: var(--asterisko-text);
+}
+
+/* Secondary column text readability in light mode */
+tbody td .text-stone-500,
+tbody td .text-stone-400,
+tbody td.text-stone-500 {
+    color: #475569 !important;
 }
 
 /* ---------- INPUTS AND FORMS ---------- */
@@ -363,15 +376,17 @@ html.dark h6 {
     color: #FFFFFF !important;
 }
 
-/* Dark mode cards & panels */
+/* Dark mode cards & panels (scoped to containers, not buttons) */
 html.dark .card,
 html.dark .dashboard-card,
 html.dark .panel,
-html.dark .bg-stone-800,
-html.dark .bg-stone-900,
-html.dark .dark\:bg-stone-800,
-html.dark .dark\:bg-stone-900,
-html.dark .dark\:bg-stone-950,
+html.dark div.bg-stone-800,
+html.dark div.bg-stone-900,
+html.dark div.dark\:bg-stone-800,
+html.dark div.dark\:bg-stone-900,
+html.dark div.dark\:bg-stone-950,
+html.dark section[class*="bg-stone-800"],
+html.dark section[class*="bg-stone-900"],
 html.dark div[class*="bg-stone-800"],
 html.dark div[class*="bg-stone-900"],
 html.dark div[class*="bg-white"] {
@@ -380,8 +395,37 @@ html.dark div[class*="bg-white"] {
     color: var(--asterisko-text-dark) !important;
 }
 
+/* Ensure Submit & Filter Action Buttons Remain Vibrant Asterisko Orange in Dark Mode */
+html.dark button[type="submit"],
+html.dark input[type="submit"],
+html.dark button.btn-primary,
+html.dark a.btn-primary,
+html.dark .btn-deduct,
+html.dark button[name="action"][value="quick_deduct"] {
+    background-color: var(--asterisko-orange) !important;
+    border-color: var(--asterisko-orange) !important;
+    color: var(--asterisko-navy-dark) !important;
+    font-weight: 700 !important;
+}
+
+html.dark button[type="submit"]:hover,
+html.dark input[type="submit"]:hover,
+html.dark button.btn-primary:hover,
+html.dark a.btn-primary:hover,
+html.dark .btn-deduct:hover,
+html.dark button[name="action"][value="quick_deduct"]:hover {
+    background-color: var(--asterisko-orange-hover) !important;
+    border-color: var(--asterisko-orange-hover) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 16px var(--asterisko-orange-glow) !important;
+}
+
 /* Dark mode tables (resolves invisible text and white boxes) */
-html.dark table thead {
+html.dark thead,
+html.dark table thead,
+html.dark thead.bg-stone-50,
+html.dark thead.bg-stone-100,
+html.dark thead.dark\:bg-stone-800 {
     background-color: #071324 !important;
     border-bottom: 2px solid var(--asterisko-border-dark) !important;
 }
