@@ -12,6 +12,12 @@ An offline-first, role-guarded web inventory management system developed for Ast
   - [Prerequisites](#prerequisites)
   - [Environment Setup](#environment-setup)
   - [Running the Local Server](#running-the-local-server)
+- [Cloud Deployment (Render)](#cloud-deployment-render)
+  - [Deploying with Docker](#deploying-with-docker)
+  - [Render Environment Variables](#render-environment-variables)
+- [Cloud Database & Troubleshooting](#cloud-database--troubleshooting)
+  - [Aiven MySQL Configuration](#aiven-mysql-configuration)
+  - [Troubleshooting Connection Errors](#troubleshooting-connection-errors)
 - [Demo Accounts](#demo-accounts)
 - [Technology Stack](#technology-stack)
 
@@ -156,8 +162,96 @@ From the project root directory, run:
 ```bash
 php -S localhost:8000
 ```
+
+#### If `php` is not recognized / not in your system `PATH`:
+Run using your direct PHP binary path depending on your local environment:
+
+- **Windows (XAMPP):**
+  ```powershell
+  C:\xampp\php\php.exe -S localhost:8000
+  ```
+- **Windows (Laragon):**
+  ```powershell
+  C:\laragon\bin\php\php-8.2*\php.exe -S localhost:8000
+  ```
+- **Windows (WampServer):**
+  ```powershell
+  C:\wamp64\bin\php\php8.2*\php.exe -S localhost:8000
+  ```
+- **macOS (Homebrew):**
+  ```bash
+  /opt/homebrew/bin/php -S localhost:8000
+  ```
+
+> **Tip:** To temporarily add XAMPP PHP to your active PowerShell session:
+> ```powershell
+> $env:Path += ";C:\xampp\php"
+> php -S localhost:8000
+> ```
+
 Open your browser and navigate to:
 **[http://localhost:8000](http://localhost:8000)** (automatically directs to the login portal).
+
+---
+
+## Cloud Deployment (Render)
+
+The project includes a ready-to-use [`Dockerfile`](Dockerfile) pre-configured with **PHP 8.2 Apache**, PDO MySQL extensions, and Apache `mod_rewrite`.
+
+### Deploying with Docker
+
+1. Log in to your [Render Dashboard](https://dashboard.render.com/) and click **New +** &rarr; **Web Service**.
+2. Connect your GitHub repository: `CPECAPS-Asterisko-Inventory-Management-System`.
+3. Configure the service parameters:
+   - **Language / Runtime:** `Docker`
+   - **Branch:** `main`
+   - **Region:** Choose the region closest to your cloud database (e.g., Singapore or Oregon).
+   - **Instance Type:** `Free`
+4. Render automatically builds the container using [`Dockerfile`](Dockerfile) and listens on port `80`.
+
+### Render Environment Variables
+
+In your Render Web Service dashboard, navigate to **Environment** &rarr; **Add Environment Variable** and specify your database credentials:
+
+| Key | Example Value | Description |
+| :--- | :--- | :--- |
+| `DB_HOST` | `mysql-xxxx.j.aivencloud.com` | Cloud MySQL hostname |
+| `DB_PORT` | `13670` | Database connection port |
+| `DB_NAME` | `aste-inventory` | Active database name |
+| `DB_USER` | `avnadmin` | Default administrative database user |
+| `DB_PASS` | `your_aiven_password` | Database user password |
+| `DB_SSL_MODE` | `require` | Enforces SSL encryption for cloud database security |
+
+---
+
+## Cloud Database & Troubleshooting
+
+### Aiven MySQL Configuration
+
+1. Log in to [Aiven Console](https://console.aiven.io/) and create or select your MySQL service.
+2. Under the service **Overview** tab, locate the **Connection Details** card.
+3. Copy the **Host**, **Port**, **User**, **Password**, and **Database** values into your local `.env` and Render Environment Variables.
+4. Import the initial database schema and seed data from [`database/aste_inventory.sql`](database/aste_inventory.sql) using MySQL Workbench or CLI.
+
+### Troubleshooting Connection Errors
+
+#### `SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo failed: Name or service not known`
+
+- **Cause:** This is a DNS lookup failure. The web service cannot resolve the database hostname on the internet. In Aiven, this most commonly occurs when:
+  - The database service is **Powered off** or **Suspended** due to inactivity or trial standby (Aiven unpublishes DNS records while a service is inactive).
+  - The database service was rebuilt or recreated, resulting in a newly assigned host domain or port.
+  - A typo or whitespace exists in the `DB_HOST` configuration.
+
+- **Resolution Steps:**
+  1. **Check Service State:** Open the [Aiven Console](https://console.aiven.io/) and ensure the service state displays **Running** (green indicator). If it is "Powered off" or "Standby", click **Power on** and allow 1–2 minutes for DNS propagation.
+  2. **Verify Hostname:** Copy the exact host from the Aiven **Overview** tab.
+  3. **Update Environment Variables:**
+     - On **Render**: Go to Web Service &rarr; **Environment** &rarr; Update `DB_HOST`, `DB_PORT`, and `DB_PASS` &rarr; Click **Save Changes** (Render will automatically redeploy).
+     - For **Local Development**: Update your `.env` file accordingly.
+  4. **Verify DNS:** You can verify domain resolution from your terminal using:
+     ```bash
+     nslookup <your-aiven-hostname> 8.8.8.8
+     ```
 
 ---
 
