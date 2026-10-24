@@ -1,0 +1,149 @@
+
+/* ASTERISKO - Responsive CSS Enhancements */
+
+/* Smooth scrolling and mobile touch behavior */
+html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth transitions for interactive elements */
+a,
+button,
+input,
+select,
+textarea,
+[role="button"] {
+    transition:
+        color 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease,
+        opacity 0.2s ease;
+}
+
+button,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+    touch-action: manipulation;
+}
+
+/* Button hover and tap effects */
+@media (hover: hover) {
+    button:hover,
+    [role="button"]:hover,
+    input[type="submit"]:hover {
+        filter: brightness(1.04);
+    }
+}
+
+button:active,
+[role="button"]:active,
+input[type="submit"]:active {
+    transform: scale(0.98);
+}
+
+/* Smooth entrance animation */
+@keyframes asteriskoFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+main {
+    animation: asteriskoFadeIn 0.4s ease-out;
+}
+
+/* Card hover effects */
+@media (hover: hover) and (pointer: fine) {
+    .rounded-xl:hover,
+    .rounded-2xl:hover,
+    .rounded-lg:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+    }
+}
+
+/* Input focus effects */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid rgba(16, 185, 129, 0.65);
+    outline-offset: 2px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+/* Smooth table row hover */
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(16, 185, 129, 0.04);
+}
+
+/* Responsive images and media */
+img,
+video,
+canvas {
+    max-width: 100%;
+}
+
+/* Phone adjustments */
+@media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 560px;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 1180px) {
+    img,
+    video,
+    canvas {
+        max-width: 100%;
+    }
+}
+
+/* Respect reduced-motion accessibility settings */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

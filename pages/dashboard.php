@@ -122,6 +122,9 @@ $auditLogs = $auditStmt->fetchAll(PDO::FETCH_ASSOC);
             }
         } catch (e) {}
     </script>
+
+<link rel="stylesheet" href="../assets/app-enhancements.css">
+
 </head>
 <body class="bg-stone-100 dark:bg-stone-950 text-stone-800 dark:text-stone-200 min-h-screen transition-colors">
 

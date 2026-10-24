@@ -55,6 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (e) {}
     </script>
 
+<link rel="stylesheet" href="../assets/app-enhancements.css">
+
 </head>
 <body class="bg-stone-100 dark:bg-stone-900 flex items-center justify-center min-h-screen p-4 transition-colors">
 
