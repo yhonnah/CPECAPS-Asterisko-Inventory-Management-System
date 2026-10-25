@@ -109,9 +109,7 @@ $suppliers = $pdo->query("SELECT id, NAME, NAME AS name FROM suppliers WHERE is_
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Stock Items - Asterisko Inventory</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' };
         try {
             const saved = localStorage.getItem('theme');
             if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

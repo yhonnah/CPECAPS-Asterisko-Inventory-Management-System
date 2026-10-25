@@ -1,45 +1,25 @@
+
 /* =====================================================
    ASTERISKO INVENTORY MANAGEMENT SYSTEM
-   Theme: Asterisko Navy Blue, Vibrant Orange, and White
-   Includes: Visual Redesign, Dual Light/Dark System, 
-             Animations & Responsive Polish
+   Theme: Navy Blue, Orange, and White
+   Includes: Visual Redesign, Animations, Responsive UI
    ===================================================== */
 
 /* ---------- COLOR VARIABLES ---------- */
 :root {
-    /* Brand Primary: Asterisko Navy Palette */
     --asterisko-navy: #102542;
     --asterisko-navy-dark: #0A192F;
     --asterisko-navy-light: #1B3A5B;
-    --asterisko-navy-surface: #142844;
-    --asterisko-navy-hover: #1E4168;
-
-    /* Brand Accent: Asterisko Warm Orange */
     --asterisko-orange: #F28C28;
     --asterisko-orange-hover: #DB7616;
-    --asterisko-orange-active: #C4630D;
-    --asterisko-orange-glow: rgba(242, 140, 40, 0.25);
-    --asterisko-orange-light: #FFF0DB;
-
-    /* Neutrals: Light Mode Canvas */
     --asterisko-white: #FFFFFF;
-    --asterisko-bg: #F4F7FB;
+    --asterisko-bg: #F3F6FA;
     --asterisko-text: #1E293B;
     --asterisko-muted: #64748B;
     --asterisko-border: #E2E8F0;
-
-    /* Dark Mode Palette Overrides */
-    --asterisko-border-dark: #1E3A5F;
-    --asterisko-text-dark: #F8FAFC;
-    --asterisko-muted-dark: #94A3B8;
-
-    /* System Statuses */
     --asterisko-success: #15803D;
-    --asterisko-success-bg: #DCFCE7;
     --asterisko-danger: #B91C1C;
-    --asterisko-danger-bg: #FEE2E2;
 
-    /* Geometry & Depth */
     --asterisko-radius: 12px;
     --asterisko-shadow: 0 4px 16px rgba(16, 37, 66, 0.07);
     --asterisko-shadow-hover: 0 10px 28px rgba(16, 37, 66, 0.14);
@@ -70,7 +50,7 @@ textarea,
         background-color 0.2s ease,
         border-color 0.2s ease,
         box-shadow 0.2s ease,
-        transform 0.15s ease,
+        transform 0.2s ease,
         opacity 0.2s ease;
 }
 
@@ -82,7 +62,7 @@ input[type="button"] {
     cursor: pointer;
 }
 
-/* ---------- TYPOGRAPHY & BRAND LOGO ---------- */
+/* ---------- HEADINGS ---------- */
 h1,
 h2,
 h3,
@@ -98,13 +78,7 @@ p {
     line-height: 1.6;
 }
 
-/* Brand logo styling across headers */
-.text-emerald-500,
-.text-emerald-400 {
-    color: var(--asterisko-orange) !important;
-}
-
-/* Links */
+/* ---------- LINKS ---------- */
 a {
     color: var(--asterisko-navy-light);
     text-decoration-thickness: 1px;
@@ -115,75 +89,20 @@ a:hover {
     color: var(--asterisko-orange-hover);
 }
 
-/* ---------- NAVIGATION BAR & SIDEBAR ---------- */
-nav,
-aside,
-.sidebar,
-nav.sidebar,
-#sidebar,
-nav.bg-stone-900,
-nav.dark\:bg-black {
-    background-color: var(--asterisko-navy-dark) !important;
-    border-bottom: 1px solid var(--asterisko-border-dark) !important;
-    color: var(--asterisko-white);
-}
-
-/* Active navigation pill & role badge */
-nav a.bg-emerald-600,
-nav a.bg-emerald-700,
-nav a.active,
-nav span.bg-emerald-600,
-.sidebar a.active,
-#sidebar a.active,
-nav a[aria-current="page"] {
-    background-color: var(--asterisko-orange) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-    border-radius: 8px;
-}
-
-/* Inactive navigation links */
-nav a.bg-stone-800,
-aside a,
-.sidebar a,
-nav.sidebar a,
-#sidebar a {
-    background-color: #152B47 !important;
-    color: #E2E8F0 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 8px;
-}
-
-nav a.bg-stone-800:hover,
-aside a:hover,
-.sidebar a:hover,
-nav.sidebar a:hover,
-#sidebar a:hover {
-    background-color: var(--asterisko-navy-light) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-orange) !important;
-}
-
-/* ---------- BUTTONS (NAVY & ORANGE ACCENTS) ---------- */
+/* ---------- BUTTONS ---------- */
+/* Primary buttons */
 button.bg-blue-600,
 button.bg-blue-700,
 a.bg-blue-600,
 a.bg-blue-700,
-button.bg-emerald-600,
-button.bg-emerald-700,
-a.bg-emerald-600,
-a.bg-emerald-700,
-button.bg-emerald-800,
-a.bg-emerald-800,
 input[type="submit"],
 button[type="submit"],
 a.bg-indigo-600,
 button.bg-indigo-600 {
-    background-color: var(--asterisko-orange) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
+    background-color: var(--asterisko-orange);
+    border-color: var(--asterisko-orange);
+    color: var(--asterisko-navy-dark);
+    font-weight: 700;
     border-radius: 8px;
 }
 
@@ -191,42 +110,50 @@ button.bg-blue-600:hover,
 button.bg-blue-700:hover,
 a.bg-blue-600:hover,
 a.bg-blue-700:hover,
-button.bg-emerald-600:hover,
-button.bg-emerald-700:hover,
-a.bg-emerald-600:hover,
-a.bg-emerald-700:hover,
 input[type="submit"]:hover,
 button[type="submit"]:hover,
 a.bg-indigo-600:hover,
 button.bg-indigo-600:hover {
-    background-color: var(--asterisko-orange-hover) !important;
-    border-color: var(--asterisko-orange-hover) !important;
-    color: var(--asterisko-white) !important;
-    box-shadow: 0 4px 16px var(--asterisko-orange-glow) !important;
+    background-color: var(--asterisko-orange-hover);
+    border-color: var(--asterisko-orange-hover);
+    color: var(--asterisko-white);
+    box-shadow: 0 5px 14px rgba(242, 140, 40, 0.25);
 }
 
-/* Quick Deduct & Quick Waste actions */
-button[name="action"][value="quick_deduct"],
-.btn-deduct {
-    background-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-}
-button[name="action"][value="quick_deduct"]:hover,
-.btn-deduct:hover {
-    background-color: var(--asterisko-orange-hover) !important;
-    color: #FFFFFF !important;
+/* ---------- SIDEBAR AND NAVIGATION ---------- */
+/* Common dark navigation classes */
+aside,
+.sidebar,
+nav.sidebar,
+#sidebar {
+    background-color: var(--asterisko-navy);
+    color: var(--asterisko-white);
 }
 
-button[name="action"][value="quick_waste"],
-.btn-waste {
-    background-color: #B91C1C !important;
-    color: #FFFFFF !important;
-    font-weight: 600 !important;
+aside a,
+.sidebar a,
+nav.sidebar a,
+#sidebar a {
+    color: #E8EEF6;
+    border-radius: 8px;
 }
-button[name="action"][value="quick_waste"]:hover,
-.btn-waste:hover {
-    background-color: #991B1B !important;
+
+aside a:hover,
+.sidebar a:hover,
+nav.sidebar a:hover,
+#sidebar a:hover {
+    background-color: var(--asterisko-navy-light);
+    color: var(--asterisko-orange);
+}
+
+/* Active navigation item */
+aside a.active,
+.sidebar a.active,
+#sidebar a.active,
+nav a[aria-current="page"] {
+    background-color: var(--asterisko-orange);
+    color: var(--asterisko-navy-dark);
+    font-weight: 700;
 }
 
 /* ---------- CARDS AND PANELS ---------- */
@@ -248,47 +175,30 @@ table {
     width: 100%;
 }
 
-thead,
-table thead,
-thead.bg-stone-50,
-thead.bg-stone-100 {
-    background-color: var(--asterisko-navy) !important;
-    color: var(--asterisko-white) !important;
+thead {
+    background-color: var(--asterisko-navy);
+    color: var(--asterisko-white);
 }
 
-thead th,
-table thead th {
-    background-color: transparent !important;
-    color: var(--asterisko-white) !important;
-    font-weight: 700;
+thead th {
+    color: var(--asterisko-white);
+    font-weight: 600;
     padding: 12px 16px;
     text-align: left;
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
 }
 
 tbody tr {
-    background-color: var(--asterisko-white) !important;
-    color: var(--asterisko-text) !important;
+    background-color: var(--asterisko-white);
     transition: background-color 0.2s ease;
 }
 
 tbody tr:hover {
-    background-color: #FFF7ED !important;
+    background-color: #FFF5E9;
 }
 
 tbody td {
     border-bottom: 1px solid var(--asterisko-border);
     padding: 12px 16px;
-    color: var(--asterisko-text);
-}
-
-/* Secondary column text readability in light mode */
-tbody td .text-stone-500,
-tbody td .text-stone-400,
-tbody td.text-stone-500 {
-    color: #475569 !important;
 }
 
 /* ---------- INPUTS AND FORMS ---------- */
@@ -306,9 +216,9 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-    border-color: var(--asterisko-orange) !important;
-    outline: none !important;
-    box-shadow: 0 0 0 3px var(--asterisko-orange-glow) !important;
+    border-color: var(--asterisko-orange);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.18);
 }
 
 input::placeholder,
@@ -340,149 +250,22 @@ a:focus-visible {
 .badge-warning,
 .status-low,
 .status-pending {
-    background-color: var(--asterisko-orange-light);
+    background-color: #FFF0DB;
     color: #9A4D00;
 }
 
 .badge-success,
 .status-active,
 .status-completed {
-    background-color: var(--asterisko-success-bg);
-    color: var(--asterisko-success);
+    background-color: #DCFCE7;
+    color: #166534;
 }
 
 .badge-danger,
 .status-danger,
 .status-inactive {
-    background-color: var(--asterisko-danger-bg);
-    color: var(--asterisko-danger);
-}
-
-/* =====================================================
-   DARK MODE ARCHITECTURE (ASTERISKO MIDNIGHT)
-   Scoped specifically under html.dark for seamless parity
-   ===================================================== */
-html.dark body {
-    background-color: var(--asterisko-navy-dark) !important;
-    color: var(--asterisko-text-dark) !important;
-}
-
-html.dark h1,
-html.dark h2,
-html.dark h3,
-html.dark h4,
-html.dark h5,
-html.dark h6 {
-    color: #FFFFFF !important;
-}
-
-/* Dark mode cards & panels (scoped to containers, not buttons) */
-html.dark .card,
-html.dark .dashboard-card,
-html.dark .panel,
-html.dark div.bg-stone-800,
-html.dark div.bg-stone-900,
-html.dark div.dark\:bg-stone-800,
-html.dark div.dark\:bg-stone-900,
-html.dark div.dark\:bg-stone-950,
-html.dark section[class*="bg-stone-800"],
-html.dark section[class*="bg-stone-900"],
-html.dark div[class*="bg-stone-800"],
-html.dark div[class*="bg-stone-900"],
-html.dark div[class*="bg-white"] {
-    background-color: var(--asterisko-navy) !important;
-    border-color: var(--asterisko-border-dark) !important;
-    color: var(--asterisko-text-dark) !important;
-}
-
-/* Ensure Submit & Filter Action Buttons Remain Vibrant Asterisko Orange in Dark Mode */
-html.dark button[type="submit"],
-html.dark input[type="submit"],
-html.dark button.btn-primary,
-html.dark a.btn-primary,
-html.dark .btn-deduct,
-html.dark button[name="action"][value="quick_deduct"] {
-    background-color: var(--asterisko-orange) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-}
-
-html.dark button[type="submit"]:hover,
-html.dark input[type="submit"]:hover,
-html.dark button.btn-primary:hover,
-html.dark a.btn-primary:hover,
-html.dark .btn-deduct:hover,
-html.dark button[name="action"][value="quick_deduct"]:hover {
-    background-color: var(--asterisko-orange-hover) !important;
-    border-color: var(--asterisko-orange-hover) !important;
-    color: #FFFFFF !important;
-    box-shadow: 0 4px 16px var(--asterisko-orange-glow) !important;
-}
-
-/* Dark mode tables (resolves invisible text and white boxes) */
-html.dark thead,
-html.dark table thead,
-html.dark thead.bg-stone-50,
-html.dark thead.bg-stone-100,
-html.dark thead.dark\:bg-stone-800 {
-    background-color: #071324 !important;
-    border-bottom: 2px solid var(--asterisko-border-dark) !important;
-}
-
-html.dark table thead th {
-    color: #FFFFFF !important;
-}
-
-html.dark table tbody tr {
-    background-color: var(--asterisko-navy) !important;
-    color: var(--asterisko-text-dark) !important;
-}
-
-html.dark table tbody tr:hover {
-    background-color: var(--asterisko-navy-hover) !important;
-}
-
-html.dark table tbody td {
-    border-bottom: 1px solid var(--asterisko-border-dark) !important;
-    color: #E2E8F0 !important;
-}
-
-/* Ensure text inside table cells remains crisp in dark mode */
-html.dark table tbody td span,
-html.dark table tbody td div,
-html.dark table tbody td p {
-    color: inherit;
-}
-
-/* Dark mode inputs, selects & textareas */
-html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-html.dark select,
-html.dark textarea {
-    background-color: #0B1D35 !important;
-    border: 1px solid var(--asterisko-border-dark) !important;
-    color: #F8FAFC !important;
-}
-
-html.dark input::placeholder,
-html.dark textarea::placeholder {
-    color: #64748B !important;
-}
-
-html.dark input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.85);
-}
-
-/* Dark mode secondary buttons & borders */
-html.dark .border-stone-700,
-html.dark .border-stone-800,
-html.dark .border-stone-200 {
-    border-color: var(--asterisko-border-dark) !important;
-}
-
-html.dark .text-stone-300,
-html.dark .text-stone-400 {
-    color: var(--asterisko-muted-dark) !important;
+    background-color: #FEE2E2;
+    color: #991B1B;
 }
 
 /* ---------- ANIMATIONS ---------- */
@@ -524,17 +307,18 @@ html.dark .text-stone-400 {
     50% { box-shadow: 0 0 0 5px rgba(242, 140, 40, 0.12); }
 }
 
-/* Smooth page load animations */
+/* Main content appears smoothly */
 main {
-    animation: asteriskoFadeIn 0.35s ease-out both;
-}
-
-.dashboard-card,
-.card {
     animation: asteriskoFadeIn 0.4s ease-out both;
 }
 
-/* Mouse hover elevations */
+/* Cards enter with a subtle animation */
+.dashboard-card,
+.card {
+    animation: asteriskoFadeIn 0.45s ease-out both;
+}
+
+/* Interactive hover effects on mouse devices */
 @media (hover: hover) and (pointer: fine) {
     .dashboard-card:hover,
     .card:hover,
@@ -549,7 +333,7 @@ main {
     }
 }
 
-/* Button press feedback */
+/* Buttons respond when pressed */
 button:active,
 [role="button"]:active,
 input[type="submit"]:active {
