@@ -6,6 +6,7 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle) ?></title>
+<link rel="icon" type="image/png" href="../assets/logo.png">
 
 <!-- Fonts: Plus Jakarta Sans -->
 <link rel="preconnect" href="https://fonts.googleapis.com">

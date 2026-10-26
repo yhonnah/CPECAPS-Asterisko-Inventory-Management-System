@@ -18,11 +18,9 @@ $currentPage = $activePage ?? '';
         <!-- Brand Header -->
         <div class="px-6 py-6 border-b border-[#15345C]/70 flex items-center justify-between">
             <a href="dashboard.php" class="flex items-center gap-3 group">
-                <!-- 8-Point Asterisko Starburst Logo -->
-                <div class="w-10 h-10 rounded-xl bg-[#F28C28]/15 flex items-center justify-center border border-[#F28C28]/30 group-hover:scale-105 transition-transform">
-                    <svg class="w-6 h-6 text-[#F28C28]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2a1.25 1.25 0 0 1 1.25 1.25v3.3a1.25 1.25 0 1 1-2.5 0v-3.3A1.25 1.25 0 0 1 12 2zm0 14.2a1.25 1.25 0 0 1 1.25 1.25v3.3a1.25 1.25 0 1 1-2.5 0v-3.3A1.25 1.25 0 0 1 12 16.2zM20.75 10.75a1.25 1.25 0 0 1 0 2.5h-3.3a1.25 1.25 0 1 1 0-2.5h3.3zm-14.2 0a1.25 1.25 0 0 1 0 2.5h-3.3a1.25 1.25 0 1 1 0-2.5h3.3zm11.66-5.83a1.25 1.25 0 0 1 0 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33a1.25 1.25 0 0 1 1.77 0zm-10.05 10.05a1.25 1.25 0 0 1 0 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33a1.25 1.25 0 0 1 1.77 0zm10.05 0a1.25 1.25 0 0 1 1.77 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33zm-10.05-10.05a1.25 1.25 0 0 1 1.77-1.77l2.33 2.33a1.25 1.25 0 1 1-1.77 1.77l-2.33-2.33z"/>
-                    </svg>
+                <!-- Asterisko Official Brand Logo -->
+                <div class="w-10 h-10 rounded-xl overflow-hidden bg-[#FEF2DA] border border-white/20 p-1 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform shadow-md">
+                    <img src="../assets/logo.png" alt="Asterisko" class="w-full h-full object-contain rounded-lg">
                 </div>
                 <div>
                     <h1 class="text-lg font-black tracking-wider text-white uppercase leading-none">ASTERISKO</h1>

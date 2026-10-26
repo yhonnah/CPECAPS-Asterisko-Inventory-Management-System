@@ -266,6 +266,26 @@ textarea {
     color: #1E293B;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+
+/* Ensure inputs with icon containers preserve ample padding without text collisions */
+input.has-icon-left,
+input[class*="pl-10"],
+input[class*="pl-11"],
+input[class*="pl-12"] {
+    padding-left: 2.75rem !important;
+}
+
+input.has-icon-left-sm,
+input[class*="pl-9"] {
+    padding-left: 2.25rem !important;
+}
+
+input.has-icon-right,
+input[class*="pr-10"],
+input[class*="pr-11"],
+input[class*="pr-12"] {
+    padding-right: 2.75rem !important;
+}
 html.dark input[type="text"],
 html.dark input[type="number"],
 html.dark input[type="email"],

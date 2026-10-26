@@ -203,10 +203,8 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
             <div id="printable-invoice" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#15345C] p-6 sm:p-10 mb-8 space-y-6">
                 <div class="flex justify-between items-start pb-6 border-b border-slate-200 dark:border-[#15345C]">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-2xl bg-[#F28C28]/15 border border-[#F28C28]/30 flex items-center justify-center">
-                            <svg class="w-7 h-7 text-[#F28C28]" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2a1.25 1.25 0 0 1 1.25 1.25v3.3a1.25 1.25 0 1 1-2.5 0v-3.3A1.25 1.25 0 0 1 12 2zm0 14.2a1.25 1.25 0 0 1 1.25 1.25v3.3a1.25 1.25 0 1 1-2.5 0v-3.3A1.25 1.25 0 0 1 12 16.2zM20.75 10.75a1.25 1.25 0 0 1 0 2.5h-3.3a1.25 1.25 0 1 1 0-2.5h3.3zm-14.2 0a1.25 1.25 0 0 1 0 2.5h-3.3a1.25 1.25 0 1 1 0-2.5h3.3zm11.66-5.83a1.25 1.25 0 0 1 0 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33a1.25 1.25 0 0 1 1.77 0zm-10.05 10.05a1.25 1.25 0 0 1 0 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33a1.25 1.25 0 0 1 1.77 0zm10.05 0a1.25 1.25 0 0 1 1.77 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33zm-10.05-10.05a1.25 1.25 0 0 1 1.77-1.77l2.33 2.33a1.25 1.25 0 1 1-1.77 1.77l-2.33-2.33z"/>
-                            </svg>
+                        <div class="w-12 h-12 rounded-2xl overflow-hidden bg-[#FEF2DA] border border-slate-200 dark:border-[#1C3E69] p-1 flex items-center justify-center shadow-sm">
+                            <img src="../assets/logo.png" alt="Asterisko" class="w-full h-full object-contain rounded-xl">
                         </div>
                         <div>
                             <h2 class="text-2xl font-black tracking-wider uppercase text-slate-900 dark:text-white">ASTERISKO</h2>

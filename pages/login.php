@@ -61,11 +61,9 @@ $pageTitle = 'Asterisko - Login';
         <!-- Left Side: Brand Panel (Deep Navy with Orange Asterisk) -->
         <div class="md:w-1/2 bg-[#0C2340] text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center relative border-b md:border-b-0 md:border-r border-[#15345C]">
             <div class="relative z-10 flex flex-col items-center">
-                <!-- Large 8-Point Asterisk Logo -->
-                <div class="w-20 h-20 rounded-3xl bg-[#F28C28]/15 border border-[#F28C28]/30 flex items-center justify-center mb-6 shadow-inner">
-                    <svg class="w-12 h-12 text-[#F28C28]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2a1.25 1.25 0 0 1 1.25 1.25v3.3a1.25 1.25 0 1 1-2.5 0v-3.3A1.25 1.25 0 0 1 12 2zm0 14.2a1.25 1.25 0 0 1 1.25 1.25v3.3a1.25 1.25 0 1 1-2.5 0v-3.3A1.25 1.25 0 0 1 12 16.2zM20.75 10.75a1.25 1.25 0 0 1 0 2.5h-3.3a1.25 1.25 0 1 1 0-2.5h3.3zm-14.2 0a1.25 1.25 0 0 1 0 2.5h-3.3a1.25 1.25 0 1 1 0-2.5h3.3zm11.66-5.83a1.25 1.25 0 0 1 0 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33a1.25 1.25 0 0 1 1.77 0zm-10.05 10.05a1.25 1.25 0 0 1 0 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33a1.25 1.25 0 0 1 1.77 0zm10.05 0a1.25 1.25 0 0 1 1.77 1.77l-2.33 2.33a1.25 1.25 0 1 1-1.77-1.77l2.33-2.33zm-10.05-10.05a1.25 1.25 0 0 1 1.77-1.77l2.33 2.33a1.25 1.25 0 1 1-1.77 1.77l-2.33-2.33z"/>
-                    </svg>
+                <!-- Asterisko Official Brand Logo -->
+                <div class="w-24 h-24 rounded-2xl overflow-hidden shadow-2xl mb-5 border-2 border-white/20 p-1.5 bg-[#FEF2DA] flex items-center justify-center transition-transform hover:scale-105 duration-200">
+                    <img src="../assets/logo.png" alt="Asterisko Logo" class="w-full h-full object-contain rounded-xl">
                 </div>
                 <h1 class="text-3xl font-extrabold tracking-wider uppercase text-white mb-2">ASTERISKO</h1>
                 <p class="text-slate-300 text-sm max-w-xs font-medium">Inventory Management System</p>
@@ -106,7 +104,7 @@ $pageTitle = 'Asterisko - Login';
                             </svg>
                         </div>
                         <input type="text" name="username" required placeholder="Enter your username"
-                               class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all">
+                               class="w-full !pl-11 !pr-4 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all has-icon-left">
                     </div>
                 </div>
 
@@ -120,7 +118,7 @@ $pageTitle = 'Asterisko - Login';
                             </svg>
                         </div>
                         <input type="password" id="password-input" name="password" required placeholder="Enter your password"
-                               class="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all">
+                               class="w-full !pl-11 !pr-11 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all has-icon-left has-icon-right">
                         <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Toggle password visibility">
                             <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
