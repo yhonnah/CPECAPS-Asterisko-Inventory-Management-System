@@ -17,58 +17,25 @@ $items = $pdo->query("
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Count - Asterisko Inventory</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' };
-
-        // Prevent theme flicker
-        try {
-            const saved = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (saved === 'dark' || (!saved && prefersDark)) {
-                document.documentElement.classList.add('dark');
-            }
-        } catch (e) {}
-    </script>
-
-<link rel="stylesheet" href="../assets/app-enhancements.css">
-
+    <?php 
+    $activePage = 'count';
+    $pageTitle = 'Stock Count - Asterisko Inventory';
+    require_once __DIR__ . '/../includes/head.php'; 
+    ?>
 </head>
-<body class="bg-stone-100 dark:bg-stone-950 text-stone-800 dark:text-stone-200 min-h-screen transition-colors">
+<body class="bg-[#F4F7FB] dark:bg-[#071526] text-slate-800 dark:text-slate-100 min-h-screen">
 
-    <!-- Top Navigation Bar -->
-    <nav class="bg-stone-900 dark:bg-black text-white px-4 py-3 flex justify-between items-center border-b border-stone-800">
-        <div class="flex items-center gap-3">
-            <a href="dashboard.php" class="text-emerald-400 hover:text-emerald-300 text-sm font-semibold flex items-center gap-1">
-                &larr; Dashboard
-            </a>
-            <span class="text-stone-600">|</span>
-            <span class="font-bold text-base sm:text-lg">Stock Count</span>
-            <span class="text-xs bg-emerald-600 px-2 py-0.5 rounded uppercase font-semibold"><?= htmlspecialchars($role) ?></span>
-        </div>
-        <div class="flex items-center gap-3 text-sm">
-            <span class="hidden sm:inline">Barista: <b><?= htmlspecialchars($username) ?></b></span>
+    <!-- Left Sidebar -->
+    <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
-            <!-- Dark Mode Toggle -->
-            <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
-                    class="p-1.5 rounded-full bg-stone-700 hover:bg-stone-600 text-emerald-300 transition">
-                <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="4"/>
-                    <path stroke-linecap="round" d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
-                </svg>
-                <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
-                </svg>
-            </button>
+    <!-- Main Content Wrapper -->
+    <div class="lg:pl-64 flex flex-col min-h-screen">
+        
+        <!-- Topbar -->
+        <?php require_once __DIR__ . '/../includes/topbar.php'; ?>
 
-            <a href="logout.php" class="bg-stone-700 hover:bg-stone-600 px-3 py-1 rounded text-xs">Logout</a>
-        </div>
-    </nav>
-
-    <div class="max-w-4xl mx-auto p-4 space-y-5">
+        <!-- Canvas Body -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl w-full mx-auto">
 
         <!-- Network Connectivity Status Banner (Monitored via navigator.onLine) -->
         <div id="network-banner" class="rounded-xl p-3.5 transition-all duration-300 flex items-center justify-between shadow-sm border">
