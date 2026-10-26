@@ -117,10 +117,10 @@ try {
             $change_type = 'count_correction';
 
         } elseif (isset($entry['deduction_amount']) || $change_type === 'deduction' || $change_type === 'waste') {
-            $amount = round((float)($entry['amount'] ?? $entry['deduction_amount'] ?? 0), 2);
+            $amount = round((float)($entry['amount'] ?? $entry['deduction_amount'] ?? 0), 4);
             if ($amount <= 0) throw new Exception("Invalid deduction amount for item ID {$item_id}.");
 
-            $new_qty = max(0, round($prev_qty - $amount, 2));
+            $new_qty = max(0, round($prev_qty - $amount, 4));
             $variance = -$amount;
             $has_discrepancy = false;
             $note = trim($entry['reason'] ?? 'Offline shift deduction');

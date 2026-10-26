@@ -643,13 +643,15 @@ $activePage = 'orders';
                                 <?php endforeach; ?>
                             </div>
 
-                            <!-- Right Controls: Cache Status & Search Input -->
+                            <!-- Right Controls: Offline Sync Badge & Search Input -->
                             <div class="flex items-center gap-2 w-full sm:w-auto">
-                                <div class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shrink-0" title="Active recipes and stock items cached in session memory.">
+                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shrink-0">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    <span>Cached</span>
-                                    <button type="button" onclick="flushAndSyncCatalog()" class="text-[11px] text-emerald-800 dark:text-emerald-200 hover:underline font-bold ml-0.5" title="Force Sync Catalog">↻</button>
-                                </div>
+                                    <span>Online (Synced)</span>
+                                </span>
+                                <button type="button" onclick="syncOfflineOutbox()" class="p-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors" title="Sync local offline outbox now">
+                                    ↻ Sync
+                                </button>
                                 <div class="relative w-full sm:w-56">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -726,8 +728,8 @@ $activePage = 'orders';
                                                 + Ticket
                                             </button>
 
-                                            <!-- 1-Click Quick Order & Deduct -->
-                                            <form method="POST" onsubmit="return confirm('Brew and deduct stock for 1x <?= addslashes($drink['name']) ?>?')">
+                                            <!-- 1-Click Quick Order & Deduct (Offline-Aware) -->
+                                            <form method="POST" onsubmit="return handleQuickBrewSubmit(event, <?= htmlspecialchars(json_encode($drink)) ?>)">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                                 <input type="hidden" name="action" value="quick_order">
                                                 <input type="hidden" name="menu_item_id" value="<?= $drink['id'] ?>">
@@ -785,7 +787,7 @@ $activePage = 'orders';
                                 <span id="ticket-total-price" class="font-black text-xl text-[#F28C28]">₱0.00</span>
                             </div>
 
-                            <form method="POST" id="ticket-submit-form" onsubmit="return validateTicketSubmit()">
+                            <form method="POST" id="ticket-submit-form" onsubmit="return validateTicketSubmit(event)">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                 <input type="hidden" name="action" value="complete_ticket">
                                 <input type="hidden" name="ticket_data" id="ticket-data-input" value="[]">
@@ -818,7 +820,7 @@ $activePage = 'orders';
                             </div>
                         </div>
 
-                        <form method="POST" class="mt-6 space-y-5" onsubmit="return confirmManualDeduction()">
+                        <form method="POST" class="mt-6 space-y-5" onsubmit="return confirmManualDeduction(event)">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                             <input type="hidden" name="action" value="manual_deduction">
 
@@ -1256,7 +1258,7 @@ $activePage = 'orders';
             deductionsBox.classList.remove('hidden');
         }
 
-        function validateTicketSubmit() {
+        async function validateTicketSubmit(event) {
             if (ticket.length === 0) {
                 alert('Your order ticket is empty.');
                 return false;
@@ -1266,7 +1268,63 @@ $activePage = 'orders';
                 alert('Cannot complete order: Insufficient stock for one or more ingredients in this ticket. Please adjust quantities.');
                 return false;
             }
+
+            // Offline First Handling
+            if (!navigator.onLine) {
+                if (event) event.preventDefault();
+                const totalCups = ticket.reduce((sum, item) => sum + item.qty, 0);
+                const totalPrice = ticket.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+                try {
+                    await queueOfflineCoffeeOrder({
+                        orderNumber: 'TKT-OFF-' + Date.now().toString().slice(-6),
+                        items: [...ticket],
+                        totalAmount: totalPrice,
+                        itemsCount: totalCups,
+                        notes: `${ticket.length} items ticket (${totalCups} cups) [Offline Mode]`,
+                        servedBy: <?= json_encode($username) ?>
+                    });
+
+                    showOfflineToast(`🧾 Order ticket (${totalCups} cups) saved locally in IndexedDB!`, 'warning');
+                    clearTicket();
+                    updateOutboxBadge();
+                } catch (err) {
+                    alert('Failed to save offline ticket: ' + err.message);
+                }
+                return false;
+            }
+
             return confirm('Complete this order ticket and automatically deduct all required stock ingredients?');
+        }
+
+        // Offline-Aware Quick Brew Handler
+        async function handleQuickBrewSubmit(event, drink) {
+            if (!navigator.onLine) {
+                if (event) event.preventDefault();
+                try {
+                    await queueOfflineCoffeeOrder({
+                        orderNumber: 'ORD-OFF-' + Date.now().toString().slice(-6),
+                        items: [{
+                            id: drink.id,
+                            name: drink.name,
+                            qty: 1,
+                            price: parseFloat(drink.price),
+                            ingredients: drink.ingredients || []
+                        }],
+                        totalAmount: parseFloat(drink.price),
+                        itemsCount: 1,
+                        notes: 'Quick Brew 1x (Offline Mode)',
+                        servedBy: <?= json_encode($username) ?>
+                    });
+
+                    showOfflineToast(`☕ 1x ${drink.name} brewed & saved locally in IndexedDB!`, 'warning');
+                    updateOutboxBadge();
+                } catch (err) {
+                    alert('Failed to save offline brew: ' + err.message);
+                }
+                return false;
+            }
+            return confirm(`Brew and deduct stock for 1x ${drink.name}?`);
         }
 
         // -------------------------------------------------------------
@@ -1319,9 +1377,10 @@ $activePage = 'orders';
             }
         }
 
-        function confirmManualDeduction() {
+        async function confirmManualDeduction(event) {
             const select = document.getElementById('manual-item-select');
             const qtyInput = document.getElementById('manual-qty-input');
+            const reasonInput = document.querySelector('input[name="reason"]') || { value: 'Shift quick action' };
             const selectedOption = select.options[select.selectedIndex];
 
             if (!selectedOption || !selectedOption.value) {
@@ -1339,6 +1398,30 @@ $activePage = 'orders';
 
             if (deduct > currentQty) {
                 alert(`Warning: Deduction quantity (${deduct} ${unit}) exceeds available stock (${currentQty} ${unit}). Please correct.`);
+                return false;
+            }
+
+            // Offline First Handling
+            if (!navigator.onLine) {
+                if (event) event.preventDefault();
+                try {
+                    await queueOfflineManualDeduction({
+                        itemId: parseInt(selectedOption.value),
+                        itemName: name,
+                        amount: deduct,
+                        unit: unit,
+                        reason: reasonInput.value || 'Shift quick action (offline)',
+                        changeType: 'deduction',
+                        servedBy: <?= json_encode($username) ?>
+                    });
+
+                    showOfflineToast(`⚖️ Deducted ${deduct} ${unit} ${name} (Saved locally in IndexedDB).`, 'warning');
+                    qtyInput.value = '';
+                    updateManualStockPreview();
+                    updateOutboxBadge();
+                } catch (err) {
+                    alert('Failed to record offline deduction: ' + err.message);
+                }
                 return false;
             }
 
@@ -1362,6 +1445,11 @@ $activePage = 'orders';
                     console.info('✓ Asterisko Catalog & Recipes cached in sessionStorage (Version: ' + CURRENT_CATALOG_VERSION + ')');
                 } else {
                     console.info('✓ Active sessionStorage Catalog Cache is valid (Version: ' + CURRENT_CATALOG_VERSION + ')');
+                }
+
+                // Hydrate IndexedDB store for offline fallback
+                if (typeof hydrateLocalDatabase === 'function') {
+                    hydrateLocalDatabase(INITIAL_MENU_DATA, INITIAL_STOCK_DATA);
                 }
             } catch (e) {
                 console.warn('SessionStorage unavailable, using local memory fallback.');

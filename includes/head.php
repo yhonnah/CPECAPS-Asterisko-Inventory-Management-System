@@ -5,8 +5,10 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
 ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C2340">
 <title><?= htmlspecialchars($pageTitle) ?></title>
 <link rel="icon" type="image/png" href="../assets/logo.png">
+<link rel="manifest" href="/manifest.json">
 
 <!-- Fonts: Plus Jakarta Sans -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,3 +55,18 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
 
 <!-- Asterisko Enhanced CSS -->
 <link rel="stylesheet" href="../assets/app-enhancements.css">
+
+<!-- Dexie.js (IndexedDB Offline Store) & Offline Engine -->
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<script src="../assets/js/offline-engine.js"></script>
+
+<!-- PWA Service Worker Registration -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('✓ Service Worker registered successfully (Scope:', reg.scope, ')'))
+                .catch(err => console.warn('Service Worker registration failed:', err));
+        });
+    }
+</script>

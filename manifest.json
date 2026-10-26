@@ -1,0 +1,19 @@
+{
+  "name": "Asterisko Inventory Management System",
+  "short_name": "Asterisko POS",
+  "description": "Offline-ready inventory and order management system for Asterisko Cafe",
+  "start_url": "/pages/orders.php",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F7FB",
+  "theme_color": "#0C2340",
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
