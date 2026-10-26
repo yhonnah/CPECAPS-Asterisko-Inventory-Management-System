@@ -43,7 +43,7 @@ $currentUsername = $_SESSION['username'] ?? 'User';
             </button>
 
             <!-- Role Badge -->
-            <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider <?= ($currentUserRole === 'Owner') ? 'bg-[#F28C28]/15 text-[#F28C28] border border-[#F28C28]/30' : (($currentUserRole === 'Manager') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300') ?>">
+            <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider <?= ($currentUserRole === 'Owner') ? 'bg-[#F28C28]/15 text-[#F28C28] border border-[#F28C28]/30' : (($currentUserRole === 'Manager' || $currentUserRole === 'Admin') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300') ?>">
                 <?= htmlspecialchars($currentUserRole) ?>
             </span>
 
