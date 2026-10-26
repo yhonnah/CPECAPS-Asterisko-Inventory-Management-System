@@ -94,6 +94,27 @@ try {
 
         $prev_qty = (float)$item['quantity'];
         $change_type = $entry['change_type'] ?? 'count_correction';
+        $uuid = !empty($entry['uuid']) ? trim($entry['uuid']) : '';
+
+        // Idempotency Check: if UUID was already processed, skip duplicate subtraction
+        if ($uuid !== '') {
+            $checkDupe = $pdo->prepare("SELECT id FROM audit_logs WHERE reason LIKE ? LIMIT 1");
+            $checkDupe->execute(["%[UUID: {$uuid}]%"]);
+            if ($checkDupe->fetchColumn()) {
+                $results[] = [
+                    'item_id' => $item_id,
+                    'name' => $item['NAME'] ?? $item['name'] ?? '',
+                    'unit' => $item['unit'],
+                    'previous_stock' => $prev_qty,
+                    'physical_count' => $prev_qty,
+                    'variance' => 0,
+                    'is_conflict' => false,
+                    'is_duplicate' => true,
+                    'change_type' => $change_type
+                ];
+                continue;
+            }
+        }
 
         // Check if conflict detection is needed
         $isConflict = false;
@@ -136,6 +157,10 @@ try {
             if ($isConflict) $reason .= " [OFFLINE SYNC CONFLICT: Flagged for review]";
         } else {
             throw new Exception("Unknown sync operation for item ID {$item_id}.");
+        }
+
+        if ($uuid !== '') {
+            $reason .= " [UUID: {$uuid}]";
         }
 
         // Limit reason length for schema

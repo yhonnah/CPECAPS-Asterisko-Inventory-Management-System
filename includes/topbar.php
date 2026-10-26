@@ -31,7 +31,14 @@ $currentUsername = $_SESSION['username'] ?? 'User';
         </div>
 
         <!-- Right: Actions & User Info -->
-        <div class="flex items-center gap-3 sm:gap-4">
+        <div class="flex items-center gap-2.5 sm:gap-3.5">
+            <!-- Global Live Connectivity Pill (Offline-First Indicator) -->
+            <div id="global-connectivity-pill" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shadow-sm cursor-pointer select-none transition-all" title="Connected to cloud server. Click to check sync.">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="hidden sm:inline">Online (Synced)</span>
+                <span class="sm:hidden">Online</span>
+            </div>
+
             <!-- Theme Toggle Button -->
             <button onclick="toggleTheme()" class="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-[#132E52] transition-colors" title="Toggle Theme">
                 <svg id="theme-icon-sun" class="w-5 h-5 hidden dark:block text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

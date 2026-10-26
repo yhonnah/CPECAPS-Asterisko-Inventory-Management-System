@@ -177,7 +177,7 @@ async function syncOfflineOutbox() {
 
     console.log(`[Sync] Attempting to synchronize ${pending.length} outbox items to cloud...`);
 
-    // Prepare sync payload items for api/sync.php
+    // Prepare sync payload items for api/sync.php with Delta Commutative metadata
     const syncPayloadItems = [];
 
     for (const entry of pending) {
@@ -187,6 +187,7 @@ async function syncOfflineOutbox() {
                 if (Array.isArray(item.ingredients)) {
                     for (const ing of item.ingredients) {
                         syncPayloadItems.push({
+                            uuid: entry.uuid,
                             item_id: parseInt(ing.stock_item_id),
                             amount: (parseFloat(ing.quantity_required) || 0) * (parseInt(item.qty) || 1),
                             change_type: 'deduction',
@@ -197,6 +198,7 @@ async function syncOfflineOutbox() {
             }
         } else if (entry.action === 'manual_deduction') {
             syncPayloadItems.push({
+                uuid: entry.uuid,
                 item_id: entry.item_id,
                 amount: entry.amount,
                 change_type: entry.change_type || 'deduction',
@@ -215,6 +217,7 @@ async function syncOfflineOutbox() {
     }
 
     try {
+        updateOutboxBadge(true); // Flag syncing status
         const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
         const response = await fetch('/api/sync.php', {
             method: 'POST',
@@ -223,7 +226,7 @@ async function syncOfflineOutbox() {
                 'X-CSRF-Token': csrfToken
             },
             body: JSON.stringify({
-                reason: 'Offline Terminal Outbox Sync',
+                reason: 'Offline Terminal Outbox Sync (Commutative Delta)',
                 items: syncPayloadItems
             })
         });
@@ -237,15 +240,17 @@ async function syncOfflineOutbox() {
 
             console.info(`✓ Successfully synchronized ${pending.length} offline records to cloud.`, result);
             showOfflineToast(`✓ ${pending.length} offline records synchronized with cloud server!`, 'success');
-            updateOutboxBadge();
+            updateOutboxBadge(false);
             return { synced: pending.length, pending: 0, result: result };
         } else {
             const err = await response.json().catch(() => ({ error: 'Sync endpoint error' }));
             console.warn('[Sync] Server rejected sync batch:', err);
+            updateOutboxBadge(false);
             return { synced: 0, pending: pending.length, error: err };
         }
     } catch (networkErr) {
         console.warn('[Sync] Network error during outbox sync:', networkErr);
+        updateOutboxBadge(false);
         return { synced: 0, pending: pending.length, error: networkErr };
     }
 }
@@ -259,27 +264,64 @@ async function getPendingOutboxCount() {
     }
 }
 
-async function updateOutboxBadge() {
-    const badge = document.getElementById('offline-sync-badge');
-    if (!badge) return;
+async function updateOutboxBadge(isSyncing = false) {
+    const targets = [
+        document.getElementById('global-connectivity-pill'),
+        document.getElementById('offline-sync-badge')
+    ];
 
     const count = await getPendingOutboxCount();
     const isOnline = navigator.onLine;
 
-    if (!isOnline) {
-        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Offline (${count} queued)`;
-        badge.title = "Offline Mode: Transactions are stored locally in IndexedDB and will auto-sync when online.";
-    } else if (count > 0) {
-        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span> Syncing (${count})...`;
-        badge.title = "Internet restored. Syncing outbox to cloud server.";
-    } else {
-        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Online (Synced)`;
-        badge.title = "Connected to cloud. Real-time sync active.";
-    }
+    targets.forEach(pill => {
+        if (!pill) return;
+
+        if (!isOnline) {
+            pill.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-sm cursor-pointer select-none transition-all";
+            pill.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span><span>Offline ${count > 0 ? `(${count} queued)` : ''}</span>`;
+            pill.title = "Offline Mode: Transactions saved in local IndexedDB. Click to test reconnection.";
+        } else if (isSyncing || count > 0) {
+            pill.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm cursor-pointer select-none transition-all";
+            pill.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span><span>Syncing ${count > 0 ? `(${count})` : ''}</span>`;
+            pill.title = "Syncing local outbox to cloud server...";
+        } else {
+            pill.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shadow-sm cursor-pointer select-none transition-all";
+            pill.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="hidden sm:inline">Online (Synced)</span><span class="sm:hidden">Online</span>`;
+            pill.title = "Connected to cloud server. Click to force check sync.";
+        }
+
+        pill.onclick = () => {
+            pill.classList.add('opacity-75');
+            syncOfflineOutbox().finally(() => pill.classList.remove('opacity-75'));
+        };
+    });
 }
+
+// 7. Active End-to-End Heartbeat & Auto-Reconnection
+async function checkConnectivityHeartbeat() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch('/api/ping.php', { method: 'GET', cache: 'no-store', signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const count = await getPendingOutboxCount();
+            if (count > 0) {
+                syncOfflineOutbox();
+            } else {
+                updateOutboxBadge(false);
+            }
+            return true;
+        }
+    } catch (e) {}
+
+    // Cloud unreachable
+    updateOutboxBadge(false);
+    return false;
+}
+
+// Heartbeat every 20 seconds to auto-reconnect
+setInterval(checkConnectivityHeartbeat, 20000);
 
 function showOfflineToast(message, type = 'info') {
     const existing = document.getElementById('offline-toast-notification');
@@ -301,7 +343,7 @@ function showOfflineToast(message, type = 'info') {
     }, 4000);
 }
 
-// 7. Auto-detect online/offline events
+// 8. Auto-detect online/offline events & Background Sync
 window.addEventListener('online', () => {
     console.info('[Network] Back online! Auto-syncing outbox...');
     showOfflineToast('Internet connection restored. Synchronizing outbox...', 'info');
@@ -314,6 +356,22 @@ window.addEventListener('offline', () => {
     showOfflineToast('Internet lost. Operating in Offline Mode (orders stored locally).', 'warning');
     updateOutboxBadge();
 });
+
+// Register Service Worker Background Sync if supported
+if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    navigator.serviceWorker.ready.then(reg => {
+        return reg.sync.register('asterisko-outbox-sync');
+    }).catch(err => console.log('[SW] Background sync registration skipped:', err));
+}
+
+// Listen for Service Worker messages (e.g. background sync triggers)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'TRIGGER_OUTBOX_SYNC') {
+            syncOfflineOutbox();
+        }
+    });
+}
 
 // Run initial badge check
 document.addEventListener('DOMContentLoaded', () => {
