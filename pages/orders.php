@@ -1120,7 +1120,11 @@ $activePage = 'orders';
                 item.ingredients.forEach(ing => {
                     const req = parseFloat(ing.quantity_required) * item.qty;
                     if (!combinedIngredients[ing.stock_name]) {
-                        combinedIngredients[ing.stock_name] = { qty: 0, unit: ing.stock_unit };
+                        combinedIngredients[ing.stock_name] = { 
+                            qty: 0, 
+                            unit: ing.stock_unit,
+                            current: parseFloat(ing.current_stock || 0)
+                        };
                     }
                     combinedIngredients[ing.stock_name].qty += req;
                 });
@@ -1147,20 +1151,51 @@ $activePage = 'orders';
             container.innerHTML = html;
             totalCupsEl.textContent = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
             totalPriceEl.textContent = `₱${totalPrice.toFixed(2)}`;
-            btnComplete.disabled = false;
             ticketDataInput.value = JSON.stringify(ticket.map(i => ({ id: i.id, qty: i.qty })));
 
-            // Render projected deductions
+            // Check if any ingredient exceeds live available stock
+            let hasInsufficientStock = false;
+            let insufficientDetails = [];
             let dedHtml = '';
+
             for (const [name, data] of Object.entries(combinedIngredients)) {
                 const roundedQty = data.qty.toFixed(3);
+                const isOverStock = (data.qty > data.current);
+
+                if (isOverStock) {
+                    hasInsufficientStock = true;
+                    insufficientDetails.push({ name: name, needed: roundedQty, available: data.current.toFixed(2), unit: data.unit });
+                    dedHtml += `
+                        <div class="flex justify-between items-center text-[11px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/40">
+                            <span>⚠️ ${name} (Shortage):</span>
+                            <span class="font-mono">-${roundedQty} / ${data.current.toFixed(2)} ${data.unit}</span>
+                        </div>
+                    `;
+                } else {
+                    dedHtml += `
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span>• ${name}:</span>
+                            <b class="font-mono text-amber-600 dark:text-amber-400">-${roundedQty} ${data.unit}</b>
+                        </div>
+                    `;
+                }
+            }
+
+            if (hasInsufficientStock) {
                 dedHtml += `
-                    <div class="flex justify-between items-center text-[11px]">
-                        <span>• ${name}:</span>
-                        <b class="font-mono text-amber-600 dark:text-amber-400">-${roundedQty} ${data.unit}</b>
+                    <div class="mt-2 p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 text-[10px] font-semibold flex items-center gap-1.5">
+                        <span>⚠️ Stock warning: Order exceeds current inventory. Reduce cups or restock.</span>
                     </div>
                 `;
+                btnComplete.disabled = true;
+                btnComplete.innerHTML = '<span>⚠️ Insufficient Stock to Order</span>';
+                btnComplete.className = "w-full py-3.5 rounded-xl bg-rose-600 text-white font-extrabold text-sm shadow-md opacity-70 cursor-not-allowed flex items-center justify-center gap-2";
+            } else {
+                btnComplete.disabled = false;
+                btnComplete.innerHTML = '<span>Complete Order & Deduct Stock</span>';
+                btnComplete.className = "w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
             }
+
             deductionsList.innerHTML = dedHtml;
             deductionsBox.classList.remove('hidden');
         }
@@ -1168,6 +1203,11 @@ $activePage = 'orders';
         function validateTicketSubmit() {
             if (ticket.length === 0) {
                 alert('Your order ticket is empty.');
+                return false;
+            }
+            const btnComplete = document.getElementById('btn-complete-ticket');
+            if (btnComplete.disabled) {
+                alert('Cannot complete order: Insufficient stock for one or more ingredients in this ticket. Please adjust quantities.');
                 return false;
             }
             return confirm('Complete this order ticket and automatically deduct all required stock ingredients?');
