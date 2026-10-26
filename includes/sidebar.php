@@ -45,6 +45,14 @@ $currentPage = $activePage ?? '';
                 <span>Dashboard</span>
             </a>
 
+            <!-- Coffee Orders & Stock Deduction -->
+            <a href="orders.php" class="flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all <?= ($currentPage === 'orders') ? 'bg-[#F28C28] text-white shadow-lg shadow-[#F28C28]/25' : 'text-slate-300 hover:text-white hover:bg-[#132E52]' ?>">
+                <svg class="w-5 h-5 <?= ($currentPage === 'orders') ? 'text-white' : 'text-slate-400' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                </svg>
+                <span>Orders</span>
+            </a>
+
             <!-- Manage Items -->
             <a href="manage_items.php" class="flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all <?= ($currentPage === 'manage_items') ? 'bg-[#F28C28] text-white shadow-lg shadow-[#F28C28]/25' : 'text-slate-300 hover:text-white hover:bg-[#132E52]' ?>">
                 <svg class="w-5 h-5 <?= ($currentPage === 'manage_items') ? 'text-white' : 'text-slate-400' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
