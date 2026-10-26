@@ -83,6 +83,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "Stock item '{$name}' updated successfully!";
             $messageType = 'success';
         }
+    } elseif ($action === 'update_rop') {
+        $id = (int)($_POST['id'] ?? 0);
+        $reorder_point = max(0, (float)($_POST['reorder_point'] ?? 0));
+
+        $curr = $pdo->prepare("SELECT * FROM stock_items WHERE id = ?");
+        $curr->execute([$id]);
+        $existing = $curr->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $oldRop = (float)$existing['reorder_point'];
+            $unit = $existing['unit'];
+            $name = $existing['NAME'] ?? $existing['name'];
+
+            $stmt = $pdo->prepare("UPDATE stock_items SET reorder_point = ? WHERE id = ?");
+            $stmt->execute([$reorder_point, $id]);
+
+            if (abs($oldRop - $reorder_point) >= 0.001) {
+                $audit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'rop_update', ?, ?)
+                ");
+                $reason = "Reorder Point (ROP) updated from {$oldRop} {$unit} to {$reorder_point} {$unit}";
+                $audit->execute([$id, $oldRop, $reorder_point, $reason, $username]);
+            }
+
+            $message = "Reorder Point (ROP) for '{$name}' successfully updated to {$reorder_point} {$unit}!";
+            $messageType = 'success';
+        }
     } elseif ($action === 'toggle_active') {
         $id = (int)($_POST['id'] ?? 0);
         $stmt = $pdo->prepare("UPDATE stock_items SET is_active = NOT is_active WHERE id = ?");
@@ -166,6 +194,7 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                                 <th>Item Name</th>
                                 <th>Category</th>
                                 <th>Stock</th>
+                                <th>Reorder Point (ROP)</th>
                                 <th>Unit Cost</th>
                                 <th>Status</th>
                                 <th class="text-right">Actions</th>
@@ -192,6 +221,17 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                                 </td>
                                 <td class="font-mono font-bold text-sm">
                                     <?= number_format($item['quantity'], 2) ?> <span class="text-xs font-normal text-slate-400"><?= htmlspecialchars($item['unit']) ?></span>
+                                </td>
+                                <td class="font-mono">
+                                    <div class="inline-flex items-center gap-1.5 group">
+                                        <span class="font-bold text-slate-800 dark:text-slate-200"><?= number_format($item['reorder_point'], 2) ?></span>
+                                        <span class="text-[11px] text-slate-400"><?= htmlspecialchars($item['unit']) ?></span>
+                                        <button type="button" 
+                                                onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($item['NAME'] ?? $item['name'])) ?>", <?= (float)$item['reorder_point'] ?>, "<?= addslashes(htmlspecialchars($item['unit'])) ?>")'
+                                                class="p-1 rounded text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors" title="Change Reorder Point (ROP)">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td class="font-mono font-semibold">
                                     ₱<?= number_format($item['unit_cost'], 2) ?>
@@ -379,6 +419,63 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
         function closeModal() {
             document.getElementById('item-modal').classList.add('hidden');
         }
+
+        function openQuickRopModal(id, name, currentRop, unit) {
+            document.getElementById('rop-item-id').value = id;
+            document.getElementById('rop-item-name').textContent = name;
+            document.getElementById('rop-input').value = currentRop;
+            document.getElementById('rop-unit-label').textContent = unit;
+            document.getElementById('rop-modal').classList.remove('hidden');
+        }
+
+        function closeRopModal() {
+            document.getElementById('rop-modal').classList.add('hidden');
+        }
     </script>
+
+    <!-- Quick ROP Update Modal (Dedicated for Manager & Owner) -->
+    <div id="rop-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#0C2340] rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-[#15345C] relative animate-fade-in">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-[#15345C] mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">⚙️</span>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Change Reorder Point</h3>
+                </div>
+                <button type="button" onclick="closeRopModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">✕</button>
+            </div>
+
+            <form method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                <input type="hidden" name="action" value="update_rop">
+                <input type="hidden" name="id" id="rop-item-id" value="">
+
+                <div>
+                    <span class="text-xs text-slate-400 block mb-0.5">Stock Item:</span>
+                    <h4 id="rop-item-name" class="font-extrabold text-sm text-slate-900 dark:text-white">Item Name</h4>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">New Reorder Point (ROP) *</label>
+                    <div class="flex gap-2">
+                        <input type="number" step="0.01" min="0" name="reorder_point" id="rop-input" required
+                               class="w-full py-2.5 px-3 bg-slate-50 dark:bg-[#07172C] text-sm font-bold text-slate-900 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl focus:outline-none focus:border-[#F28C28]">
+                        <span id="rop-unit-label" class="inline-flex items-center px-3 py-2.5 bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold">
+                            kg
+                        </span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">When inventory drops to or below this threshold, Low Stock alerts and purchase reorder recommendations are triggered.</span>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-[#15345C]">
+                    <button type="button" onclick="closeRopModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-primary px-5 py-2 rounded-xl text-xs font-bold shadow-md">
+                        Update ROP
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
