@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
+require_once __DIR__ . '/../includes/cache_helper.php';
 
 // Accessible only to Admin/Manager and Owner
 requireRole(['Admin', 'Owner'], $pdo);
@@ -42,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $audit->execute([$newItemId, $quantity, $username]);
 
+            bumpCatalogVersion($pdo);
             $message = "Stock item '{$name}' created successfully!";
             $messageType = 'success';
         }
@@ -80,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $audit->execute([$id, $oldRop, $reorder_point, $reason, $username]);
             }
 
+            bumpCatalogVersion($pdo);
             $message = "Stock item '{$name}' updated successfully!";
             $messageType = 'success';
         }
@@ -108,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $audit->execute([$id, $oldRop, $reorder_point, $reason, $username]);
             }
 
+            bumpCatalogVersion($pdo);
             $message = "Reorder Point (ROP) for '{$name}' successfully updated to {$reorder_point} {$unit}!";
             $messageType = 'success';
         }
@@ -115,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($_POST['id'] ?? 0);
         $stmt = $pdo->prepare("UPDATE stock_items SET is_active = NOT is_active WHERE id = ?");
         $stmt->execute([$id]);
+        bumpCatalogVersion($pdo);
         $message = "Item status updated.";
         $messageType = 'success';
     }

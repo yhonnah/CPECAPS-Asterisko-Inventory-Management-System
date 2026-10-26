@@ -94,8 +94,15 @@ $profitMargin = $totalSales > 0 ? ($grossProfit / $totalSales) * 100 : 0;
 // Canva Slide 8 Metrics
 $totalTrackedItems = count($itemsBreakdown);
 $totalLowStock = count(array_filter($itemsBreakdown, fn($i) => (float)$i['current_stock'] <= 5));
-$totalWasteLogsCount = (int)$pdo->query("SELECT count(*) FROM audit_logs WHERE change_type = 'waste'")->fetchColumn();
-$totalDeliveriesDone = (int)$pdo->query("SELECT count(*) FROM invoice_drafts WHERE status = 'confirmed'")->fetchColumn();
+
+// Consolidated Counts for Cards (Single Aggregated SELECT over cloud SSL)
+$finAgg = $pdo->query("
+    SELECT 
+        (SELECT COUNT(*) FROM audit_logs WHERE change_type = 'waste') AS total_waste,
+        (SELECT COUNT(*) FROM invoice_drafts WHERE status = 'confirmed') AS total_deliveries
+")->fetch(PDO::FETCH_ASSOC);
+$totalWasteLogsCount = (int)($finAgg['total_waste'] ?? 0);
+$totalDeliveriesDone = (int)($finAgg['total_deliveries'] ?? 0);
 
 // Handle Excel / XLSX Export
 if (isset($_GET['export']) && $_GET['export'] === 'xlsx') {

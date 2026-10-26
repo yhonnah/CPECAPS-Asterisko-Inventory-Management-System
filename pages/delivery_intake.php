@@ -165,10 +165,17 @@ $mappings = $pdo->query("
     JOIN stock_items si ON si.id = sm.internal_item_id
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Counts for Canva Slide 5 Metric Cards
-$totalDeliveriesCount = (int)$pdo->query("SELECT count(*) FROM invoice_drafts WHERE status = 'confirmed'")->fetchColumn();
-$pendingReviewCount = (int)$pdo->query("SELECT count(*) FROM invoice_drafts WHERE status = 'draft_pending_review'")->fetchColumn();
-$confirmedTodayCount = (int)$pdo->query("SELECT count(*) FROM invoice_drafts WHERE status = 'confirmed' AND DATE(confirmed_at) = CURDATE()")->fetchColumn();
+// Consolidated Counts for Metric Cards (Single Aggregated SELECT over cloud SSL)
+$delMetrics = $pdo->query("
+    SELECT 
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) AS total_confirmed,
+        COUNT(CASE WHEN status = 'draft_pending_review' THEN 1 END) AS pending_review,
+        COUNT(CASE WHEN status = 'confirmed' AND DATE(confirmed_at) = CURDATE() THEN 1 END) AS confirmed_today
+    FROM invoice_drafts
+")->fetch(PDO::FETCH_ASSOC);
+$totalDeliveriesCount = (int)($delMetrics['total_confirmed'] ?? 0);
+$pendingReviewCount = (int)($delMetrics['pending_review'] ?? 0);
+$confirmedTodayCount = (int)($delMetrics['confirmed_today'] ?? 0);
 
 // Fetch all deliveries for directory table (Canva Slide 5)
 $allDeliveries = $pdo->query("

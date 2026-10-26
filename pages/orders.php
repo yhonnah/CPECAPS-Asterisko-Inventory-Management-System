@@ -1,12 +1,23 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
+require_once __DIR__ . '/../includes/cache_helper.php';
 requireLogin();
 
 $username = $_SESSION['username'] ?? 'User';
 $role = $_SESSION['role'] ?? 'Staff';
 $message = '';
 $messageType = '';
+
+// Handle manual cache flush request
+if (isset($_GET['flush_cache'])) {
+    $pdo = ensureDbConnection();
+    bumpCatalogVersion($pdo);
+    $_SESSION['flash_message'] = "Catalog and recipes cache refreshed successfully!";
+    $_SESSION['flash_type'] = "success";
+    header("Location: orders.php");
+    exit;
+}
 
 if (isset($_SESSION['flash_message'])) {
     $message = $_SESSION['flash_message'];
@@ -371,57 +382,95 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 // -------------------------------------------------------------
-// FETCH DATA FOR DISPLAY
+// FETCH DATA FOR DISPLAY (WITH SESSION & MEMORY CACHING)
 // -------------------------------------------------------------
 $pdo = ensureDbConnection();
+$catalogVersion = getCatalogCacheVersion($pdo);
 
-// 1. Fetch Coffee Menu Items with their ingredients and current live stock status
-$menuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY category ASC, price ASC")->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch ingredients for all menu items
-$menuIngredients = [];
-$stmtAllIng = $pdo->query("
-    SELECT mii.*, si.NAME AS stock_name, si.quantity AS current_stock, si.unit AS stock_unit, si.reorder_point
-    FROM menu_item_ingredients mii
-    JOIN stock_items si ON si.id = mii.stock_item_id
-");
-foreach ($stmtAllIng->fetchAll(PDO::FETCH_ASSOC) as $ing) {
-    $menuIngredients[$ing['menu_item_id']][] = $ing;
+// 1. Fetch live stock items (always fresh to reflect accurate inventory)
+$stockItems = $pdo->query("SELECT id, NAME, category, quantity, unit, reorder_point FROM stock_items WHERE is_active = 1 ORDER BY category, NAME")->fetchAll(PDO::FETCH_ASSOC);
+$stockMap = [];
+foreach ($stockItems as $si) {
+    $stockMap[$si['id']] = $si;
 }
 
-// Attach ingredients and calculate stock status for each menu item
+// 2. Check if static menu item templates & recipe formulas are cached in memory/session
+$isCacheValid = (
+    isset($_SESSION['cached_catalog_version']) &&
+    $_SESSION['cached_catalog_version'] === $catalogVersion &&
+    isset($_SESSION['cached_base_menu']) &&
+    isset($_SESSION['cached_base_ingredients'])
+);
+
+if ($isCacheValid) {
+    // Zero database queries needed for menu formulas during peak barista operations!
+    $baseMenuItems = $_SESSION['cached_base_menu'];
+    $baseIngredients = $_SESSION['cached_base_ingredients'];
+} else {
+    // Cache miss or invalidated by recent catalog edit: Query database once and cache
+    $baseMenuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY category ASC, price ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $stmtAllIng = $pdo->query("
+        SELECT id, menu_item_id, stock_item_id, quantity_required, unit
+        FROM menu_item_ingredients
+    ");
+    $baseIngredients = [];
+    foreach ($stmtAllIng->fetchAll(PDO::FETCH_ASSOC) as $ing) {
+        $baseIngredients[$ing['menu_item_id']][] = $ing;
+    }
+
+    // Persist into session memory
+    $_SESSION['cached_catalog_version'] = $catalogVersion;
+    $_SESSION['cached_base_menu'] = $baseMenuItems;
+    $_SESSION['cached_base_ingredients'] = $baseIngredients;
+}
+
+// 3. Merge cached drink recipes with current live stock levels
+$menuItems = $baseMenuItems;
 $menuCategories = [];
 foreach ($menuItems as &$drink) {
-    $drink['ingredients'] = $menuIngredients[$drink['id']] ?? [];
-    $menuCategories[$drink['category']] = true;
-
-    // Check availability
+    $rawIngs = $baseIngredients[$drink['id']] ?? [];
+    $drink['ingredients'] = [];
     $canMake = 999999;
     $isLow = false;
-    foreach ($drink['ingredients'] as $ing) {
+
+    foreach ($rawIngs as $ing) {
+        $stockItem = $stockMap[$ing['stock_item_id']] ?? null;
+        $stockName = $stockItem ? ($stockItem['NAME'] ?? $stockItem['name']) : 'Item #' . $ing['stock_item_id'];
+        $currStock = $stockItem ? (float)$stockItem['quantity'] : 0.0;
+        $unit = $stockItem ? $stockItem['unit'] : $ing['unit'];
+        $reorder = $stockItem ? (float)$stockItem['reorder_point'] : 0.0;
         $req = (float)$ing['quantity_required'];
-        $curr = (float)$ing['current_stock'];
-        $reorder = (float)$ing['reorder_point'];
+
+        $drink['ingredients'][] = [
+            'id' => $ing['id'],
+            'menu_item_id' => $ing['menu_item_id'],
+            'stock_item_id' => $ing['stock_item_id'],
+            'quantity_required' => $req,
+            'unit' => $ing['unit'],
+            'stock_name' => $stockName,
+            'current_stock' => $currStock,
+            'stock_unit' => $unit,
+            'reorder_point' => $reorder
+        ];
 
         if ($req > 0) {
-            $possible = floor($curr / $req);
+            $possible = floor($currStock / $req);
             if ($possible < $canMake) {
                 $canMake = $possible;
             }
         }
-        if ($curr <= $reorder) {
+        if ($currStock <= $reorder) {
             $isLow = true;
         }
     }
+
     $drink['cups_available'] = max(0, $canMake);
     $drink['is_low_stock'] = $isLow;
     $drink['is_out_of_stock'] = ($canMake <= 0);
+    $menuCategories[$drink['category']] = true;
 }
 unset($drink);
 $categoriesList = array_keys($menuCategories);
-
-// 2. Fetch all active stock items for Manual Stock Deduction
-$stockItems = $pdo->query("SELECT id, NAME, category, quantity, unit, reorder_point FROM stock_items WHERE is_active = 1 ORDER BY category, NAME")->fetchAll(PDO::FETCH_ASSOC);
 
 // 3. Compute Metrics for Today in a Single Fast Query
 $metricsStmt = $pdo->query("
@@ -594,13 +643,20 @@ $activePage = 'orders';
                                 <?php endforeach; ?>
                             </div>
 
-                            <!-- Search Input -->
-                            <div class="relative w-full sm:w-60">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <!-- Right Controls: Cache Status & Search Input -->
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <div class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shrink-0" title="Active recipes and stock items cached in session memory.">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>Cached</span>
+                                    <button type="button" onclick="flushAndSyncCatalog()" class="text-[11px] text-emerald-800 dark:text-emerald-200 hover:underline font-bold ml-0.5" title="Force Sync Catalog">↻</button>
                                 </div>
-                                <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
-                                       class="w-full !pl-10 !pr-4 py-1.5 bg-slate-50 dark:bg-[#07172C] text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                <div class="relative w-full sm:w-56">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                    </div>
+                                    <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
+                                           class="w-full !pl-10 !pr-4 py-1.5 bg-slate-50 dark:bg-[#07172C] text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                </div>
                             </div>
                         </div>
 
@@ -1287,6 +1343,39 @@ $activePage = 'orders';
             }
 
             return confirm(`Confirm manual stock deduction of ${deduct} ${unit} from '${name}'?`);
+        }
+
+        // -------------------------------------------------------------
+        // SESSIONSTORAGE & LOCAL MEMORY CACHE MANAGEMENT
+        // -------------------------------------------------------------
+        const CURRENT_CATALOG_VERSION = <?= json_encode($catalogVersion) ?>;
+        const INITIAL_MENU_DATA = <?= json_encode($menuItems) ?>;
+        const INITIAL_STOCK_DATA = <?= json_encode($stockItems) ?>;
+
+        function initClientCatalogCache() {
+            try {
+                const storedVer = sessionStorage.getItem('asterisko_catalog_version');
+                if (storedVer !== CURRENT_CATALOG_VERSION) {
+                    sessionStorage.setItem('asterisko_catalog_version', CURRENT_CATALOG_VERSION);
+                    sessionStorage.setItem('asterisko_menu_recipes', JSON.stringify(INITIAL_MENU_DATA));
+                    sessionStorage.setItem('asterisko_stock_catalog', JSON.stringify(INITIAL_STOCK_DATA));
+                    console.info('✓ Asterisko Catalog & Recipes cached in sessionStorage (Version: ' + CURRENT_CATALOG_VERSION + ')');
+                } else {
+                    console.info('✓ Active sessionStorage Catalog Cache is valid (Version: ' + CURRENT_CATALOG_VERSION + ')');
+                }
+            } catch (e) {
+                console.warn('SessionStorage unavailable, using local memory fallback.');
+            }
+        }
+        initClientCatalogCache();
+
+        function flushAndSyncCatalog() {
+            try {
+                sessionStorage.removeItem('asterisko_catalog_version');
+                sessionStorage.removeItem('asterisko_menu_recipes');
+                sessionStorage.removeItem('asterisko_stock_catalog');
+            } catch (e) {}
+            window.location.href = 'orders.php?flush_cache=1';
         }
     </script>
 </body>

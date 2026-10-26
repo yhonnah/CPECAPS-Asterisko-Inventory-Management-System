@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
+require_once __DIR__ . '/../includes/cache_helper.php';
 requireLogin();
 
 $role = $_SESSION['role'];
@@ -41,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $audit->execute([$item_id, $oldRop, $reorder_point, $reason, $username]);
                 }
 
+                bumpCatalogVersion($pdo);
                 $message = "Reorder Point (ROP) for '{$name}' successfully updated to {$reorder_point} {$unit}!";
             }
         }
@@ -105,16 +107,21 @@ $lowStockItems = array_filter($items, function($i) {
     return (float)$i['quantity'] <= (float)$i['reorder_point'];
 });
 
-// Counts for Canva 4 Metric Cards
+// Consolidated Metric Counts for Cards (Single Aggregated SELECT over cloud SSL)
 $totalItemsCount = count($items);
 $lowStockCount = count($lowStockItems);
 $totalDeliveriesCount = 0;
-try {
-    $totalDeliveriesCount = (int)$pdo->query("SELECT count(*) FROM invoice_drafts")->fetchColumn();
-} catch (Exception $e) {}
 $totalSuppliersCount = 0;
 try {
-    $totalSuppliersCount = (int)$pdo->query("SELECT count(*) FROM suppliers")->fetchColumn();
+    $dashAgg = $pdo->query("
+        SELECT 
+            (SELECT COUNT(*) FROM invoice_drafts) AS total_deliveries,
+            (SELECT COUNT(*) FROM suppliers) AS total_suppliers
+    ")->fetch(PDO::FETCH_ASSOC);
+    if ($dashAgg) {
+        $totalDeliveriesCount = (int)($dashAgg['total_deliveries'] ?? 0);
+        $totalSuppliersCount = (int)($dashAgg['total_suppliers'] ?? 0);
+    }
 } catch (Exception $e) {}
 
 // Audit Trail Filtering

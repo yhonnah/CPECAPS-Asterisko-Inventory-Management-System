@@ -70,8 +70,14 @@ $suppliers = $pdo->query("
 // Calculate Canva Slide 6 Metrics
 $activeSuppliersCount = count(array_filter($suppliers, fn($s) => $s['is_active'] == 1));
 $avgLeadTime = count($suppliers) > 0 ? round(array_sum(array_column($suppliers, 'lead_time_days')) / count($suppliers), 1) : 2.4;
-$totalMappings = (int)$pdo->query("SELECT count(*) FROM supplier_mappings")->fetchColumn();
-$totalItemsAll = (int)$pdo->query("SELECT count(*) FROM stock_items WHERE is_active = 1")->fetchColumn();
+// Consolidated Metrics (Single Aggregated SELECT over cloud SSL)
+$supMetrics = $pdo->query("
+    SELECT 
+        (SELECT COUNT(*) FROM supplier_mappings) AS total_mappings,
+        (SELECT COUNT(*) FROM stock_items WHERE is_active = 1) AS total_items
+")->fetch(PDO::FETCH_ASSOC);
+$totalMappings = (int)($supMetrics['total_mappings'] ?? 0);
+$totalItemsAll = (int)($supMetrics['total_items'] ?? 0);
 $mappedPct = $totalItemsAll > 0 ? min(100, round(($totalMappings / $totalItemsAll) * 100)) : 86;
 
 $activePage = 'suppliers';
