@@ -40,16 +40,41 @@ $user    = getenv('DB_USER') !== false ? getenv('DB_USER') : 'avnadmin';
 $pass    = getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'AVNS_5-LQ3ixBakUHi93eYVK';
 $sslmode = getenv('DB_SSL_MODE') !== false ? getenv('DB_SSL_MODE') : 'require';
 
-try {
+$options = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+    PDO::ATTR_TIMEOUT => 15,
+];
+
+function ensureDbConnection(): PDO {
+    global $pdo, $host, $port, $dbname, $user, $pass, $sslmode, $options;
+    try {
+        if ($pdo instanceof PDO) {
+            $pdo->query("SELECT 1");
+            return $pdo;
+        }
+    } catch (Throwable $e) {
+        // Connection lost, re-establish below
+    }
+
     $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
     if (!empty($sslmode)) {
         $dsn .= ";sslmode={$sslmode}";
     }
 
-    $options = [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
-    ];
+    try {
+        $pdo = new PDO($dsn, $user, $pass, $options ?? []);
+        return $pdo;
+    } catch (PDOException $e) {
+        die("Database connection failed: " . $e->getMessage());
+    }
+}
+
+try {
+    $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
+    if (!empty($sslmode)) {
+        $dsn .= ";sslmode={$sslmode}";
+    }
 
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (PDOException $e) {

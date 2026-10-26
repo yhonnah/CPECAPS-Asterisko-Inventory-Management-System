@@ -8,6 +8,12 @@ $role = $_SESSION['role'] ?? 'Staff';
 $message = '';
 $messageType = '';
 
+if (isset($_SESSION['flash_message'])) {
+    $message = $_SESSION['flash_message'];
+    $messageType = $_SESSION['flash_type'] ?? 'info';
+    unset($_SESSION['flash_message'], $_SESSION['flash_type']);
+}
+
 // Handle POST actions: Quick Order, Batch Order Ticket, or Manual Deduction
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     validateCsrfToken();
@@ -21,6 +27,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $order_qty = max(1, (int)($_POST['quantity'] ?? 1));
 
         try {
+            $pdo = ensureDbConnection();
             $pdo->beginTransaction();
 
             $stmtDrink = $pdo->prepare("SELECT * FROM menu_items WHERE id = ? AND is_active = 1");
@@ -114,14 +121,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $stmtSales->execute([$orderTotal, "Order #{$orderNum} ({$order_qty}x {$drink['name']})", $username]);
 
             $pdo->commit();
-            $message = "Order #{$orderNum} completed! Brewed {$order_qty}x {$drink['name']}. Deducted: " . implode(', ', $deductionSummaries) . ".";
-            $messageType = "success";
+            $_SESSION['flash_message'] = "Order #{$orderNum} completed! Brewed {$order_qty}x {$drink['name']}. Deducted: " . implode(', ', $deductionSummaries) . ".";
+            $_SESSION['flash_type'] = "success";
+            header("Location: orders.php");
+            exit;
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
+            if ($pdo instanceof PDO && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            $message = "Order failed: " . $e->getMessage();
-            $messageType = "error";
+            $_SESSION['flash_message'] = "Order failed: " . $e->getMessage();
+            $_SESSION['flash_type'] = "error";
+            header("Location: orders.php");
+            exit;
         }
     }
 
@@ -133,10 +144,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $ticketItems = json_decode($ticketJson, true);
 
         if (!is_array($ticketItems) || empty($ticketItems)) {
-            $message = "Your order ticket is empty. Please add at least one coffee beverage.";
-            $messageType = "error";
+            $_SESSION['flash_message'] = "Your order ticket is empty. Please add at least one coffee beverage.";
+            $_SESSION['flash_type'] = "error";
+            header("Location: orders.php");
+            exit;
         } else {
             try {
+                $pdo = ensureDbConnection();
                 $pdo->beginTransaction();
 
                 $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
@@ -255,14 +269,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $stmtSales->execute([$orderTotal, "Order Ticket #{$orderNum}", $username]);
 
                 $pdo->commit();
-                $message = "Order Ticket #{$orderNum} fulfilled! Brewed {$totalCups} total cups. Deducted: " . implode(', ', $deductionSummaries) . ".";
-                $messageType = "success";
+                $_SESSION['flash_message'] = "Order Ticket #{$orderNum} fulfilled! Brewed {$totalCups} total cups. Deducted: " . implode(', ', $deductionSummaries) . ".";
+                $_SESSION['flash_type'] = "success";
+                header("Location: orders.php");
+                exit;
             } catch (Exception $e) {
-                if ($pdo->inTransaction()) {
+                if ($pdo instanceof PDO && $pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
-                $message = "Order ticket failed: " . $e->getMessage();
-                $messageType = "error";
+                $_SESSION['flash_message'] = "Order ticket failed: " . $e->getMessage();
+                $_SESSION['flash_type'] = "error";
+                header("Location: orders.php");
+                exit;
             }
         }
     }
@@ -278,10 +296,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $full_reason = $reason_custom !== '' ? "{$reason_preset}: {$reason_custom}" : $reason_preset;
 
         if ($item_id <= 0 || $deduct_qty <= 0) {
-            $message = "Please select a valid inventory item and enter a quantity greater than 0.";
-            $messageType = "error";
+            $_SESSION['flash_message'] = "Please select a valid inventory item and enter a quantity greater than 0.";
+            $_SESSION['flash_type'] = "error";
+            header("Location: orders.php");
+            exit;
         } else {
             try {
+                $pdo = ensureDbConnection();
                 $pdo->beginTransaction();
 
                 $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id = ? FOR UPDATE");
@@ -332,14 +353,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $stmtAudit->execute([$item_id, $prevStock, $newStock, $notes, $username]);
 
                 $pdo->commit();
-                $message = "Manual deduction confirmed for '{$item['NAME']}'. Deducted: {$deduct_qty} {$item['unit']}. New balance: {$newStock} {$item['unit']}.";
-                $messageType = "success";
+                $_SESSION['flash_message'] = "Manual deduction confirmed for '{$item['NAME']}'. Deducted: {$deduct_qty} {$item['unit']}. New balance: {$newStock} {$item['unit']}.";
+                $_SESSION['flash_type'] = "success";
+                header("Location: orders.php");
+                exit;
             } catch (Exception $e) {
-                if ($pdo->inTransaction()) {
+                if ($pdo instanceof PDO && $pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
-                $message = "Manual deduction failed: " . $e->getMessage();
-                $messageType = "error";
+                $_SESSION['flash_message'] = "Manual deduction failed: " . $e->getMessage();
+                $_SESSION['flash_type'] = "error";
+                header("Location: orders.php");
+                exit;
             }
         }
     }
@@ -348,6 +373,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 // -------------------------------------------------------------
 // FETCH DATA FOR DISPLAY
 // -------------------------------------------------------------
+$pdo = ensureDbConnection();
 
 // 1. Fetch Coffee Menu Items with their ingredients and current live stock status
 $menuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY category ASC, price ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -397,28 +423,21 @@ $categoriesList = array_keys($menuCategories);
 // 2. Fetch all active stock items for Manual Stock Deduction
 $stockItems = $pdo->query("SELECT id, NAME, category, quantity, unit, reorder_point FROM stock_items WHERE is_active = 1 ORDER BY category, NAME")->fetchAll(PDO::FETCH_ASSOC);
 
-// 3. Compute Metrics for Today
-$todayDate = date('Y-m-d');
-
-$todayOrdersCount = (int)$pdo->query("
-    SELECT COUNT(*) FROM coffee_orders 
-    WHERE order_type = 'coffee_drink' AND DATE(created_at) = '{$todayDate}'
-")->fetchColumn();
-
-$todayCupsCount = (int)$pdo->query("
-    SELECT COALESCE(SUM(items_count), 0) FROM coffee_orders 
-    WHERE order_type = 'coffee_drink' AND DATE(created_at) = '{$todayDate}'
-")->fetchColumn();
-
-$todaySalesTotal = (float)$pdo->query("
-    SELECT COALESCE(SUM(total_amount), 0) FROM coffee_orders 
-    WHERE order_type = 'coffee_drink' AND DATE(created_at) = '{$todayDate}'
-")->fetchColumn();
-
-$todayManualDeductionsCount = (int)$pdo->query("
-    SELECT COUNT(*) FROM coffee_orders 
-    WHERE order_type = 'manual_deduction' AND DATE(created_at) = '{$todayDate}'
-")->fetchColumn();
+// 3. Compute Metrics for Today in a Single Fast Query
+$metricsStmt = $pdo->query("
+    SELECT 
+        COUNT(CASE WHEN order_type = 'coffee_drink' THEN 1 END) AS orders_count,
+        COALESCE(SUM(CASE WHEN order_type = 'coffee_drink' THEN items_count ELSE 0 END), 0) AS cups_count,
+        COALESCE(SUM(CASE WHEN order_type = 'coffee_drink' THEN total_amount ELSE 0 END), 0) AS sales_total,
+        COUNT(CASE WHEN order_type = 'manual_deduction' THEN 1 END) AS manual_count
+    FROM coffee_orders 
+    WHERE DATE(created_at) = CURDATE()
+");
+$metrics = $metricsStmt ? $metricsStmt->fetch(PDO::FETCH_ASSOC) : [];
+$todayOrdersCount = (int)($metrics['orders_count'] ?? 0);
+$todayCupsCount = (int)($metrics['cups_count'] ?? 0);
+$todaySalesTotal = (float)($metrics['sales_total'] ?? 0);
+$todayManualDeductionsCount = (int)($metrics['manual_count'] ?? 0);
 
 // 4. Fetch Recent Orders & Deductions Activity Log
 $recentOrders = $pdo->query("
