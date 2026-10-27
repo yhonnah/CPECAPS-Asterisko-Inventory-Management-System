@@ -1,13 +1,16 @@
 // Asterisko PWA Service Worker (Offline-First Cache Engine)
-const CACHE_NAME = 'asterisko-cache-v1';
+const CACHE_NAME = 'asterisko-cache-v2';
 const PRECACHE_ASSETS = [
     '/',
     '/manifest.json',
     '/assets/logo.png',
     '/assets/app-enhancements.css',
+    '/assets/js/offline-engine.js',
     '/pages/orders.php',
     '/pages/dashboard.php',
-    '/pages/count.php'
+    '/pages/count.php',
+    '/pages/delivery_intake.php',
+    '/pages/waste.php'
 ];
 
 // Install: Pre-cache core application shell
