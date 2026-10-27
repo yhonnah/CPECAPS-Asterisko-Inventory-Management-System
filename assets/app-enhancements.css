@@ -967,3 +967,80 @@ body > .max-w-4xl.rounded-2xl > div:last-child > *:last-child { animation-delay:
         padding-bottom: 0 !important;
     }
 }
+
+/* =====================================================
+   ASTERISKO LOGO ANIMATIONS
+   Paste at the very bottom of assets/app-enhancements.css
+   (below the "ASTERISKO UI POLISH + ANIMATIONS (v2)" block)
+   ===================================================== */
+
+@keyframes astLogoPop {
+    0%   { opacity: 0; transform: scale(0.4) rotate(-180deg); }
+    60%  { opacity: 1; transform: scale(1.12) rotate(12deg); }
+    80%  { transform: scale(0.96) rotate(-4deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes astLogoSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+@keyframes astLogoTwinkle {
+    0%, 86%, 100% { transform: rotate(0deg) scale(1); }
+    90%           { transform: rotate(60deg) scale(1.12); }
+    95%           { transform: rotate(120deg) scale(1); }
+}
+@keyframes astLogoGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0.45), 0 10px 30px rgba(0, 0, 0, 0.35); }
+    50%      { box-shadow: 0 0 0 10px rgba(242, 140, 40, 0), 0 10px 30px rgba(0, 0, 0, 0.35); }
+}
+@keyframes astTextReveal {
+    from { opacity: 0; transform: translateX(-8px); letter-spacing: 0.25em; }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Sidebar logo ---------- */
+/* The cream tile pops in when the page loads */
+#main-sidebar > div:first-child > div:first-child a > div:first-child {
+    animation: astLogoPop 800ms var(--ast-ease-out, ease-out) both;
+    transition: transform 280ms ease, box-shadow 280ms ease;
+}
+/* The asterisk does a small twinkle every few seconds */
+#main-sidebar > div:first-child > div:first-child a img {
+    animation: astLogoTwinkle 7s ease-in-out 1.5s infinite;
+    transform-origin: center;
+}
+/* Hovering the brand spins the asterisk one full turn and lights the tile */
+#main-sidebar > div:first-child > div:first-child a:hover img {
+    animation: astLogoSpin 700ms var(--ast-ease-out, ease-out) 1;
+}
+#main-sidebar > div:first-child > div:first-child a:hover > div:first-child {
+    box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.35), 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+/* "ASTERISKO" title and subtitle slide in after the logo */
+#main-sidebar > div:first-child > div:first-child a h1 {
+    animation: astTextReveal 600ms var(--ast-ease-out, ease-out) 250ms both;
+}
+#main-sidebar > div:first-child > div:first-child a span {
+    animation: astTextReveal 600ms var(--ast-ease-out, ease-out) 380ms both;
+}
+#main-sidebar > div:first-child > div:first-child a:hover h1 {
+    color: #F28C28;
+    transition: color 200ms ease;
+}
+
+/* ---------- Login page logo ---------- */
+/* Tile: pop in, then a soft orange glow ring pulses around it */
+body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > .w-24 {
+    animation:
+        astLogoPop 900ms var(--ast-ease-out, ease-out) 100ms both,
+        astLogoGlow 3s ease-in-out 1.2s infinite;
+}
+/* Asterisk: float gently and twinkle now and then (replaces the earlier float) */
+body > .max-w-4xl.rounded-2xl > div:first-child img {
+    animation: astLogoTwinkle 6s ease-in-out 1.5s infinite;
+    transform-origin: center;
+}
+/* Hover: full spin */
+body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > .w-24:hover img {
+    animation: astLogoSpin 800ms var(--ast-ease-out, ease-out) 1;
+}
