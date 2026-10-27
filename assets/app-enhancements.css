@@ -45,6 +45,10 @@ html {
     -webkit-tap-highlight-color: transparent;
 }
 
+button, select, input, a, .drink-card {
+    touch-action: manipulation;
+}
+
 body {
     background-color: var(--asterisko-bg);
     color: var(--asterisko-text);
