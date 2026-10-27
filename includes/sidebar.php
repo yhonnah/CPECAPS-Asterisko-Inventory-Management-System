@@ -147,3 +147,34 @@ $isManagerOrOwner = in_array(strtolower($currentUserRole), ['admin', 'manager', 
         </a>
     </div>
 </aside>
+
+
+<!-- Mobile Bottom Tab Bar (phones & tablets only, matches mobile dashboard wireframe) -->
+<nav class="mobile-tabbar" aria-label="Quick navigation">
+    <a href="dashboard.php" class="<?= ($currentPage === 'dashboard') ? 'is-active' : '' ?>">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span>Home</span>
+    </a>
+
+    <?php if ($isManagerOrOwner): ?>
+    <a href="manage_items.php" class="<?= ($currentPage === 'manage_items') ? 'is-active' : '' ?>">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        <span>Items</span>
+    </a>
+    <?php else: ?>
+    <a href="count.php" class="<?= ($currentPage === 'count') ? 'is-active' : '' ?>">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        <span>Count</span>
+    </a>
+    <?php endif; ?>
+
+    <a href="delivery_intake.php" class="<?= ($currentPage === 'deliveries') ? 'is-active' : '' ?>">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/></svg>
+        <span>Deliveries</span>
+    </a>
+
+    <button type="button" onclick="toggleSidebar(true)" aria-label="Open full menu">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+        <span>More</span>
+    </button>
+</nav>
