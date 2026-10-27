@@ -315,732 +315,258 @@ textarea:focus {
     backdrop-filter: blur(4px);
 }
 
-/* =====================================================
-   ASTERISKO UI POLISH + ANIMATIONS (v2)
-   Paste this at the very bottom of assets/app-enhancements.css
-   ===================================================== */
+<?php
+// includes/head.php
+// Global head tags, fonts, Tailwind config, and theme initialization
+$pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
+?>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="theme-color" content="#0C2340">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Asterisko POS">
+<title><?= htmlspecialchars($pageTitle) ?></title>
+<link rel="icon" type="image/png" href="../assets/logo.png">
+<link rel="apple-touch-icon" href="../assets/logo.png">
+<link rel="manifest" href="/manifest.json">
 
-/* ---------- 1. Motion tokens ---------- */
-:root {
-    --ast-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-    --ast-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-    --ast-fast: 160ms;
-    --ast-med: 280ms;
-    --ast-slow: 520ms;
-    --ast-tabbar-h: 64px;
-}
+<!-- Fonts: Plus Jakarta Sans -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-/* ---------- 2. Keyframes ---------- */
-@keyframes astFadeUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: none; }
-}
-@keyframes astFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-@keyframes astScaleIn {
-    from { opacity: 0; transform: translateY(10px) scale(0.97); }
-    to   { opacity: 1; transform: none; }
-}
-@keyframes astSlideRight {
-    from { opacity: 0; transform: translateX(-12px); }
-    to   { opacity: 1; transform: none; }
-}
-@keyframes astBarGrow {
-    from { transform: scaleX(0); }
-    to   { transform: scaleX(1); }
-}
-@keyframes astPulseRing {
-    0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
-    70%  { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-@keyframes astFloat {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-5px); }
-}
-@keyframes astToastIn {
-    from { opacity: 0; transform: translateY(16px) scale(0.96); }
-    to   { opacity: 1; transform: none; }
-}
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        darkMode: 'class',
+        theme: {
+            extend: {
+                colors: {
+                    asterisko: {
+                        navy: '#0C2340',
+                        'navy-dark': '#071526',
+                        'navy-light': '#132E52',
+                        'navy-border': '#15345C',
+                        orange: '#F28C28',
+                        'orange-hover': '#E07B18',
+                        'orange-light': '#FFF0DB',
+                        canvas: '#F4F7FB'
+                    }
+                },
+                fontFamily: {
+                    sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+                },
+                transitionTimingFunction: {
+                    snappy: 'cubic-bezier(0.16, 1, 0.3, 1)'
+                },
+                keyframes: {
+                    'ast-fade-up':     { from: { opacity: '0', transform: 'translateY(14px)' }, to: { opacity: '1', transform: 'none' } },
+                    'ast-fade-in':     { from: { opacity: '0' }, to: { opacity: '1' } },
+                    'ast-scale-in':    { from: { opacity: '0', transform: 'translateY(10px) scale(0.97)' }, to: { opacity: '1', transform: 'none' } },
+                    'ast-slide-right': { from: { opacity: '0', transform: 'translateX(-12px)' }, to: { opacity: '1', transform: 'none' } },
+                    'ast-bar-grow':    { from: { transform: 'scaleX(0)' }, to: { transform: 'scaleX(1)' } },
+                    'ast-pulse-ring': {
+                        '0%':   { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.55)' },
+                        '70%':  { boxShadow: '0 0 0 7px rgba(16, 185, 129, 0)' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0)' }
+                    },
+                    'ast-pulse-ring-orange': {
+                        '0%':   { boxShadow: '0 0 0 0 rgba(242, 140, 40, 0.55)' },
+                        '70%':  { boxShadow: '0 0 0 6px rgba(242, 140, 40, 0)' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(242, 140, 40, 0)' }
+                    },
+                    'ast-toast-in':    { from: { opacity: '0', transform: 'translateY(16px) scale(0.96)' }, to: { opacity: '1', transform: 'none' } },
+                    'ast-logo-pop': {
+                        '0%':   { opacity: '0', transform: 'scale(0.4) rotate(-180deg)' },
+                        '60%':  { opacity: '1', transform: 'scale(1.12) rotate(12deg)' },
+                        '80%':  { transform: 'scale(0.96) rotate(-4deg)' },
+                        '100%': { opacity: '1', transform: 'scale(1) rotate(0deg)' }
+                    },
+                    'ast-logo-spin':   { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
+                    'ast-logo-twinkle': {
+                        '0%, 86%, 100%': { transform: 'rotate(0deg) scale(1)' },
+                        '90%':           { transform: 'rotate(60deg) scale(1.12)' },
+                        '95%':           { transform: 'rotate(120deg) scale(1)' }
+                    },
+                    'ast-logo-glow': {
+                        '0%, 100%': { boxShadow: '0 0 0 0 rgba(242, 140, 40, 0.45), 0 10px 30px rgba(0, 0, 0, 0.35)' },
+                        '50%':      { boxShadow: '0 0 0 10px rgba(242, 140, 40, 0), 0 10px 30px rgba(0, 0, 0, 0.35)' }
+                    },
+                    'ast-text-reveal': { from: { opacity: '0', transform: 'translateX(-8px)', letterSpacing: '0.25em' }, to: { opacity: '1', transform: 'none' } }
+                },
+                animation: {
+                    /* "backwards" = the start state is held during the delay, then the element
+                       is released so hover effects (lift, slide) keep working afterwards */
+                    'ast-fade-up':           'ast-fade-up 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+                    'ast-fade-in':           'ast-fade-in 280ms ease backwards',
+                    'ast-scale-in':          'ast-scale-in 340ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+                    'ast-slide-right':       'ast-slide-right 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+                    'ast-bar-grow':          'ast-bar-grow 900ms cubic-bezier(0.16, 1, 0.3, 1) 350ms backwards',
+                    'ast-pulse-ring':        'ast-pulse-ring 2.2s ease-out infinite',
+                    'ast-pulse-ring-orange': 'ast-pulse-ring-orange 2s ease-out infinite',
+                    'ast-toast-in':          'ast-toast-in 380ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+                    'ast-logo-pop':          'ast-logo-pop 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+                    'ast-logo-pop-glow':     'ast-logo-pop 900ms cubic-bezier(0.16, 1, 0.3, 1) 100ms backwards, ast-logo-glow 3s ease-in-out 1.2s infinite',
+                    'ast-logo-spin':         'ast-logo-spin 700ms cubic-bezier(0.16, 1, 0.3, 1) 1',
+                    'ast-logo-twinkle':      'ast-logo-twinkle 7s ease-in-out 1.5s infinite',
+                    'ast-logo-twinkle-fast': 'ast-logo-twinkle 6s ease-in-out 1.5s infinite',
+                    'ast-text-reveal':       'ast-text-reveal 600ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+                    /* existing modals already use class="animate-fade-in" */
+                    'fade-in':               'ast-scale-in 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards'
+                }
+            }
+        }
+    };
 
-/* Used by existing modals in manage_items.php and others (was undefined before) */
-.animate-fade-in {
-    animation: astScaleIn var(--ast-med) var(--ast-ease-out) both;
-}
+    // Immediate Dark Mode initialization
+    try {
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    } catch (e) {}
+</script>
 
-/* ---------- 3. Page entrance (every inner page) ---------- */
-main > * {
-    animation: astFadeUp var(--ast-slow) var(--ast-ease-out) both;
-}
-main > *:nth-child(1) { animation-delay: 0ms; }
-main > *:nth-child(2) { animation-delay: 60ms; }
-main > *:nth-child(3) { animation-delay: 120ms; }
-main > *:nth-child(4) { animation-delay: 180ms; }
-main > *:nth-child(5) { animation-delay: 240ms; }
-main > *:nth-child(n+6) { animation-delay: 300ms; }
+<!-- Asterisko Enhanced CSS -->
+<link rel="stylesheet" href="../assets/app-enhancements.css">
 
-/* Stat cards inside a grid get their own small stagger */
-main .grid > .stat-card {
-    animation: astFadeUp var(--ast-slow) var(--ast-ease-out) both;
-}
-main .grid > .stat-card:nth-child(1) { animation-delay: 80ms; }
-main .grid > .stat-card:nth-child(2) { animation-delay: 140ms; }
-main .grid > .stat-card:nth-child(3) { animation-delay: 200ms; }
-main .grid > .stat-card:nth-child(4) { animation-delay: 260ms; }
+<!-- Asterisko animations & UI polish (Tailwind @apply - processed by the Tailwind CDN above) -->
+<style type="text/tailwindcss">
+        /* ===== Page entrance: sections fade up one after another ===== */
+        main > * { @apply animate-ast-fade-up; }
+        main > *:nth-child(2) { @apply [animation-delay:60ms]; }
+        main > *:nth-child(3) { @apply [animation-delay:120ms]; }
+        main > *:nth-child(4) { @apply [animation-delay:180ms]; }
+        main > *:nth-child(5) { @apply [animation-delay:240ms]; }
+        main > *:nth-child(n+6) { @apply [animation-delay:300ms]; }
+        main .grid > .stat-card { @apply animate-ast-fade-up; }
+        main .grid > .stat-card:nth-child(1) { @apply [animation-delay:80ms]; }
+        main .grid > .stat-card:nth-child(2) { @apply [animation-delay:140ms]; }
+        main .grid > .stat-card:nth-child(3) { @apply [animation-delay:200ms]; }
+        main .grid > .stat-card:nth-child(4) { @apply [animation-delay:260ms]; }
 
-/* ---------- 4. Sidebar ---------- */
-#main-sidebar {
-    box-shadow: 4px 0 24px rgba(7, 21, 38, 0.18);
-}
-#main-sidebar nav a {
-    position: relative;
-    transition: background-color var(--ast-fast) ease, color var(--ast-fast) ease,
-                transform var(--ast-fast) var(--ast-ease-out), box-shadow var(--ast-fast) ease;
-    animation: astSlideRight var(--ast-med) var(--ast-ease-out) both;
-}
-#main-sidebar nav a:nth-child(1) { animation-delay: 20ms; }
-#main-sidebar nav a:nth-child(2) { animation-delay: 50ms; }
-#main-sidebar nav a:nth-child(3) { animation-delay: 80ms; }
-#main-sidebar nav a:nth-child(4) { animation-delay: 110ms; }
-#main-sidebar nav a:nth-child(5) { animation-delay: 140ms; }
-#main-sidebar nav a:nth-child(6) { animation-delay: 170ms; }
-#main-sidebar nav a:nth-child(7) { animation-delay: 200ms; }
-#main-sidebar nav a:nth-child(8) { animation-delay: 230ms; }
-#main-sidebar nav a:nth-child(9) { animation-delay: 260ms; }
+        /* ===== Top bar ===== */
+        header.sticky { @apply !bg-white/90 backdrop-blur-md backdrop-saturate-150 shadow-[0_1px_0_rgba(12,35,64,0.04),0_4px_16px_rgba(12,35,64,0.04)] dark:!bg-[#0C2340]/90; }
+        #global-connectivity-pill { @apply transition-transform hover:-translate-y-px; }
+        #global-connectivity-pill .bg-emerald-500 { @apply animate-ast-pulse-ring; }
+        header button[onclick="toggleTheme()"] svg { @apply transition-transform duration-300 ease-snappy; }
+        header button[onclick="toggleTheme()"]:hover svg { @apply rotate-[25deg] scale-110; }
 
-/* Inactive links: slide the label slightly on hover */
-#main-sidebar nav a:not([class*=" bg-[#F28C28]"]):hover {
-    transform: translateX(3px);
-}
-#main-sidebar nav a svg {
-    transition: color var(--ast-fast) ease, transform var(--ast-fast) var(--ast-ease-out);
-}
-#main-sidebar nav a:hover svg {
-    color: #F28C28;
-    transform: scale(1.08);
-}
+        /* ===== Page headings ===== */
+        main h1 { @apply tracking-tight !text-[#0C2340] dark:!text-white; }
 
-/* Active link: orange pill + small accent tab on the left edge (as in the wireframe) */
-#main-sidebar nav a[class*=" bg-[#F28C28]"] {
-    box-shadow: 0 6px 18px rgba(242, 140, 40, 0.32);
-}
-#main-sidebar nav a[class*=" bg-[#F28C28]"] svg {
-    color: #FFFFFF;
-}
-#main-sidebar nav a[class*=" bg-[#F28C28]"]::before {
-    content: '';
-    position: absolute;
-    left: -16px;
-    top: 50%;
-    width: 4px;
-    height: 60%;
-    border-radius: 0 4px 4px 0;
-    background: #F28C28;
-    transform: translateY(-50%);
-}
+        /* ===== White content cards ===== */
+        main .bg-white.rounded-2xl { @apply border-[#E8EEF5] shadow-[0_1px_2px_rgba(12,35,64,0.04),0_6px_20px_rgba(12,35,64,0.04)] transition-shadow duration-300 hover:shadow-[0_2px_4px_rgba(12,35,64,0.05),0_12px_28px_rgba(12,35,64,0.07)] dark:border-[#15345C] dark:shadow-[0_6px_20px_rgba(0,0,0,0.22)]; }
 
-/* Logout link */
-#main-sidebar > div:last-child a {
-    transition: background-color var(--ast-fast) ease, color var(--ast-fast) ease, transform var(--ast-fast) ease;
-}
-#main-sidebar > div:last-child a:hover {
-    transform: translateX(3px);
-}
+        /* ===== Stat cards ===== */
+        .stat-card { @apply transition-[transform,box-shadow,border-color] duration-300 ease-snappy hover:-translate-y-[3px] hover:shadow-[0_12px_28px_rgba(12,35,64,0.09)] dark:hover:shadow-[0_12px_28px_rgba(0,0,0,0.35)]; }
+        .stat-card:hover { border-color: color-mix(in srgb, var(--stat-accent, #F28C28) 40%, transparent); }
+        .stat-card::after { @apply origin-left animate-ast-bar-grow; }
+        .stat-card .rounded-xl { @apply transition-transform duration-300 ease-snappy; }
+        .stat-card:hover .rounded-xl { @apply scale-110 -rotate-[4deg]; }
+        .stat-card .text-3xl { @apply tabular-nums; }
 
-/* Sidebar scrollbar on dark navy */
-#main-sidebar nav::-webkit-scrollbar { width: 5px; }
-#main-sidebar nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 10px; }
+        /* ===== Buttons ===== */
+        .btn-primary, .btn-secondary, button[type="submit"] { @apply relative overflow-hidden; }
+        .btn-primary:active, .btn-secondary:active, button[type="submit"]:not(.btn-secondary):not(.btn-danger):active { @apply !translate-y-0 !scale-[0.97] !shadow-[0_2px_8px_rgba(242,140,40,0.25)]; }
+        .btn-primary::after, button[type="submit"]:not(.btn-secondary):not(.btn-danger)::after { @apply content-[''] absolute top-0 -left-[60%] w-2/5 h-full -skew-x-[20deg] pointer-events-none bg-gradient-to-r from-transparent via-white/30 to-transparent transition-[left] duration-[600ms] ease-in-out; }
+        .btn-primary:hover::after, button[type="submit"]:not(.btn-secondary):not(.btn-danger):hover::after { @apply left-[130%]; }
+        button:focus-visible, a:focus-visible { @apply outline outline-2 outline-offset-2 outline-[#F28C28]; }
+        button:disabled { @apply opacity-60 cursor-not-allowed; }
 
-/* Mobile backdrop fades instead of popping */
-#sidebar-backdrop:not(.hidden) {
-    animation: astFadeIn var(--ast-med) ease both;
-}
+        /* ===== Tables ===== */
+        table thead th { @apply sticky top-0 z-[1] whitespace-nowrap; }
+        table tbody tr { @apply transition-[background-color,box-shadow] duration-150; }
+        table tbody tr:hover { @apply bg-[#FFF8EF] shadow-[inset_3px_0_0_#F28C28]; }
+        table tbody tr:last-child td { @apply !border-b-0; }
+        table tbody td button, table tbody td a { @apply transition-transform duration-150 ease-snappy hover:scale-110; }
 
-/* ---------- 5. Top bar ---------- */
-header.sticky {
-    background-color: rgba(255, 255, 255, 0.88) !important;
-    -webkit-backdrop-filter: saturate(160%) blur(10px);
-    backdrop-filter: saturate(160%) blur(10px);
-    box-shadow: 0 1px 0 rgba(12, 35, 64, 0.04), 0 4px 16px rgba(12, 35, 64, 0.04);
-}
-html.dark header.sticky {
-    background-color: rgba(12, 35, 64, 0.88) !important;
-}
-#global-search-input {
-    transition: border-color var(--ast-fast) ease, box-shadow var(--ast-fast) ease, background-color var(--ast-fast) ease;
-}
-#global-search-input:focus {
-    background-color: #FFFFFF;
-}
-html.dark #global-search-input:focus {
-    background-color: #07172C;
-}
+        /* ===== Status badges: dot in front, pulsing on Low / Pending ===== */
+        .badge-good, .badge-active, .badge-confirmed, .badge-low, .badge-warning, .badge-pending, .badge-danger, .badge-spoilage, .badge-expired { @apply gap-1.5 whitespace-nowrap; }
+        .badge-good::before, .badge-active::before, .badge-confirmed::before, .badge-low::before, .badge-warning::before, .badge-pending::before, .badge-danger::before, .badge-spoilage::before, .badge-expired::before { @apply content-[''] w-1.5 h-1.5 rounded-full bg-current shrink-0; }
+        .badge-low::before, .badge-warning::before, .badge-pending::before { @apply animate-ast-pulse-ring-orange; }
 
-/* Live "Online" dot pulses gently (only while green / online) */
-#global-connectivity-pill .bg-emerald-500 {
-    animation: astPulseRing 2.2s ease-out infinite;
-}
-#global-connectivity-pill {
-    transition: transform var(--ast-fast) ease, box-shadow var(--ast-fast) ease;
-}
-#global-connectivity-pill:hover {
-    transform: translateY(-1px);
-}
+        /* ===== Forms ===== */
+        input, select, textarea { @apply transition-[border-color,box-shadow,background-color] duration-150; }
+        input:not([type="checkbox"]):not([type="radio"]):not(:focus):hover, select:not(:focus):hover, textarea:not(:focus):hover { @apply border-slate-300 dark:border-[#1C3E69]; }
+        input[type="checkbox"], input[type="radio"] { @apply accent-[#F28C28] cursor-pointer; }
 
-/* Theme toggle icon spins a little on hover */
-header button[onclick="toggleTheme()"] svg {
-    transition: transform var(--ast-med) var(--ast-ease-out);
-}
-header button[onclick="toggleTheme()"]:hover svg {
-    transform: rotate(25deg) scale(1.08);
-}
+        /* ===== Modals: fade + scale in every time they open ===== */
+        .modal-overlay { @apply bg-[#0C2340]/50 backdrop-blur-[6px]; }
+        .modal-overlay:not(.hidden) { @apply animate-ast-fade-in; }
+        .modal-overlay:not(.hidden) > div { @apply animate-ast-scale-in max-h-[calc(100vh-2rem)] overflow-y-auto; }
+        .modal-overlay button[onclick^="close"] svg { @apply transition-transform duration-300 ease-snappy; }
+        .modal-overlay button[onclick^="close"]:hover svg { @apply rotate-90; }
 
-/* ---------- 6. Page headings ---------- */
-main h1 {
-    letter-spacing: -0.02em;
-    color: #0C2340;
-}
-html.dark main h1 {
-    color: #FFFFFF;
-}
+        /* ===== Offline toast: slide up instead of bouncing ===== */
+        #offline-toast-notification { @apply !animate-ast-toast-in; }
 
-/* ---------- 7. White content cards ---------- */
-main .bg-white.rounded-2xl {
-    border-color: #E8EEF5;
-    box-shadow: 0 1px 2px rgba(12, 35, 64, 0.04), 0 6px 20px rgba(12, 35, 64, 0.04);
-    transition: box-shadow var(--ast-med) ease, border-color var(--ast-med) ease;
-}
-main .bg-white.rounded-2xl:hover {
-    box-shadow: 0 2px 4px rgba(12, 35, 64, 0.05), 0 12px 28px rgba(12, 35, 64, 0.07);
-}
-html.dark main .bg-white.rounded-2xl {
-    border-color: #15345C;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
-}
+        /* ===== Login page ===== */
+        body > .max-w-4xl.rounded-2xl { @apply animate-ast-scale-in [animation-duration:600ms] shadow-[0_30px_60px_-20px_rgba(12,35,64,0.35)] md:min-h-[540px]; }
+        body > .max-w-4xl.rounded-2xl > div:first-child { @apply overflow-hidden max-md:!py-8; }
+        body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > * { @apply animate-ast-fade-up [animation-duration:600ms]; }
+        body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(2) { @apply [animation-delay:250ms]; }
+        body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(3) { @apply [animation-delay:330ms]; }
+        body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(4) { @apply animate-ast-bar-grow origin-center [animation-delay:450ms]; }
+        body > .max-w-4xl.rounded-2xl > div:last-child > *, body > .max-w-4xl.rounded-2xl form > * { @apply animate-ast-fade-up; }
+        body > .max-w-4xl.rounded-2xl > div:last-child > *:nth-child(1) { @apply [animation-delay:200ms]; }
+        body > .max-w-4xl.rounded-2xl form > *:nth-child(2) { @apply [animation-delay:280ms]; }
+        body > .max-w-4xl.rounded-2xl form > *:nth-child(3) { @apply [animation-delay:340ms]; }
+        body > .max-w-4xl.rounded-2xl form > *:nth-child(4) { @apply [animation-delay:400ms]; }
+        body > .max-w-4xl.rounded-2xl form > *:nth-child(5) { @apply [animation-delay:460ms]; }
+        body > .max-w-4xl.rounded-2xl > div:last-child > *:nth-last-child(2) { @apply [animation-delay:520ms]; }
+        body > .max-w-4xl.rounded-2xl > div:last-child > *:last-child { @apply [animation-delay:580ms]; }
+        /* Login logo: pop in + orange glow ring, asterisk twinkles, spins on hover */
+        body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > .w-24 { @apply animate-ast-logo-pop-glow max-md:!w-[4.5rem] max-md:!h-[4.5rem] max-md:!mb-3; }
+        body > .max-w-4xl.rounded-2xl > div:first-child img { @apply animate-ast-logo-twinkle-fast; }
+        body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > .w-24:hover img { @apply animate-ast-logo-spin; }
+        body > .max-w-4xl.rounded-2xl > div:first-child h1 { @apply max-md:!text-2xl; }
+        #theme-toggle svg { @apply transition-transform duration-300 ease-snappy; }
+        #theme-toggle:hover svg { @apply rotate-[25deg]; }
 
-/* ---------- 8. Stat cards (dashboard + every page that has them) ---------- */
-.stat-card {
-    transition: transform var(--ast-med) var(--ast-ease-out), box-shadow var(--ast-med) ease, border-color var(--ast-med) ease;
-}
-.stat-card:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in srgb, var(--stat-accent, #F28C28) 35%, #E8EEF5);
-    box-shadow: 0 12px 28px rgba(12, 35, 64, 0.09);
-}
-html.dark .stat-card:hover {
-    border-color: color-mix(in srgb, var(--stat-accent, #F28C28) 45%, #173863);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-}
-/* Bottom accent bar grows in from the left on page load */
-.stat-card::after {
-    height: 3px;
-    transform-origin: left center;
-    animation: astBarGrow 900ms var(--ast-ease-out) 350ms both;
-}
-/* Icon box inside the card reacts on hover */
-.stat-card .rounded-xl {
-    transition: transform var(--ast-med) var(--ast-ease-out);
-}
-.stat-card:hover .rounded-xl {
-    transform: scale(1.08) rotate(-4deg);
-}
-.stat-card .text-3xl {
-    font-variant-numeric: tabular-nums;
-}
+        /* ===== Room for the mobile tab bar (tab bar itself is in includes/sidebar.php) ===== */
+        body:has(#mobile-tabbar) { @apply max-lg:pb-[calc(88px+env(safe-area-inset-bottom))]; }
+        #offline-toast-notification { @apply max-lg:!bottom-[calc(86px+env(safe-area-inset-bottom))]; }
 
-/* ---------- 9. Buttons ---------- */
-button, a {
-    -webkit-tap-highlight-color: transparent;
-}
-.btn-primary,
-.btn-secondary,
-button[type="submit"] {
-    position: relative;
-    overflow: hidden;
-}
-/* Pressed state */
-.btn-primary:active,
-.btn-secondary:active,
-button[type="submit"]:not(.btn-secondary):not(.btn-danger):active {
-    transform: translateY(0) scale(0.97) !important;
-    box-shadow: 0 2px 8px rgba(242, 140, 40, 0.25) !important;
-}
-/* Light sheen sweeps across orange buttons on hover */
-.btn-primary::after,
-button[type="submit"]:not(.btn-secondary):not(.btn-danger)::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -60%;
-    width: 40%;
-    height: 100%;
-    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-    transform: skewX(-20deg);
-    transition: left 600ms var(--ast-ease-in-out);
-    pointer-events: none;
-}
-.btn-primary:hover::after,
-button[type="submit"]:not(.btn-secondary):not(.btn-danger):hover::after {
-    left: 130%;
-}
-/* Keyboard focus ring */
-button:focus-visible,
-a:focus-visible {
-    outline: 2px solid #F28C28;
-    outline-offset: 2px;
-}
-button:disabled,
-button[disabled] {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-}
+        /* ===== Tablet and phone layout ===== */
+        main { @apply max-lg:!px-5 max-sm:!p-4; }
+        main > * + * { @apply max-sm:!mt-4; }
+        main h1 { @apply max-sm:!text-2xl; }
+        main .grid:has(> .stat-card) { @apply max-sm:!grid-cols-2 max-sm:!gap-3 max-[360px]:!grid-cols-1; }
+        main .grid > .stat-card { @apply max-sm:!p-3.5; }
+        main .grid > .stat-card .text-3xl { @apply max-sm:!text-2xl; }
+        main .grid > .stat-card .w-10.h-10 { @apply max-sm:!w-8 max-sm:!h-8; }
+        main .grid > .stat-card .uppercase { @apply max-sm:!text-[10px] max-sm:!tracking-[0.04em]; }
+        main > div:first-child.flex > .btn-primary, main > div:first-child.flex > button { @apply max-sm:w-full max-sm:justify-center; }
+        .overflow-x-auto > table { @apply max-sm:min-w-[560px]; }
+        table thead th { @apply max-sm:!px-3 max-sm:!py-2.5; }
+        table tbody td { @apply max-sm:!p-3; }
+        .modal-overlay:not(.hidden) { @apply max-sm:!items-end max-sm:!p-0; }
+        .modal-overlay:not(.hidden) > div { @apply max-sm:!max-w-full max-sm:!rounded-b-none max-sm:!rounded-t-[20px] max-sm:max-h-[92vh] max-sm:!p-5 max-sm:animate-ast-fade-up; }
+        .modal-overlay .grid { @apply max-sm:!grid-cols-1; }
+        header.sticky > div { @apply max-sm:!py-2.5 max-sm:!gap-2; }
+        #global-connectivity-pill { @apply max-[360px]:!hidden; }
 
-/* ---------- 10. Tables ---------- */
-table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    white-space: nowrap;
-}
-table tbody tr {
-    transition: background-color var(--ast-fast) ease, box-shadow var(--ast-fast) ease;
-}
-table tbody tr:hover {
-    background-color: #FFF8EF;
-    box-shadow: inset 3px 0 0 #F28C28;
-}
-html.dark table tbody tr:hover {
-    background-color: #10294A;
-}
-table tbody tr:last-child td {
-    border-bottom: none !important;
-}
-/* Edit / delete icon buttons in the Actions column */
-table tbody td button,
-table tbody td a {
-    transition: transform var(--ast-fast) var(--ast-ease-out), background-color var(--ast-fast) ease, color var(--ast-fast) ease;
-}
-table tbody td button:hover,
-table tbody td a:hover {
-    transform: scale(1.1);
-}
-/* Horizontal scroll areas look tidy */
-.overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: #CBD5E1 transparent;
-}
-.overflow-x-auto::-webkit-scrollbar { height: 6px; }
-.overflow-x-auto::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
-html.dark .overflow-x-auto::-webkit-scrollbar-thumb { background: #1C3E69; }
+        /* ===== Reduced motion + printing ===== */
+        *, *::before, *::after { @apply motion-reduce:!animate-none motion-reduce:!transition-none print:!animate-none print:!transition-none; }
+</style>
 
-/* ---------- 11. Status badges ---------- */
-.badge-good, .badge-active, .badge-confirmed,
-.badge-low, .badge-warning, .badge-pending,
-.badge-danger, .badge-spoilage, .badge-expired {
-    gap: 0.35rem;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
-}
-.badge-good::before, .badge-active::before, .badge-confirmed::before,
-.badge-low::before, .badge-warning::before, .badge-pending::before,
-.badge-danger::before, .badge-spoilage::before, .badge-expired::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 9999px;
-    background: currentColor;
-    flex-shrink: 0;
-}
-.badge-low::before, .badge-warning::before, .badge-pending::before {
-    animation: astPulseRing 2s ease-out infinite;
-    box-shadow: 0 0 0 0 rgba(242, 140, 40, 0.5);
-}
+<!-- Dexie.js (IndexedDB Offline Store) & Offline Engine -->
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<script src="../assets/js/offline-engine.js"></script>
 
-/* ---------- 12. Forms ---------- */
-input[type="text"],
-input[type="number"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-input[type="month"],
-input[type="search"],
-select,
-textarea {
-    transition: border-color var(--ast-fast) ease, box-shadow var(--ast-fast) ease, background-color var(--ast-fast) ease;
-}
-input:hover:not(:focus):not([type="checkbox"]):not([type="radio"]),
-select:hover:not(:focus),
-textarea:hover:not(:focus) {
-    border-color: #CBD5E1;
-}
-input[type="checkbox"],
-input[type="radio"] {
-    accent-color: #F28C28;
-    cursor: pointer;
-}
-
-/* ---------- 13. Modals (open animation every time they appear) ---------- */
-.modal-overlay {
-    background: rgba(12, 35, 64, 0.5);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-}
-.modal-overlay:not(.hidden) {
-    animation: astFadeIn var(--ast-med) ease both;
-}
-.modal-overlay:not(.hidden) > div {
-    animation: astScaleIn 340ms var(--ast-ease-out) both;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-}
-/* Close (X) button rotates on hover */
-.modal-overlay button[onclick^="close"] svg {
-    transition: transform var(--ast-med) var(--ast-ease-out);
-}
-.modal-overlay button[onclick^="close"]:hover svg {
-    transform: rotate(90deg);
-}
-
-/* ---------- 14. Success / error message banners ---------- */
-main > div.rounded-xl.border {
-    animation: astFadeUp 420ms var(--ast-ease-out) both;
-}
-
-/* ---------- 15. Offline-engine toast (replace the bouncing effect) ---------- */
-#offline-toast-notification {
-    animation: astToastIn 380ms var(--ast-ease-out) both !important;
-    transition: opacity 400ms ease, transform 400ms ease !important;
-}
-
-/* ---------- 16. Login page ---------- */
-body > .max-w-4xl.rounded-2xl {
-    animation: astScaleIn 600ms var(--ast-ease-out) both;
-    box-shadow: 0 30px 60px -20px rgba(12, 35, 64, 0.35);
-}
-@media (min-width: 768px) {
-    body > .max-w-4xl.rounded-2xl {
-        min-height: 540px;
+<!-- PWA Service Worker Registration -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('✓ Service Worker registered successfully (Scope:', reg.scope, ')'))
+                .catch(err => console.warn('Service Worker registration failed:', err));
+        });
     }
-}
-/* Keep the brand panel's decorative glow from bleeding onto the white form side */
-body > .max-w-4xl.rounded-2xl > div:first-child {
-    overflow: hidden;
-}
-/* Navy brand panel: logo floats gently, title fades in */
-body > .max-w-4xl.rounded-2xl > div:first-child img {
-    animation: astFloat 5s ease-in-out 1s infinite;
-}
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > * {
-    animation: astFadeUp 600ms var(--ast-ease-out) both;
-}
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(1) { animation-delay: 150ms; }
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(2) { animation-delay: 250ms; }
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(3) { animation-delay: 330ms; }
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > *:nth-child(4) {
-    animation: astBarGrow 800ms var(--ast-ease-out) 450ms both;
-    transform-origin: center;
-}
-/* Form side: heading and each field slide up one after another */
-body > .max-w-4xl.rounded-2xl > div:last-child > * ,
-body > .max-w-4xl.rounded-2xl form > * {
-    animation: astFadeUp 520ms var(--ast-ease-out) both;
-}
-body > .max-w-4xl.rounded-2xl > div:last-child > *:nth-child(1) { animation-delay: 200ms; }
-body > .max-w-4xl.rounded-2xl form > *:nth-child(2) { animation-delay: 280ms; }
-body > .max-w-4xl.rounded-2xl form > *:nth-child(3) { animation-delay: 340ms; }
-body > .max-w-4xl.rounded-2xl form > *:nth-child(4) { animation-delay: 400ms; }
-body > .max-w-4xl.rounded-2xl form > *:nth-child(5) { animation-delay: 460ms; }
-body > .max-w-4xl.rounded-2xl > div:last-child > *:nth-last-child(2) { animation-delay: 520ms; }
-body > .max-w-4xl.rounded-2xl > div:last-child > *:last-child { animation-delay: 580ms; }
-/* Login theme button */
-#theme-toggle svg {
-    transition: transform var(--ast-med) var(--ast-ease-out);
-}
-#theme-toggle:hover svg {
-    transform: rotate(25deg);
-}
-/* Phone: shorter brand panel so the form is visible without scrolling */
-@media (max-width: 767px) {
-    body > .max-w-4xl.rounded-2xl > div:first-child {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    body > .max-w-4xl.rounded-2xl > div:first-child .w-24 {
-        width: 4.5rem;
-        height: 4.5rem;
-        margin-bottom: 0.75rem;
-    }
-    body > .max-w-4xl.rounded-2xl > div:first-child h1 {
-        font-size: 1.5rem;
-    }
-}
-
-/* ---------- 17. Mobile bottom tab bar (matches the phone wireframe) ---------- */
-.mobile-tabbar {
-    display: none;
-}
-@media (max-width: 1023px) {
-    .mobile-tabbar {
-        position: fixed;
-        left: 12px;
-        right: 12px;
-        bottom: calc(10px + env(safe-area-inset-bottom));
-        z-index: 35;
-        height: var(--ast-tabbar-h);
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        align-items: center;
-        background: #0C2340;
-        border: 1px solid #15345C;
-        border-radius: 20px;
-        box-shadow: 0 14px 34px rgba(7, 21, 38, 0.35);
-        animation: astFadeUp 500ms var(--ast-ease-out) 200ms both;
-    }
-    .mobile-tabbar a,
-    .mobile-tabbar button {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 3px;
-        height: 100%;
-        color: #94A3B8;
-        font-size: 11px;
-        font-weight: 600;
-        background: none;
-        border: 0;
-        cursor: pointer;
-        transition: color var(--ast-fast) ease;
-    }
-    .mobile-tabbar svg {
-        width: 22px;
-        height: 22px;
-        transition: transform var(--ast-med) var(--ast-ease-out);
-    }
-    .mobile-tabbar a:active svg,
-    .mobile-tabbar button:active svg {
-        transform: scale(0.88);
-    }
-    .mobile-tabbar .is-active {
-        color: #F28C28;
-    }
-    .mobile-tabbar .is-active svg {
-        transform: translateY(-2px);
-    }
-    .mobile-tabbar .is-active::after {
-        content: '';
-        width: 5px;
-        height: 5px;
-        border-radius: 9999px;
-        background: #F28C28;
-        margin-top: 1px;
-    }
-    /* Keep page content from hiding behind the bar */
-    body:has(.mobile-tabbar) {
-        padding-bottom: calc(var(--ast-tabbar-h) + 24px + env(safe-area-inset-bottom));
-    }
-    /* Lift the offline toast above the bar */
-    #offline-toast-notification {
-        bottom: calc(var(--ast-tabbar-h) + 22px + env(safe-area-inset-bottom)) !important;
-    }
-}
-
-/* ---------- 18. Responsive layout ---------- */
-
-/* Tablet (768px - 1023px) */
-@media (max-width: 1023px) {
-    main {
-        padding-left: 1.25rem !important;
-        padding-right: 1.25rem !important;
-    }
-}
-
-/* Phone (up to 639px) */
-@media (max-width: 639px) {
-    main {
-        padding: 1rem !important;
-    }
-    main > * + * {
-        margin-top: 1rem !important;
-    }
-    main h1 {
-        font-size: 1.5rem !important;
-        line-height: 2rem !important;
-    }
-    /* Stat cards: 2 per row like the mobile dashboard wireframe */
-    main .grid:has(> .stat-card) {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 0.75rem !important;
-    }
-    main .grid > .stat-card {
-        padding: 0.875rem !important;
-    }
-    main .grid > .stat-card .text-3xl {
-        font-size: 1.5rem !important;
-        line-height: 2rem !important;
-    }
-    main .grid > .stat-card .w-10.h-10 {
-        width: 2rem !important;
-        height: 2rem !important;
-    }
-    main .grid > .stat-card .uppercase {
-        font-size: 10px !important;
-        letter-spacing: 0.04em !important;
-    }
-    /* Page action buttons (Add Item, Log Waste...) go full width */
-    main > div:first-child.flex > .btn-primary,
-    main > div:first-child.flex > button,
-    main > div:first-child.flex > a.btn-primary {
-        width: 100%;
-        justify-content: center;
-    }
-    /* Tables: keep columns readable and let them scroll sideways */
-    .overflow-x-auto > table {
-        min-width: 560px;
-    }
-    table thead th {
-        padding: 10px 12px !important;
-    }
-    table tbody td {
-        padding: 12px !important;
-    }
-    /* Modals slide up from the bottom like a sheet */
-    .modal-overlay:not(.hidden) {
-        align-items: flex-end !important;
-        padding: 0 !important;
-    }
-    .modal-overlay:not(.hidden) > div {
-        max-width: 100% !important;
-        border-radius: 20px 20px 0 0 !important;
-        max-height: 92vh;
-        padding: 1.25rem !important;
-        animation: astFadeUp 380ms var(--ast-ease-out) both;
-    }
-    .modal-overlay .grid {
-        grid-template-columns: minmax(0, 1fr) !important;
-    }
-    /* Top bar: tighter */
-    header.sticky > div {
-        padding-top: 0.625rem !important;
-        padding-bottom: 0.625rem !important;
-        gap: 0.5rem !important;
-    }
-}
-
-/* Very small phones (up to 360px) */
-@media (max-width: 360px) {
-    main .grid:has(> .stat-card) {
-        grid-template-columns: minmax(0, 1fr) !important;
-    }
-    #global-connectivity-pill {
-        display: none !important;
-    }
-}
-
-/* ---------- 19. Accessibility + print ---------- */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 1ms !important;
-        animation-delay: 0ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 1ms !important;
-        scroll-behavior: auto !important;
-    }
-}
-@media print {
-    *,
-    *::before,
-    *::after {
-        animation: none !important;
-        transition: none !important;
-    }
-    .mobile-tabbar {
-        display: none !important;
-    }
-    body {
-        padding-bottom: 0 !important;
-    }
-}
-
-/* =====================================================
-   ASTERISKO LOGO ANIMATIONS
-   Paste at the very bottom of assets/app-enhancements.css
-   (below the "ASTERISKO UI POLISH + ANIMATIONS (v2)" block)
-   ===================================================== */
-
-@keyframes astLogoPop {
-    0%   { opacity: 0; transform: scale(0.4) rotate(-180deg); }
-    60%  { opacity: 1; transform: scale(1.12) rotate(12deg); }
-    80%  { transform: scale(0.96) rotate(-4deg); }
-    100% { opacity: 1; transform: scale(1) rotate(0deg); }
-}
-@keyframes astLogoSpin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-}
-@keyframes astLogoTwinkle {
-    0%, 86%, 100% { transform: rotate(0deg) scale(1); }
-    90%           { transform: rotate(60deg) scale(1.12); }
-    95%           { transform: rotate(120deg) scale(1); }
-}
-@keyframes astLogoGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0.45), 0 10px 30px rgba(0, 0, 0, 0.35); }
-    50%      { box-shadow: 0 0 0 10px rgba(242, 140, 40, 0), 0 10px 30px rgba(0, 0, 0, 0.35); }
-}
-@keyframes astTextReveal {
-    from { opacity: 0; transform: translateX(-8px); letter-spacing: 0.25em; }
-    to   { opacity: 1; transform: none; }
-}
-
-/* ---------- Sidebar logo ---------- */
-/* The cream tile pops in when the page loads */
-#main-sidebar > div:first-child > div:first-child a > div:first-child {
-    animation: astLogoPop 800ms var(--ast-ease-out, ease-out) both;
-    transition: transform 280ms ease, box-shadow 280ms ease;
-}
-/* The asterisk does a small twinkle every few seconds */
-#main-sidebar > div:first-child > div:first-child a img {
-    animation: astLogoTwinkle 7s ease-in-out 1.5s infinite;
-    transform-origin: center;
-}
-/* Hovering the brand spins the asterisk one full turn and lights the tile */
-#main-sidebar > div:first-child > div:first-child a:hover img {
-    animation: astLogoSpin 700ms var(--ast-ease-out, ease-out) 1;
-}
-#main-sidebar > div:first-child > div:first-child a:hover > div:first-child {
-    box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.35), 0 6px 16px rgba(0, 0, 0, 0.3);
-}
-/* "ASTERISKO" title and subtitle slide in after the logo */
-#main-sidebar > div:first-child > div:first-child a h1 {
-    animation: astTextReveal 600ms var(--ast-ease-out, ease-out) 250ms both;
-}
-#main-sidebar > div:first-child > div:first-child a span {
-    animation: astTextReveal 600ms var(--ast-ease-out, ease-out) 380ms both;
-}
-#main-sidebar > div:first-child > div:first-child a:hover h1 {
-    color: #F28C28;
-    transition: color 200ms ease;
-}
-
-/* ---------- Login page logo ---------- */
-/* Tile: pop in, then a soft orange glow ring pulses around it */
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > .w-24 {
-    animation:
-        astLogoPop 900ms var(--ast-ease-out, ease-out) 100ms both,
-        astLogoGlow 3s ease-in-out 1.2s infinite;
-}
-/* Asterisk: float gently and twinkle now and then (replaces the earlier float) */
-body > .max-w-4xl.rounded-2xl > div:first-child img {
-    animation: astLogoTwinkle 6s ease-in-out 1.5s infinite;
-    transform-origin: center;
-}
-/* Hover: full spin */
-body > .max-w-4xl.rounded-2xl > div:first-child > div:first-child > .w-24:hover img {
-    animation: astLogoSpin 800ms var(--ast-ease-out, ease-out) 1;
-}
+</script>
