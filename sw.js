@@ -1,28 +1,38 @@
 // Asterisko PWA Service Worker (Offline-First Cache Engine)
-const CACHE_NAME = 'asterisko-cache-v1';
+const CACHE_NAME = 'asterisko-cache-v3';
 const PRECACHE_ASSETS = [
-    '/',
     '/manifest.json',
     '/assets/logo.png',
     '/assets/app-enhancements.css',
+    '/assets/js/offline-engine.js',
     '/pages/orders.php',
     '/pages/dashboard.php',
-    '/pages/count.php'
+    '/pages/count.php',
+    '/pages/waste.php',
+    '/pages/delivery_intake.php',
+    'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'
 ];
 
-// Install: Pre-cache core application shell
+// Install: Pre-cache core application shell safely
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            console.log('[SW] Pre-caching core application shell');
-            return cache.addAll(PRECACHE_ASSETS).catch(err => {
-                console.warn('[SW] Some assets could not be pre-cached:', err);
-            });
+        caches.open(CACHE_NAME).then(async cache => {
+            console.log('[SW] Pre-caching core application assets safely (v3)');
+            for (const asset of PRECACHE_ASSETS) {
+                try {
+                    const response = await fetch(asset, { cache: 'no-cache' });
+                    if (response && response.status === 200) {
+                        await cache.put(asset, response);
+                    }
+                } catch (e) {
+                    console.warn('[SW] Could not precache asset:', asset);
+                }
+            }
         }).then(() => self.skipWaiting())
     );
 });
 
-// Activate: Clean up older cache versions
+// Activate: Clean up older cache versions and take immediate control
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(keys => {
@@ -43,25 +53,39 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Navigation requests (HTML pages)
+    // Navigation requests (HTML pages - e.g. switching tabs or clicking sidebar links)
     if (request.mode === 'navigate') {
         event.respondWith(
             fetch(request)
                 .then(networkResponse => {
-                    // Update the cache with latest copy if valid
+                    // Cache fresh copy when online
                     if (networkResponse && networkResponse.status === 200) {
                         const copy = networkResponse.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(request, copy);
+                            cache.put(url.pathname, networkResponse.clone());
+                        });
                     }
                     return networkResponse;
                 })
                 .catch(async () => {
-                    // Offline fallback: return cached page or fallback to orders.php
-                    const cachedResponse = await caches.match(request);
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    return caches.match('/pages/orders.php');
+                    // Offline: serve matching page from cache
+                    const cache = await caches.open(CACHE_NAME);
+                    let cached = await cache.match(request, { ignoreSearch: true });
+                    if (cached) return cached;
+
+                    // Match by pathname (e.g. /pages/orders.php, /pages/count.php)
+                    cached = await cache.match(url.pathname, { ignoreSearch: true });
+                    if (cached) return cached;
+
+                    // Fallback to orders or dashboard
+                    cached = await cache.match('/pages/orders.php') || await cache.match('/pages/dashboard.php');
+                    if (cached) return cached;
+
+                    return new Response(
+                        `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Offline - Asterisko</title><style>body{font-family:sans-serif;background:#0C2340;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;box-sizing:border-box;text-align:center;}a{color:#F28C28;font-weight:bold;text-decoration:none;}</style></head><body><div><h2>⚠️ Offline Mode</h2><p>You are currently offline. Return to <a href="/pages/orders.php">Orders POS</a> to continue recording orders locally.</p></div></body></html>`,
+                        { headers: { 'Content-Type': 'text/html' } }
+                    );
                 })
         );
         return;
@@ -93,13 +117,13 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Default fetch
+    // Default fetch fallback
     event.respondWith(
         fetch(request).catch(() => caches.match(request))
     );
 });
 
-// Background Sync Event (Triggered when internet reconnects)
+// Background Sync Event
 self.addEventListener('sync', event => {
     if (event.tag === 'asterisko-outbox-sync') {
         console.log('[SW] Background sync triggered');
