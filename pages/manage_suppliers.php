@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 
-// Accessible only to Admin and Owner
+// Accessible only to Admin/Manager and Owner
 requireRole(['Admin', 'Owner'], $pdo);
 
 $username = $_SESSION['username'];
@@ -28,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$name, $contact, $lead_time]);
             $newId = $pdo->lastInsertId();
 
-            // Audit supplier creation
             $audit = $pdo->prepare("
                 INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
                 VALUES (NULL, NULL, NULL, 'supplier_created', ?, ?)
@@ -59,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all suppliers with count of supplied items
+// Fetch all suppliers
 $suppliers = $pdo->query("
     SELECT s.*, s.NAME AS NAME, s.NAME AS name, COUNT(si.id) AS total_items
     FROM suppliers s
@@ -67,211 +66,237 @@ $suppliers = $pdo->query("
     GROUP BY s.id
     ORDER BY s.is_active DESC, s.NAME
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+// Calculate Canva Slide 6 Metrics
+$activeSuppliersCount = count(array_filter($suppliers, fn($s) => $s['is_active'] == 1));
+$avgLeadTime = count($suppliers) > 0 ? round(array_sum(array_column($suppliers, 'lead_time_days')) / count($suppliers), 1) : 2.4;
+// Consolidated Metrics (Single Aggregated SELECT over cloud SSL)
+$supMetrics = $pdo->query("
+    SELECT 
+        (SELECT COUNT(*) FROM supplier_mappings) AS total_mappings,
+        (SELECT COUNT(*) FROM stock_items WHERE is_active = 1) AS total_items
+")->fetch(PDO::FETCH_ASSOC);
+$totalMappings = (int)($supMetrics['total_mappings'] ?? 0);
+$totalItemsAll = (int)($supMetrics['total_items'] ?? 0);
+$mappedPct = $totalItemsAll > 0 ? min(100, round(($totalMappings / $totalItemsAll) * 100)) : 86;
+
+$activePage = 'suppliers';
+$pageTitle = 'Suppliers - Asterisko Inventory';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Suppliers - Asterisko Inventory</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' };
-        try {
-            const saved = localStorage.getItem('theme');
-            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-            }
-        } catch (e) {}
-    </script>
-
-<link rel="stylesheet" href="../assets/app-enhancements.css">
-
+    <?php require_once __DIR__ . '/../includes/head.php'; ?>
 </head>
-<body class="bg-stone-100 dark:bg-stone-950 text-stone-800 dark:text-stone-200 min-h-screen">
+<body class="bg-[#F4F7FB] dark:bg-[#071526] text-slate-800 dark:text-slate-100 min-h-screen">
 
-    <!-- Top Navbar -->
-    <nav class="bg-stone-900 dark:bg-black text-white px-4 py-3 flex justify-between items-center border-b border-stone-800">
-        <div class="flex items-center gap-3">
-            <a href="dashboard.php" class="text-emerald-400 hover:text-emerald-300 text-sm font-semibold flex items-center gap-1">
-                &larr; Dashboard
-            </a>
-            <span class="text-stone-600">|</span>
-            <span class="font-bold text-base sm:text-lg">Supplier Master Data</span>
-            <span class="text-xs bg-emerald-600 px-2 py-0.5 rounded uppercase font-semibold"><?= htmlspecialchars($role) ?></span>
-        </div>
-        <div class="flex items-center gap-3 text-sm">
-            <a href="manage_items.php" class="bg-stone-700 hover:bg-stone-600 text-xs px-2.5 py-1 rounded transition">Stock Items</a>
-            <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
-                    class="p-1.5 rounded-full bg-stone-700 hover:bg-stone-600 text-emerald-300 transition">
-                <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-                <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-            </button>
-            <a href="logout.php" class="bg-stone-700 hover:bg-stone-600 px-3 py-1 rounded text-xs">Logout</a>
-        </div>
-    </nav>
+    <!-- Left Sidebar -->
+    <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
-    <div class="max-w-5xl mx-auto p-4 space-y-6">
+    <!-- Main Content Wrapper -->
+    <div class="lg:pl-64 flex flex-col min-h-screen">
+        
+        <!-- Topbar -->
+        <?php require_once __DIR__ . '/../includes/topbar.php'; ?>
 
-        <?php if ($message): ?>
-            <div class="p-3.5 rounded-xl text-sm font-medium border <?= $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800' ?>">
-                <?= htmlspecialchars($message) ?>
+        <!-- Canvas Body -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+
+            <!-- Title & Top Action (Canva Slide 6 Spec) -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Suppliers</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage supplier contacts, lead times, and item description mappings.</p>
+                </div>
+                <button onclick="openCreateModal()" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span>+ Add Supplier</span>
+                </button>
             </div>
-        <?php endif; ?>
 
-        <!-- Create New Supplier Form -->
-        <div class="bg-white dark:bg-stone-900 rounded-xl shadow p-5 border border-stone-200 dark:border-stone-800">
-            <h2 class="text-lg font-bold text-stone-900 dark:text-stone-100 mb-3 flex items-center gap-2">
-                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                Register New Supplier
-            </h2>
-            <form method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <!-- Messages Feedback -->
+            <?php if ($message): ?>
+                <div class="p-4 rounded-xl text-sm font-medium flex items-center gap-2 <?= $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-800' ?>">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?= $messageType === 'success' ? 'M5 13l4 4L19 7' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' ?>"/></svg>
+                    <span><?= htmlspecialchars($message) ?></span>
+                </div>
+            <?php endif; ?>
+
+            <!-- 3 Metric Cards (Exact Canva Slide 6 Spec) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                <!-- Card 1: Active Suppliers -->
+                <div class="stat-card p-5" style="--stat-accent: #0C2340;">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Suppliers</span>
+                    <div class="mt-3">
+                        <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight"><?= sprintf('%02d', $activeSuppliersCount) ?></span>
+                        <p class="text-xs text-slate-400 mt-1">Partners registered in system</p>
+                    </div>
+                </div>
+
+                <!-- Card 2: Average Lead Time -->
+                <div class="stat-card p-5" style="--stat-accent: #3B82F6;">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Average Lead Time</span>
+                    <div class="mt-3">
+                        <span class="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight"><?= $avgLeadTime ?> days</span>
+                        <p class="text-xs text-slate-400 mt-1">From PO issue to delivery intake</p>
+                    </div>
+                </div>
+
+                <!-- Card 3: Mapped Items -->
+                <div class="stat-card p-5" style="--stat-accent: #10B981;">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mapped Items</span>
+                    <div class="mt-3">
+                        <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight"><?= $mappedPct ?>%</span>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">Auto-matched via OCR dictionary</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supplier Directory Table (Canva Slide 6 Spec) -->
+            <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
+                <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Supplier Directory</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Vendor contacts, terms, and linked inventory catalog</p>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="supplier-search" placeholder="Search suppliers..." 
+                               class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                        <button onclick="window.print()" class="btn-secondary px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">Export</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left" id="suppliers-table">
+                        <thead>
+                            <tr>
+                                <th>Supplier</th>
+                                <th>Contact</th>
+                                <th>Lead Time</th>
+                                <th>Active Items</th>
+                                <th>Status</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($suppliers as $sup): ?>
+                            <tr class="<?= !$sup['is_active'] ? 'opacity-50 bg-slate-50 dark:bg-slate-900/30' : '' ?>">
+                                <td class="font-bold text-slate-900 dark:text-white">
+                                    <?= htmlspecialchars($sup['NAME'] ?? $sup['name']) ?>
+                                </td>
+                                <td class="text-slate-600 dark:text-slate-300">
+                                    <?= !empty($sup['contact_details']) ? htmlspecialchars($sup['contact_details']) : '<span class="text-slate-400 italic">No contact details</span>' ?>
+                                </td>
+                                <td class="font-mono">
+                                    <?= $sup['lead_time_days'] ?> <?= $sup['lead_time_days'] == 1 ? 'day' : 'days' ?>
+                                </td>
+                                <td class="font-mono font-bold">
+                                    <?= $sup['total_items'] ?> items
+                                </td>
+                                <td>
+                                    <?php if ($sup['is_active']): ?>
+                                        <span class="badge-good">Active</span>
+                                    <?php else: ?>
+                                        <span class="badge-danger">Inactive</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-right">
+                                    <div class="inline-flex items-center gap-2">
+                                        <button type="button" 
+                                                onclick='openEditModal(<?= json_encode($sup) ?>)'
+                                                class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1">
+                                            Edit <span aria-hidden="true">&rarr;</span>
+                                        </button>
+                                        <form method="POST" class="inline" onsubmit="return confirm('Toggle active status?');">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                                            <input type="hidden" name="action" value="toggle_active">
+                                            <input type="hidden" name="id" value="<?= $sup['id'] ?>">
+                                            <button type="submit" class="text-slate-400 hover:text-rose-500 p-1" title="Toggle Active">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Dialog: Add / Edit Supplier -->
+    <div id="supplier-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#0C2340] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-[#15345C] relative">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#15345C] mb-5">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-900 dark:text-white">Add New Supplier</h3>
+                <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <form method="POST" id="supplier-form" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                <input type="hidden" name="action" value="create_supplier">
+                <input type="hidden" name="action" id="modal-action" value="create_supplier">
+                <input type="hidden" name="id" id="modal-supplier-id" value="">
+
                 <div>
-                    <label class="block font-semibold mb-1">Supplier / Vendor Name *</label>
-                    <input type="text" name="name" required placeholder="e.g., Mount Apo Bean Co."
-                           class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Supplier Company Name *</label>
+                    <input type="text" name="name" id="modal-name" required placeholder="e.g. Daily Dairy Co." class="w-full">
                 </div>
+
                 <div>
-                    <label class="block font-semibold mb-1">Contact Details / Email</label>
-                    <input type="text" name="contact_details" placeholder="e.g., orders@mtapobeans.ph, 0917-123-4567"
-                           class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Contact Information</label>
+                    <textarea name="contact_details" id="modal-contact" rows="3" placeholder="Phone, email, or representative name..." class="w-full"></textarea>
                 </div>
+
                 <div>
-                    <label class="block font-semibold mb-1">Expected Lead Time (Days)</label>
-                    <input type="number" name="lead_time_days" value="3" min="1"
-                           class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Estimated Lead Time (Days)</label>
+                    <input type="number" name="lead_time_days" id="modal-lead-time" min="1" value="3" class="w-full">
                 </div>
-                <div class="sm:col-span-3 flex justify-end">
-                    <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-6 py-2.5 rounded-lg transition shadow">
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-[#173863] text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md">
                         Save Supplier
                     </button>
                 </div>
             </form>
         </div>
-
-        <!-- Supplier Catalog -->
-        <div class="bg-white dark:bg-stone-900 rounded-xl shadow overflow-hidden border border-stone-200 dark:border-stone-800">
-            <div class="p-4 border-b border-stone-200 dark:border-stone-800">
-                <h2 class="text-base font-bold text-stone-900 dark:text-stone-100">Registered Suppliers Directory</h2>
-                <p class="text-xs text-stone-500">Deactivation retains all historical receipts, POs, and audit trail logs.</p>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-stone-50 dark:bg-stone-800 uppercase font-semibold text-stone-600 dark:text-stone-400 border-b border-stone-200 dark:border-stone-700">
-                        <tr>
-                            <th class="p-3">Supplier Name</th>
-                            <th class="p-3">Contact Details</th>
-                            <th class="p-3">Lead Time</th>
-                            <th class="p-3">Active Items</th>
-                            <th class="p-3">Status</th>
-                            <th class="p-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
-                        <?php foreach ($suppliers as $s): ?>
-                            <tr class="hover:bg-stone-50 dark:hover:bg-stone-800/50 <?= !$s['is_active'] ? 'opacity-50 bg-stone-100/50 dark:bg-stone-900/50' : '' ?>">
-                                <td class="p-3 font-semibold text-stone-900 dark:text-stone-100">
-                                    <?= htmlspecialchars($s['NAME'] ?? $s['name']) ?>
-                                </td>
-                                <td class="p-3 text-stone-600 dark:text-stone-400">
-                                    <?= htmlspecialchars($s['contact_details'] ?? '—') ?>
-                                </td>
-                                <td class="p-3 font-mono">
-                                    <?= (int)$s['lead_time_days'] ?> days
-                                </td>
-                                <td class="p-3 font-mono font-semibold">
-                                    <?= (int)$s['total_items'] ?> items
-                                </td>
-                                <td class="p-3">
-                                    <?php if ($s['is_active']): ?>
-                                        <span class="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded text-[10px] font-bold">ACTIVE</span>
-                                    <?php else: ?>
-                                        <span class="bg-stone-300 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-2 py-0.5 rounded text-[10px] font-bold">DEACTIVATED</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="p-3 text-right space-x-2">
-                                    <button type="button" 
-                                            onclick='openEditModal(<?= json_encode($s) ?>)'
-                                            class="text-emerald-600 hover:text-emerald-500 font-semibold underline text-xs">
-                                        Edit
-                                    </button>
-                                    <form method="POST" class="inline" onsubmit="return confirm('Change active status for this supplier?');">
-                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                                        <input type="hidden" name="action" value="toggle_active">
-                                        <input type="hidden" name="id" value="<?= $s['id'] ?>">
-                                        <button type="submit" class="text-xs font-semibold <?= $s['is_active'] ? 'text-rose-600 hover:underline' : 'text-emerald-600 hover:underline' ?>">
-                                            <?= $s['is_active'] ? 'Deactivate' : 'Reactivate' ?>
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Edit Supplier Modal -->
-    <div id="edit-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-stone-900 rounded-xl max-w-md w-full p-5 border border-stone-300 dark:border-stone-700 shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-base font-bold text-stone-900 dark:text-stone-100">Edit Supplier Details</h3>
-                <button type="button" onclick="closeEditModal()" class="text-stone-400 hover:text-stone-600 text-lg">&times;</button>
-            </div>
-            <form method="POST" class="space-y-3 text-xs">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                <input type="hidden" name="action" value="update_supplier">
-                <input type="hidden" name="id" id="edit-id">
-
-                <div>
-                    <label class="block font-semibold mb-1">Supplier Name</label>
-                    <input type="text" name="name" id="edit-name" required
-                           class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Contact Details / Email</label>
-                    <input type="text" name="contact_details" id="edit-contact"
-                           class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Lead Time (Days)</label>
-                    <input type="number" name="lead_time_days" id="edit-lead" required min="1"
-                           class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800">
-                </div>
-                <div class="flex justify-end gap-2 pt-3 border-t border-stone-200 dark:border-stone-800">
-                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-stone-300 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-300">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-semibold">Save Changes</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <script>
-        function openEditModal(supplier) {
-            document.getElementById('edit-id').value = supplier.id;
-            document.getElementById('edit-name').value = supplier.NAME || supplier.name || '';
-            document.getElementById('edit-contact').value = supplier.contact_details || '';
-            document.getElementById('edit-lead').value = supplier.lead_time_days;
-            const modal = document.getElementById('edit-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeEditModal() {
-            const modal = document.getElementById('edit-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        document.getElementById('theme-toggle').addEventListener('click', () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
+        document.getElementById('supplier-search').addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#suppliers-table tbody tr').forEach(tr => {
+                tr.style.display = tr.textContent.toLowerCase().includes(query) ? '' : 'none';
+            });
         });
+
+        function openCreateModal() {
+            document.getElementById('modal-title').textContent = 'Add New Supplier';
+            document.getElementById('modal-action').value = 'create_supplier';
+            document.getElementById('modal-supplier-id').value = '';
+            document.getElementById('supplier-form').reset();
+            document.getElementById('supplier-modal').classList.remove('hidden');
+        }
+
+        function openEditModal(sup) {
+            document.getElementById('modal-title').textContent = 'Edit Supplier Details';
+            document.getElementById('modal-action').value = 'update_supplier';
+            document.getElementById('modal-supplier-id').value = sup.id;
+            document.getElementById('modal-name').value = sup.NAME || sup.name || '';
+            document.getElementById('modal-contact').value = sup.contact_details || '';
+            document.getElementById('modal-lead-time').value = sup.lead_time_days || 3;
+            document.getElementById('supplier-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('supplier-modal').classList.add('hidden');
+        }
     </script>
 </body>
 </html>

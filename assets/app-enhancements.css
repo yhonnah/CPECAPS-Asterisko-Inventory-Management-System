@@ -1,634 +1,316 @@
 /* =====================================================
-   ASTERISKO INVENTORY MANAGEMENT SYSTEM
-   Theme: Asterisko Navy Blue, Vibrant Orange, and White
-   Includes: Visual Redesign, Dual Light/Dark System, 
-             Animations & Responsive Polish
+   ASTERISKO INVENTORY MANAGEMENT SYSTEM - CANVA REDESIGN
+   Color Palette: Deep Navy (#0C2340), Vibrant Orange (#F28C28), Light Canvas (#F4F7FB)
+   Dual Light/Dark Architecture, Fluid Responsiveness & Polished UI
    ===================================================== */
 
-/* ---------- COLOR VARIABLES ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
-    /* Brand Primary: Asterisko Navy Palette */
-    --asterisko-navy: #102542;
-    --asterisko-navy-dark: #0A192F;
-    --asterisko-navy-light: #1B3A5B;
-    --asterisko-navy-surface: #142844;
-    --asterisko-navy-hover: #1E4168;
-
-    /* Brand Accent: Asterisko Warm Orange */
+    /* Brand Colors */
+    --asterisko-navy: #0C2340;
+    --asterisko-navy-dark: #071526;
+    --asterisko-navy-light: #132E52;
+    --asterisko-navy-border: #1B3F6E;
+    
     --asterisko-orange: #F28C28;
-    --asterisko-orange-hover: #DB7616;
-    --asterisko-orange-active: #C4630D;
-    --asterisko-orange-glow: rgba(242, 140, 40, 0.25);
+    --asterisko-orange-hover: #E07B18;
     --asterisko-orange-light: #FFF0DB;
-
-    /* Neutrals: Light Mode Canvas */
-    --asterisko-white: #FFFFFF;
+    --asterisko-orange-glow: rgba(242, 140, 40, 0.22);
+    
+    /* Light Mode Neutral Surfaces */
     --asterisko-bg: #F4F7FB;
+    --asterisko-card: #FFFFFF;
+    --asterisko-border: #E2E8F0;
     --asterisko-text: #1E293B;
     --asterisko-muted: #64748B;
-    --asterisko-border: #E2E8F0;
-
-    /* Dark Mode Palette Overrides */
-    --asterisko-border-dark: #1E3A5F;
-    --asterisko-text-dark: #F8FAFC;
-    --asterisko-muted-dark: #94A3B8;
-
-    /* System Statuses */
-    --asterisko-success: #15803D;
+    
+    /* Statuses */
     --asterisko-success-bg: #DCFCE7;
-    --asterisko-danger: #B91C1C;
+    --asterisko-success-text: #15803D;
+    --asterisko-warning-bg: #FFF0DB;
+    --asterisko-warning-text: #C26100;
     --asterisko-danger-bg: #FEE2E2;
-
-    /* Geometry & Depth */
-    --asterisko-radius: 12px;
-    --asterisko-shadow: 0 4px 16px rgba(16, 37, 66, 0.07);
-    --asterisko-shadow-hover: 0 10px 28px rgba(16, 37, 66, 0.14);
+    --asterisko-danger-text: #B91C1C;
+    
+    /* Elevation */
+    --asterisko-radius: 14px;
+    --asterisko-shadow: 0 4px 20px rgba(12, 35, 64, 0.05);
+    --asterisko-shadow-hover: 0 8px 24px rgba(12, 35, 64, 0.1);
 }
 
-/* ---------- GENERAL PAGE STYLING ---------- */
 html {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+}
+
+button, select, input, a, .drink-card {
+    touch-action: manipulation;
 }
 
 body {
     background-color: var(--asterisko-bg);
     color: var(--asterisko-text);
-    font-family: Arial, Helvetica, sans-serif;
-    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
 }
 
-/* Smooth transitions for interactive elements */
-a,
-button,
-input,
-select,
-textarea,
-[role="button"] {
-    transition:
-        color 0.2s ease,
-        background-color 0.2s ease,
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.15s ease,
-        opacity 0.2s ease;
+/* Dark Mode Overrides */
+html.dark body {
+    background-color: #071526;
+    color: #F8FAFC;
 }
 
-button,
-[role="button"],
-input[type="submit"],
-input[type="button"] {
-    touch-action: manipulation;
-    cursor: pointer;
+html.dark .bg-white {
+    background-color: #0C2340 !important;
 }
 
-/* ---------- TYPOGRAPHY & BRAND LOGO ---------- */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    color: var(--asterisko-navy);
+html.dark .bg-slate-50 {
+    background-color: #091B33 !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-100 {
+    border-color: #173863 !important;
+}
+
+html.dark .text-slate-800,
+html.dark .text-slate-900 {
+    color: #F8FAFC !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-600 {
+    color: #94A3B8 !important;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Metric Stat Cards */
+.stat-card {
+    background-color: #FFFFFF;
+    border-radius: 16px;
+    border: 1px solid #E8EEF5;
+    box-shadow: 0 2px 14px rgba(12, 35, 64, 0.04);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+html.dark .stat-card {
+    background-color: #0C2340;
+    border-color: #173863;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.2);
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(12, 35, 64, 0.08);
+}
+.stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--stat-accent, #F28C28);
+}
+
+/* Primary Action Buttons */
+.btn-primary,
+button[type="submit"]:not(.btn-secondary):not(.btn-danger) {
+    background-color: #F28C28 !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 14px rgba(242, 140, 40, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+.btn-primary:hover,
+button[type="submit"]:not(.btn-secondary):not(.btn-danger):hover {
+    background-color: #E07B18 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(242, 140, 40, 0.35) !important;
+}
+
+/* Secondary Buttons */
+.btn-secondary {
+    background-color: #0C2340 !important;
+    color: #FFFFFF !important;
+    border-radius: 12px !important;
+    transition: all 0.2s ease !important;
+}
+.btn-secondary:hover {
+    background-color: #132E52 !important;
+}
+
+/* Status Badges */
+.badge-good,
+.badge-active,
+.badge-confirmed {
+    background-color: #DCFCE7 !important;
+    color: #15803D !important;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+}
+html.dark .badge-good,
+html.dark .badge-active,
+html.dark .badge-confirmed {
+    background-color: rgba(22, 101, 52, 0.25) !important;
+    color: #4ADE80 !important;
 }
 
-p {
-    line-height: 1.6;
+.badge-low,
+.badge-warning,
+.badge-pending {
+    background-color: #FFF0DB !important;
+    color: #C26100 !important;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+}
+html.dark .badge-low,
+html.dark .badge-warning,
+html.dark .badge-pending {
+    background-color: rgba(194, 97, 0, 0.25) !important;
+    color: #FDBA74 !important;
 }
 
-/* Brand logo styling across headers */
-.text-emerald-500,
-.text-emerald-400 {
-    color: var(--asterisko-orange) !important;
+.badge-danger,
+.badge-spoilage,
+.badge-expired {
+    background-color: #FEE2E2 !important;
+    color: #B91C1C !important;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+}
+html.dark .badge-danger,
+html.dark .badge-spoilage,
+html.dark .badge-expired {
+    background-color: rgba(185, 28, 28, 0.25) !important;
+    color: #FCA5A5 !important;
 }
 
-/* Links */
-a {
-    color: var(--asterisko-navy-light);
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-}
-
-a:hover {
-    color: var(--asterisko-orange-hover);
-}
-
-/* ---------- NAVIGATION BAR & SIDEBAR ---------- */
-nav,
-aside,
-.sidebar,
-nav.sidebar,
-#sidebar,
-nav.bg-stone-900,
-nav.dark\:bg-black {
-    background-color: var(--asterisko-navy-dark) !important;
-    border-bottom: 1px solid var(--asterisko-border-dark) !important;
-    color: var(--asterisko-white);
-}
-
-/* Active navigation pill & role badge */
-nav a.bg-emerald-600,
-nav a.bg-emerald-700,
-nav a.active,
-nav span.bg-emerald-600,
-.sidebar a.active,
-#sidebar a.active,
-nav a[aria-current="page"] {
-    background-color: var(--asterisko-orange) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-    border-radius: 8px;
-}
-
-/* Inactive navigation links */
-nav a.bg-stone-800,
-aside a,
-.sidebar a,
-nav.sidebar a,
-#sidebar a {
-    background-color: #152B47 !important;
-    color: #E2E8F0 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 8px;
-}
-
-nav a.bg-stone-800:hover,
-aside a:hover,
-.sidebar a:hover,
-nav.sidebar a:hover,
-#sidebar a:hover {
-    background-color: var(--asterisko-navy-light) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-orange) !important;
-}
-
-/* ---------- BUTTONS (NAVY & ORANGE ACCENTS) ---------- */
-button.bg-blue-600,
-button.bg-blue-700,
-a.bg-blue-600,
-a.bg-blue-700,
-button.bg-emerald-600,
-button.bg-emerald-700,
-a.bg-emerald-600,
-a.bg-emerald-700,
-button.bg-emerald-800,
-a.bg-emerald-800,
-input[type="submit"],
-button[type="submit"],
-a.bg-indigo-600,
-button.bg-indigo-600 {
-    background-color: var(--asterisko-orange) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-    border-radius: 8px;
-}
-
-button.bg-blue-600:hover,
-button.bg-blue-700:hover,
-a.bg-blue-600:hover,
-a.bg-blue-700:hover,
-button.bg-emerald-600:hover,
-button.bg-emerald-700:hover,
-a.bg-emerald-600:hover,
-a.bg-emerald-700:hover,
-input[type="submit"]:hover,
-button[type="submit"]:hover,
-a.bg-indigo-600:hover,
-button.bg-indigo-600:hover {
-    background-color: var(--asterisko-orange-hover) !important;
-    border-color: var(--asterisko-orange-hover) !important;
-    color: var(--asterisko-white) !important;
-    box-shadow: 0 4px 16px var(--asterisko-orange-glow) !important;
-}
-
-/* Quick Deduct & Quick Waste actions */
-button[name="action"][value="quick_deduct"],
-.btn-deduct {
-    background-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-}
-button[name="action"][value="quick_deduct"]:hover,
-.btn-deduct:hover {
-    background-color: var(--asterisko-orange-hover) !important;
-    color: #FFFFFF !important;
-}
-
-button[name="action"][value="quick_waste"],
-.btn-waste {
-    background-color: #B91C1C !important;
-    color: #FFFFFF !important;
-    font-weight: 600 !important;
-}
-button[name="action"][value="quick_waste"]:hover,
-.btn-waste:hover {
-    background-color: #991B1B !important;
-}
-
-/* ---------- CARDS AND PANELS ---------- */
-.card,
-.dashboard-card,
-.panel,
-.bg-white.rounded-lg,
-.bg-white.rounded-xl,
-.bg-white.rounded-2xl {
-    border: 1px solid var(--asterisko-border);
-    border-radius: var(--asterisko-radius);
-    box-shadow: var(--asterisko-shadow);
-}
-
-/* ---------- TABLES ---------- */
+/* Tables */
 table {
     border-collapse: separate;
     border-spacing: 0;
     width: 100%;
 }
-
-thead,
-table thead,
-thead.bg-stone-50,
-thead.bg-stone-100 {
-    background-color: var(--asterisko-navy) !important;
-    color: var(--asterisko-white) !important;
-}
-
-thead th,
 table thead th {
-    background-color: transparent !important;
-    color: var(--asterisko-white) !important;
-    font-weight: 700;
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    background-color: #F8FAFC !important;
+    color: #64748B !important;
+    font-weight: 700 !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    padding: 12px 16px !important;
+}
+html.dark table thead th {
+    background-color: #091B33 !important;
+    color: #94A3B8 !important;
+    border-bottom: 1px solid #173863 !important;
+}
+table tbody td {
+    padding: 14px 16px !important;
+    border-bottom: 1px solid #F1F5F9 !important;
+    font-size: 0.875rem !important;
+}
+html.dark table tbody td {
+    border-bottom: 1px solid #142E50 !important;
+}
+table tbody tr {
+    transition: background-color 0.15s ease;
+}
+table tbody tr:hover {
+    background-color: #F8FAFC;
+}
+html.dark table tbody tr:hover {
+    background-color: #10294A;
 }
 
-tbody tr {
-    background-color: var(--asterisko-white) !important;
-    color: var(--asterisko-text) !important;
-    transition: background-color 0.2s ease;
-}
-
-tbody tr:hover {
-    background-color: #FFF7ED !important;
-}
-
-tbody td {
-    border-bottom: 1px solid var(--asterisko-border);
-    padding: 12px 16px;
-    color: var(--asterisko-text);
-}
-
-/* Secondary column text readability in light mode */
-tbody td .text-stone-500,
-tbody td .text-stone-400,
-tbody td.text-stone-500 {
-    color: #475569 !important;
-}
-
-/* ---------- INPUTS AND FORMS ---------- */
-input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+/* Form Inputs & Selects */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
 select,
 textarea {
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    background-color: var(--asterisko-white);
-    color: var(--asterisko-text);
-    padding: 10px 12px;
-    max-width: 100%;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    background-color: #FFFFFF;
+    color: #1E293B;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Ensure inputs with icon containers preserve ample padding without text collisions */
+input.has-icon-left,
+input[class*="pl-10"],
+input[class*="pl-11"],
+input[class*="pl-12"] {
+    padding-left: 2.75rem !important;
+}
+
+input.has-icon-left-sm,
+input[class*="pl-9"] {
+    padding-left: 2.25rem !important;
+}
+
+input.has-icon-right,
+input[class*="pr-10"],
+input[class*="pr-11"],
+input[class*="pr-12"] {
+    padding-right: 2.75rem !important;
+}
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="date"],
+html.dark select,
+html.dark textarea {
+    background-color: #07172C;
+    border-color: #173863;
+    color: #F8FAFC;
+}
 input:focus,
 select:focus,
 textarea:focus {
-    border-color: var(--asterisko-orange) !important;
+    border-color: #F28C28 !important;
+    box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.2) !important;
     outline: none !important;
-    box-shadow: 0 0 0 3px var(--asterisko-orange-glow) !important;
 }
 
-input::placeholder,
-textarea::placeholder {
-    color: #94A3B8;
-}
-
-/* Keyboard accessibility */
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible,
-a:focus-visible {
-    outline: 2px solid var(--asterisko-orange);
-    outline-offset: 3px;
-}
-
-/* ---------- BADGES AND STATUS LABELS ---------- */
-.badge,
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 700;
-}
-
-.badge-warning,
-.status-low,
-.status-pending {
-    background-color: var(--asterisko-orange-light);
-    color: #9A4D00;
-}
-
-.badge-success,
-.status-active,
-.status-completed {
-    background-color: var(--asterisko-success-bg);
-    color: var(--asterisko-success);
-}
-
-.badge-danger,
-.status-danger,
-.status-inactive {
-    background-color: var(--asterisko-danger-bg);
-    color: var(--asterisko-danger);
-}
-
-/* =====================================================
-   DARK MODE ARCHITECTURE (ASTERISKO MIDNIGHT)
-   Scoped specifically under html.dark for seamless parity
-   ===================================================== */
-html.dark body {
-    background-color: var(--asterisko-navy-dark) !important;
-    color: var(--asterisko-text-dark) !important;
-}
-
-html.dark h1,
-html.dark h2,
-html.dark h3,
-html.dark h4,
-html.dark h5,
-html.dark h6 {
-    color: #FFFFFF !important;
-}
-
-/* Dark mode cards & panels (scoped to containers, not buttons) */
-html.dark .card,
-html.dark .dashboard-card,
-html.dark .panel,
-html.dark div.bg-stone-800,
-html.dark div.bg-stone-900,
-html.dark div.dark\:bg-stone-800,
-html.dark div.dark\:bg-stone-900,
-html.dark div.dark\:bg-stone-950,
-html.dark section[class*="bg-stone-800"],
-html.dark section[class*="bg-stone-900"],
-html.dark div[class*="bg-stone-800"],
-html.dark div[class*="bg-stone-900"],
-html.dark div[class*="bg-white"] {
-    background-color: var(--asterisko-navy) !important;
-    border-color: var(--asterisko-border-dark) !important;
-    color: var(--asterisko-text-dark) !important;
-}
-
-/* Ensure Submit & Filter Action Buttons Remain Vibrant Asterisko Orange in Dark Mode */
-html.dark button[type="submit"],
-html.dark input[type="submit"],
-html.dark button.btn-primary,
-html.dark a.btn-primary,
-html.dark .btn-deduct,
-html.dark button[name="action"][value="quick_deduct"] {
-    background-color: var(--asterisko-orange) !important;
-    border-color: var(--asterisko-orange) !important;
-    color: var(--asterisko-navy-dark) !important;
-    font-weight: 700 !important;
-}
-
-html.dark button[type="submit"]:hover,
-html.dark input[type="submit"]:hover,
-html.dark button.btn-primary:hover,
-html.dark a.btn-primary:hover,
-html.dark .btn-deduct:hover,
-html.dark button[name="action"][value="quick_deduct"]:hover {
-    background-color: var(--asterisko-orange-hover) !important;
-    border-color: var(--asterisko-orange-hover) !important;
-    color: #FFFFFF !important;
-    box-shadow: 0 4px 16px var(--asterisko-orange-glow) !important;
-}
-
-/* Dark mode tables (resolves invisible text and white boxes) */
-html.dark thead,
-html.dark table thead,
-html.dark thead.bg-stone-50,
-html.dark thead.bg-stone-100,
-html.dark thead.dark\:bg-stone-800 {
-    background-color: #071324 !important;
-    border-bottom: 2px solid var(--asterisko-border-dark) !important;
-}
-
-html.dark table thead th {
-    color: #FFFFFF !important;
-}
-
-html.dark table tbody tr {
-    background-color: var(--asterisko-navy) !important;
-    color: var(--asterisko-text-dark) !important;
-}
-
-html.dark table tbody tr:hover {
-    background-color: var(--asterisko-navy-hover) !important;
-}
-
-html.dark table tbody td {
-    border-bottom: 1px solid var(--asterisko-border-dark) !important;
-    color: #E2E8F0 !important;
-}
-
-/* Ensure text inside table cells remains crisp in dark mode */
-html.dark table tbody td span,
-html.dark table tbody td div,
-html.dark table tbody td p {
-    color: inherit;
-}
-
-/* Dark mode inputs, selects & textareas */
-html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-html.dark select,
-html.dark textarea {
-    background-color: #0B1D35 !important;
-    border: 1px solid var(--asterisko-border-dark) !important;
-    color: #F8FAFC !important;
-}
-
-html.dark input::placeholder,
-html.dark textarea::placeholder {
-    color: #64748B !important;
-}
-
-html.dark input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.85);
-}
-
-/* Dark mode secondary buttons & borders */
-html.dark .border-stone-700,
-html.dark .border-stone-800,
-html.dark .border-stone-200 {
-    border-color: var(--asterisko-border-dark) !important;
-}
-
-html.dark .text-stone-300,
-html.dark .text-stone-400 {
-    color: var(--asterisko-muted-dark) !important;
-}
-
-/* ---------- ANIMATIONS ---------- */
-@keyframes asteriskoFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes asteriskoFade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes asteriskoSlideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-@keyframes asteriskoPop {
-    0% { transform: scale(0.97); }
-    70% { transform: scale(1.015); }
-    100% { transform: scale(1); }
-}
-
-@keyframes asteriskoPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0); }
-    50% { box-shadow: 0 0 0 5px rgba(242, 140, 40, 0.12); }
-}
-
-/* Smooth page load animations */
-main {
-    animation: asteriskoFadeIn 0.35s ease-out both;
-}
-
-.dashboard-card,
-.card {
-    animation: asteriskoFadeIn 0.4s ease-out both;
-}
-
-/* Mouse hover elevations */
-@media (hover: hover) and (pointer: fine) {
-    .dashboard-card:hover,
-    .card:hover,
-    .panel:hover {
-        box-shadow: var(--asterisko-shadow-hover);
-        transform: translateY(-2px);
-    }
-
-    button:hover,
-    [role="button"]:hover {
-        filter: brightness(1.04);
-    }
-}
-
-/* Button press feedback */
-button:active,
-[role="button"]:active,
-input[type="submit"]:active {
-    transform: scale(0.98);
-}
-
-/* ---------- IMAGES AND ICONS ---------- */
-img,
-video,
-canvas {
-    max-width: 100%;
-    height: auto;
-}
-
-svg {
-    flex-shrink: 0;
-}
-
-/* ---------- RESPONSIVE TABLETS AND PHONES ---------- */
-@media (max-width: 767px) {
-    body {
-        font-size: 15px;
-    }
-
-    main {
-        padding-left: 12px;
-        padding-right: 12px;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-    }
-
-    h2 {
-        font-size: 1.25rem;
-    }
-
-    input:not([type="checkbox"]):not([type="radio"]),
-    select,
-    textarea {
-        font-size: 16px;
-    }
-
-    /* Preserve tables while allowing horizontal scrolling */
-    .overflow-x-auto {
-        max-width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .overflow-x-auto table {
-        min-width: 560px;
-    }
-
-    button,
-    input[type="submit"],
-    input[type="button"] {
-        min-height: 40px;
-    }
-
-    .dashboard-card,
-    .card,
-    .panel {
-        border-radius: 10px;
-    }
-}
-
-/* ---------- REDUCE ANIMATION WHEN REQUESTED ---------- */
-@media (prefers-reduced-motion: reduce) {
-    html {
-        scroll-behavior: auto;
-    }
-
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
+/* Modals */
+.modal-overlay {
+    background: rgba(12, 35, 64, 0.55);
+    backdrop-filter: blur(4px);
 }

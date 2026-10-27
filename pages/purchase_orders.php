@@ -143,452 +143,410 @@ $recentOrders = $pdo->query("
     ORDER BY po.created_at DESC
     LIMIT 20
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+$totalOrdersCount = count($recentOrders);
+$orderedPendingCount = count(array_filter($recentOrders, fn($o) => $o['status'] === 'ordered'));
+$totalPoSpend = array_sum(array_column($recentOrders, 'total_amount'));
+
+$activePage = 'purchase_orders';
+$pageTitle = 'Purchase Orders - Asterisko Inventory';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Orders & Pre-Orders - Asterisko</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' };
-        try {
-            const saved = localStorage.getItem('theme');
-            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-            }
-        } catch (e) {}
-    </script>
+    <?php require_once __DIR__ . '/../includes/head.php'; ?>
     <style>
         @media print {
-            nav, #create-po-card, #recent-orders-card, .no-print { display: none !important; }
-            body { background: white !important; color: black !important; font-size: 12pt; }
+            aside, header, #sidebar-backdrop, .no-print { display: none !important; }
+            .lg\:pl-64 { padding-left: 0 !important; }
+            body { background: white !important; color: black !important; font-size: 11pt; }
             #printable-invoice { display: block !important; border: none !important; box-shadow: none !important; margin: 0; padding: 0; }
         }
     </style>
-
-<link rel="stylesheet" href="../assets/app-enhancements.css">
-
 </head>
-<body class="bg-stone-100 dark:bg-stone-950 text-stone-800 dark:text-stone-200 min-h-screen">
+<body class="bg-[#F4F7FB] dark:bg-[#071526] text-slate-800 dark:text-slate-100 min-h-screen">
 
-    <!-- Top Navbar -->
-    <nav class="bg-stone-900 dark:bg-black text-white px-4 py-3 flex justify-between items-center border-b border-stone-800 no-print">
-        <div class="flex items-center gap-3">
-            <a href="dashboard.php" class="text-emerald-400 hover:text-emerald-300 text-sm font-semibold flex items-center gap-1">
-                &larr; Dashboard
-            </a>
-            <span class="text-stone-600">|</span>
-            <span class="font-bold text-base sm:text-lg">Purchase Order & Pre-Order Generator</span>
-            <span class="text-xs bg-emerald-600 px-2 py-0.5 rounded uppercase font-semibold"><?= htmlspecialchars($role) ?></span>
-        </div>
-        <div class="flex items-center gap-3 text-sm">
-            <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
-                    class="p-1.5 rounded-full bg-stone-700 hover:bg-stone-600 text-emerald-300 transition">
-                <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-                <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-            </button>
-            <a href="logout.php" class="bg-stone-700 hover:bg-stone-600 px-3 py-1 rounded text-xs">Logout</a>
-        </div>
-    </nav>
+    <!-- Left Sidebar -->
+    <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
-    <div class="max-w-5xl mx-auto p-4 space-y-6">
+    <!-- Main Content Wrapper -->
+    <div class="lg:pl-64 flex flex-col min-h-screen">
+        
+        <!-- Topbar -->
+        <?php require_once __DIR__ . '/../includes/topbar.php'; ?>
 
-        <?php if ($message): ?>
-            <div class="p-3.5 rounded-xl text-sm font-medium border <?= $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800' ?>">
-                <?= htmlspecialchars($message) ?>
+        <!-- Canvas Body -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+
+            <!-- Title & Top Actions -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Purchase Orders & Pre-Orders</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate formal purchase orders, track vendor lead times, and export printable documents.</p>
+                </div>
+                <button onclick="document.getElementById('create-po-section').scrollIntoView({behavior: 'smooth'})" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span>+ New Order</span>
+                </button>
             </div>
-        <?php endif; ?>
 
-        <!-- Printable PO / Invoice View if Selected -->
-        <?php if ($poData): ?>
-            <div id="printable-invoice" class="bg-white dark:bg-stone-900 rounded-xl shadow-lg p-6 sm:p-8 border border-stone-200 dark:border-stone-800">
-                <div class="flex justify-between items-start border-b border-stone-200 dark:border-stone-800 pb-5 mb-5">
-                    <div>
-                        <h1 class="text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-500">Asterisko Artisan Coffee</h1>
-                        <p class="text-xs text-stone-500 mt-0.5">Inventory Operations & Procurement System</p>
-                        <div class="mt-3 text-xs">
-                            <span class="font-bold text-stone-700 dark:text-stone-300 uppercase">Vendor / Supplier:</span>
-                            <p class="text-sm font-semibold text-stone-900 dark:text-stone-100"><?= htmlspecialchars($poData['supplier_name']) ?></p>
-                            <p class="text-stone-500"><?= htmlspecialchars($poData['contact_details'] ?? 'No contact info') ?></p>
-                            <p class="text-[11px] text-stone-400">Lead Time: <?= (int)$poData['lead_time_days'] ?> Days</p>
+            <!-- Messages Feedback -->
+            <?php if ($message): ?>
+                <div class="no-print p-4 rounded-xl text-sm font-medium flex items-center gap-2 <?= $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-800' ?>">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?= $messageType === 'success' ? 'M5 13l4 4L19 7' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' ?>"/></svg>
+                    <span><?= htmlspecialchars($message) ?></span>
+                </div>
+            <?php endif; ?>
+
+            <!-- Printable Formal Invoice / PO View (When view_po is clicked) -->
+            <?php if ($poData): ?>
+            <div id="printable-invoice" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#15345C] p-6 sm:p-10 mb-8 space-y-6">
+                <div class="flex justify-between items-start pb-6 border-b border-slate-200 dark:border-[#15345C]">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl overflow-hidden bg-[#FEF2DA] border border-slate-200 dark:border-[#1C3E69] p-1 flex items-center justify-center shadow-sm">
+                            <img src="../assets/logo.png" alt="Asterisko" class="w-full h-full object-contain rounded-xl">
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-black tracking-wider uppercase text-slate-900 dark:text-white">ASTERISKO</h2>
+                            <p class="text-xs text-slate-500 font-medium">Inventory & Supply Management</p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="inline-block bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold px-3 py-1 rounded uppercase tracking-wider mb-2">
-                            <?= htmlspecialchars(strtoupper(str_replace('_', ' ', $poData['order_type']))) ?>
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1 <?= $poData['order_type'] === 'pre_order' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' ?>">
+                            <?= $poData['order_type'] === 'pre_order' ? 'PRE-ORDER NOTICE' : 'OFFICIAL PURCHASE ORDER' ?>
                         </span>
-                        <h2 class="text-xl font-mono font-bold text-stone-900 dark:text-stone-100"><?= htmlspecialchars($poData['po_number']) ?></h2>
-                        <p class="text-xs text-stone-500 mt-1">Date: <?= date('M d, Y h:i A', strtotime($poData['created_at'])) ?></p>
-                        <p class="text-xs text-stone-500">Created by: <b><?= htmlspecialchars($poData['created_by']) ?></b></p>
+                        <h3 class="text-xl font-mono font-bold text-slate-900 dark:text-white"><?= htmlspecialchars($poData['po_number']) ?></h3>
+                        <p class="text-xs text-slate-400">Date: <?= date('F j, Y', strtotime($poData['created_at'])) ?></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 text-xs">
+                    <div>
+                        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-1">Vendor / Supplier:</span>
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white"><?= htmlspecialchars($poData['supplier_name']) ?></h4>
+                        <p class="text-slate-500 mt-0.5 whitespace-pre-line"><?= htmlspecialchars($poData['contact_details']) ?></p>
+                        <p class="text-slate-500 mt-1">Lead Time: <b><?= $poData['lead_time_days'] ?> days</b></p>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-bold uppercase tracking-wider text-slate-400 block mb-1">Deliver To:</span>
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white">Asterisko Main Terminals</h4>
+                        <p class="text-slate-500 mt-0.5">Authorized Issuer: <b><?= htmlspecialchars($poData['created_by']) ?></b></p>
+                        <p class="text-slate-500 mt-1">Order Status: <b class="uppercase <?= $poData['status'] === 'ordered' ? 'text-[#F28C28]' : ($poData['status'] === 'received' ? 'text-emerald-600' : 'text-rose-600') ?>"><?= htmlspecialchars($poData['status']) ?></b></p>
                     </div>
                 </div>
 
                 <!-- PO Items Table -->
-                <table class="w-full text-left text-xs mb-6">
-                    <thead class="bg-stone-100 dark:bg-stone-800 uppercase font-semibold text-stone-600 dark:text-stone-300 border-y border-stone-200 dark:border-stone-700">
-                        <tr>
-                            <th class="p-2.5">#</th>
-                            <th class="p-2.5">Item Description</th>
-                            <th class="p-2.5 text-right">Order Qty</th>
-                            <th class="p-2.5 text-right">Unit Price</th>
-                            <th class="p-2.5 text-right">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
-                        <?php foreach ($poItems as $idx => $it): ?>
+                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-[#15345C]">
+                    <table class="w-full text-xs text-left">
+                        <thead>
                             <tr>
-                                <td class="p-2.5 text-stone-400 font-mono"><?= $idx + 1 ?></td>
-                                <td class="p-2.5 font-semibold text-stone-900 dark:text-stone-100"><?= htmlspecialchars($it['item_name']) ?></td>
-                                <td class="p-2.5 text-right font-mono font-bold"><?= number_format($it['quantity'], 2) ?> <?= htmlspecialchars($it['unit']) ?></td>
-                                <td class="p-2.5 text-right font-mono">₱<?= number_format($it['unit_price'], 2) ?></td>
-                                <td class="p-2.5 text-right font-mono font-bold">₱<?= number_format($it['subtotal'], 2) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot class="border-t-2 border-stone-300 dark:border-stone-700 font-bold">
-                        <tr>
-                            <td colspan="4" class="p-3 text-right uppercase text-xs">Total Order Value:</td>
-                            <td class="p-3 text-right font-mono text-base text-emerald-700 dark:text-emerald-400">₱<?= number_format($poData['total_amount'], 2) ?></td>
-                        </tr>
-                    </tfoot>
-                </table>
-
-                <?php if (!empty($poData['notes'])): ?>
-                    <div class="mb-6 p-3 bg-stone-50 dark:bg-stone-800 rounded-lg text-xs text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
-                        <b>Order Instructions / Notes:</b> <?= htmlspecialchars($poData['notes']) ?>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Signatures -->
-                <div class="grid grid-cols-2 gap-8 pt-8 mt-6 border-t border-stone-200 dark:border-stone-800 text-xs">
-                    <div>
-                        <p class="text-stone-400 mb-8">Authorized Store Signature:</p>
-                        <div class="border-b border-stone-400 w-48"></div>
-                        <p class="font-semibold text-stone-800 dark:text-stone-200 mt-1"><?= htmlspecialchars($poData['created_by']) ?></p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-stone-400 mb-8">Supplier Acknowledgment & Delivery Date:</p>
-                        <div class="border-b border-stone-400 w-48 ml-auto"></div>
-                        <p class="text-stone-500 mt-1">Received By / Date</p>
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3 no-print">
-                    <button onclick="window.print()" class="px-5 py-2 bg-stone-800 hover:bg-black text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                        Print Invoice / Delivery Note
-                    </button>
-                    <a href="purchase_orders.php" class="px-4 py-2 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800">
-                        Create Another PO
-                    </a>
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <!-- Create PO Form Card -->
-        <div id="create-po-card" class="bg-white dark:bg-stone-900 rounded-xl shadow p-5 border border-stone-200 dark:border-stone-800">
-            <h2 class="text-base font-bold text-stone-900 dark:text-stone-100 mb-1 flex items-center gap-2">
-                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Generate New Pre-Order or Purchase Order
-            </h2>
-            <p class="text-xs text-stone-500 mb-4">Construct orders addressed to registered suppliers. Automatically calculates line totals and formats printable invoices.</p>
-
-            <form id="po-form" method="POST" class="space-y-4 text-xs">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                <input type="hidden" name="action" value="create_po">
-                <input type="hidden" name="items_json" id="po_items_json" value="[]">
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Select Supplier *</label>
-                        <select name="supplier_id" id="supplier-select" required onchange="handleSupplierChange()"
-                                class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 font-medium">
-                            <option value="">-- Choose Supplier --</option>
-                            <?php foreach ($suppliers as $s): ?>
-                                <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['NAME'] ?? $s['name']) ?> (<?= $s['lead_time_days'] ?>d lead)</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block font-semibold mb-1">Order Document Type *</label>
-                        <select name="order_type" class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 font-medium">
-                            <option value="purchase_order">Standard Purchase Order</option>
-                            <option value="pre_order">Pre-Order (Advance Booking)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block font-semibold mb-1">Order Instructions / Notes</label>
-                        <input type="text" name="notes" placeholder="e.g., Deliver before 9AM, call barista upon arrival"
-                               class="w-full p-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800">
-                    </div>
-                </div>
-
-                <!-- Supplier Items Quick Add Helper -->
-                <div id="quick-add-container" class="hidden p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-emerald-900 dark:text-emerald-200 text-xs">Supplier Item Catalog & Low-Stock Auto-Detect:</span>
-                        <button type="button" onclick="autoAddLowStock()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 rounded text-[11px] font-semibold">
-                            ⚡ Auto-Add Items Below ROP
-                        </button>
-                    </div>
-                    <div id="supplier-chips" class="flex flex-wrap gap-1.5 pt-1"></div>
-                </div>
-
-                <!-- Order Line Items Table -->
-                <div class="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden">
-                    <div class="p-3 bg-stone-50 dark:bg-stone-800 border-b border-stone-200 dark:border-stone-700 flex justify-between items-center">
-                        <span class="font-bold uppercase tracking-wider text-[11px] text-stone-600 dark:text-stone-300">Order Line Items</span>
-                        <button type="button" onclick="addCustomRow()" class="text-xs font-semibold text-emerald-600 hover:underline">+ Add Custom Line</button>
-                    </div>
-                    <table class="w-full text-left">
-                        <thead class="bg-stone-100 dark:bg-stone-800/80 uppercase font-semibold text-stone-500 text-[10px]">
-                            <tr>
-                                <th class="p-2.5">Stock Item</th>
-                                <th class="p-2.5 w-24">Order Qty</th>
-                                <th class="p-2.5 w-20">Unit</th>
-                                <th class="p-2.5 w-28">Unit Price (₱)</th>
-                                <th class="p-2.5 w-28 text-right">Subtotal</th>
-                                <th class="p-2.5 w-10 text-center">Del</th>
+                                <th>Item Description</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th class="text-right">Subtotal</th>
                             </tr>
                         </thead>
-                        <tbody id="po-lines-tbody" class="divide-y divide-stone-200 dark:divide-stone-800">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                        <tfoot class="bg-stone-50 dark:bg-stone-800/50 font-bold border-t border-stone-200 dark:border-stone-700">
+                        <tbody>
+                            <?php foreach ($poItems as $line): ?>
                             <tr>
-                                <td colspan="4" class="p-3 text-right uppercase text-xs">Grand Total (₱):</td>
-                                <td id="po-grand-total" class="p-3 text-right font-mono text-base text-emerald-700 dark:text-emerald-400">₱0.00</td>
-                                <td></td>
+                                <td class="font-bold text-slate-900 dark:text-white"><?= htmlspecialchars($line['item_name']) ?></td>
+                                <td class="font-mono"><?= number_format($line['quantity'], 2) ?> <?= htmlspecialchars($line['unit']) ?></td>
+                                <td class="font-mono">₱<?= number_format($line['unit_price'], 2) ?></td>
+                                <td class="font-mono font-bold text-right">₱<?= number_format($line['subtotal'], 2) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-slate-50 dark:bg-[#07172C] font-bold text-sm">
+                                <td colspan="3" class="text-right py-3 px-4 uppercase text-slate-500">Total Purchase Amount:</td>
+                                <td class="text-right py-3 px-4 font-mono font-black text-slate-900 dark:text-white">₱<?= number_format($poData['total_amount'], 2) ?></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" onclick="submitPoForm()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-lg transition shadow flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                        Finalize & Generate Order Invoice
+                <div class="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-[#15345C] no-print">
+                    <div class="flex items-center gap-2">
+                        <form method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                            <input type="hidden" name="action" value="update_status">
+                            <input type="hidden" name="po_id" value="<?= $poData['id'] ?>">
+                            <select name="status" onchange="this.form.submit()" class="text-xs p-1.5 rounded-lg border border-slate-300 dark:border-[#173863] bg-white dark:bg-[#07172C]">
+                                <option value="ordered" <?= $poData['status'] === 'ordered' ? 'selected' : '' ?>>Status: Ordered (Pending)</option>
+                                <option value="received" <?= $poData['status'] === 'received' ? 'selected' : '' ?>>Status: Received</option>
+                                <option value="cancelled" <?= $poData['status'] === 'cancelled' ? 'selected' : '' ?>>Status: Cancelled</option>
+                            </select>
+                        </form>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="btn-primary px-5 py-2 rounded-xl text-xs font-bold shadow-md">
+                            Print / Save PDF
+                        </button>
+                        <a href="purchase_orders.php" class="px-4 py-2 border border-slate-300 dark:border-[#173863] rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                            Close
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- 3 Metric Cards (Canva Layout) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 no-print">
+                <div class="stat-card p-5" style="--stat-accent: #0C2340;">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Orders</span>
+                    <div class="mt-3">
+                        <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight"><?= sprintf('%02d', $totalOrdersCount) ?></span>
+                        <p class="text-xs text-slate-400 mt-1">Generated purchase records</p>
+                    </div>
+                </div>
+                <div class="stat-card p-5" style="--stat-accent: #F28C28;">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Orders</span>
+                    <div class="mt-3">
+                        <span class="text-3xl font-extrabold text-[#F28C28] tracking-tight"><?= sprintf('%02d', $orderedPendingCount) ?></span>
+                        <p class="text-xs text-[#F28C28] font-semibold mt-1">Awaiting vendor delivery</p>
+                    </div>
+                </div>
+                <div class="stat-card p-5" style="--stat-accent: #10B981;">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Value</span>
+                    <div class="mt-3">
+                        <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">₱<?= number_format($totalPoSpend, 2) ?></span>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">Order commitments</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Purchase Order Section -->
+            <div id="create-po-section" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-6 no-print">
+                <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Create Purchase Order or Pre-Order</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Select preferred vendor, add line items or auto-fill items below reorder point.</p>
+                    </div>
+                    <button type="button" onclick="autoFillLowStock()" class="btn-secondary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm">
+                        Auto-Fill Low Stock Items
                     </button>
                 </div>
-            </form>
-        </div>
 
-        <!-- Recent Purchase Orders Table -->
-        <div id="recent-orders-card" class="bg-white dark:bg-stone-900 rounded-xl shadow overflow-hidden border border-stone-200 dark:border-stone-800">
-            <div class="p-4 border-b border-stone-200 dark:border-stone-800">
-                <h3 class="text-sm font-bold text-stone-900 dark:text-stone-100">Recent Purchase Orders & Invoices</h3>
-                <p class="text-xs text-stone-500">Historical records of generated supplier orders.</p>
+                <form method="POST" id="po-form" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                    <input type="hidden" name="action" value="create_po">
+                    <input type="hidden" name="items_json" id="po-items-json" value="[]">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Target Supplier *</label>
+                            <select name="supplier_id" id="po-supplier-select" required class="w-full">
+                                <option value="">-- Choose Supplier --</option>
+                                <?php foreach ($suppliers as $s): ?>
+                                    <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['NAME'] ?? $s['name']) ?> (<?= $s['lead_time_days'] ?>d lead)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Order Type</label>
+                            <select name="order_type" class="w-full">
+                                <option value="purchase_order">Standard Purchase Order</option>
+                                <option value="pre_order">Pre-Order (Advance Notice)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Internal Notes</label>
+                            <input type="text" name="notes" placeholder="Delivery instructions or PO notes..." class="w-full">
+                        </div>
+                    </div>
+
+                    <!-- Line Items Table -->
+                    <div class="rounded-xl border border-slate-200 dark:border-[#15345C] overflow-hidden">
+                        <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#15345C] flex justify-between items-center">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Order Line Items</span>
+                            <button type="button" onclick="addPoRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18]">+ Add Line</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left" id="po-lines-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Order Qty</th>
+                                        <th>Unit Cost (₱)</th>
+                                        <th class="text-right">Line Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="po-lines-body">
+                                    <tr id="empty-po-row">
+                                        <td colspan="5" class="text-center py-6 text-slate-400">Click "+ Add Line" or "Auto-Fill Low Stock Items" to populate.</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-slate-50 dark:bg-[#07172C] font-bold">
+                                        <td colspan="3" class="text-right py-2.5 px-4 text-slate-500">Grand Total:</td>
+                                        <td class="text-right py-2.5 px-4 font-mono text-sm text-[#F28C28]" id="grand-total-display">₱0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                            Generate Purchase Order
+                        </button>
+                    </div>
+                </form>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-stone-50 dark:bg-stone-800 uppercase font-semibold text-stone-500 border-b border-stone-200 dark:border-stone-700">
-                        <tr>
-                            <th class="p-3">Order Number</th>
-                            <th class="p-3">Date</th>
-                            <th class="p-3">Supplier</th>
-                            <th class="p-3">Lines</th>
-                            <th class="p-3">Total Amount</th>
-                            <th class="p-3">Status</th>
-                            <th class="p-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
-                        <?php if (empty($recentOrders)): ?>
-                            <tr><td colspan="7" class="p-4 text-center text-stone-500">No purchase orders created yet.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($recentOrders as $ro): ?>
-                                <tr class="hover:bg-stone-50 dark:hover:bg-stone-800/50">
-                                    <td class="p-3 font-mono font-bold text-stone-900 dark:text-stone-100">
-                                        <?= htmlspecialchars($ro['po_number']) ?>
-                                    </td>
-                                    <td class="p-3 text-stone-500">
-                                        <?= date('M d, Y', strtotime($ro['created_at'])) ?>
-                                    </td>
-                                    <td class="p-3 font-semibold text-stone-800 dark:text-stone-200">
-                                        <?= htmlspecialchars($ro['supplier_name']) ?>
-                                    </td>
-                                    <td class="p-3 font-mono">
-                                        <?= (int)$ro['total_lines'] ?> items
-                                    </td>
-                                    <td class="p-3 font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                                        ₱<?= number_format($ro['total_amount'], 2) ?>
-                                    </td>
-                                    <td class="p-3">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
-                                            <?= $ro['status'] === 'received' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' ?>">
-                                            <?= htmlspecialchars($ro['status']) ?>
+
+            <!-- Recent Orders Directory Table -->
+            <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden no-print">
+                <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Recent Purchase Orders</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Track and manage vendor procurement status</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead>
+                            <tr>
+                                <th>PO Number</th>
+                                <th>Supplier</th>
+                                <th>Type</th>
+                                <th>Lines</th>
+                                <th>Total Amount</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($recentOrders) === 0): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center py-8 text-slate-400">No purchase orders generated yet.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($recentOrders as $ro): ?>
+                                <tr>
+                                    <td class="font-mono font-bold text-slate-900 dark:text-white"><?= htmlspecialchars($ro['po_number']) ?></td>
+                                    <td class="font-semibold"><?= htmlspecialchars($ro['supplier_name']) ?></td>
+                                    <td>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase <?= $ro['order_type'] === 'pre_order' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' ?>">
+                                            <?= $ro['order_type'] === 'pre_order' ? 'Pre-Order' : 'Standard' ?>
                                         </span>
                                     </td>
-                                    <td class="p-3 text-right space-x-2">
-                                        <a href="purchase_orders.php?view_po=<?= $ro['id'] ?>" class="text-emerald-600 hover:underline font-semibold">View / Print</a>
+                                    <td class="font-mono"><?= $ro['total_lines'] ?> items</td>
+                                    <td class="font-mono font-bold">₱<?= number_format($ro['total_amount'], 2) ?></td>
+                                    <td class="text-slate-500 whitespace-nowrap"><?= substr($ro['created_at'], 0, 10) ?></td>
+                                    <td>
+                                        <?php if ($ro['status'] === 'ordered'): ?>
+                                            <span class="badge-pending">Ordered</span>
+                                        <?php elseif ($ro['status'] === 'received'): ?>
+                                            <span class="badge-good">Received</span>
+                                        <?php else: ?>
+                                            <span class="badge-danger">Cancelled</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-right">
+                                        <a href="purchase_orders.php?view_po=<?= $ro['id'] ?>" class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1">
+                                            View / Print &rarr;
+                                        </a>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
+        </main>
     </div>
 
-    <!-- JavaScript for Dynamic Order Building -->
     <script>
-        const ALL_STOCK_ITEMS = <?= json_encode($stockItems, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-        const tbody = document.getElementById('po-lines-tbody');
-        const grandTotalEl = document.getElementById('po-grand-total');
+        const stockCatalog = <?= json_encode($stockItems) ?>;
 
-        function handleSupplierChange() {
-            const supplierId = parseInt(document.getElementById('supplier-select').value, 10);
-            const container = document.getElementById('quick-add-container');
-            const chips = document.getElementById('supplier-chips');
-            chips.innerHTML = '';
+        function addPoRow(selectedItemId = 0, defaultQty = 1) {
+            const tbody = document.getElementById('po-lines-body');
+            const empty = document.getElementById('empty-po-row');
+            if (empty) empty.remove();
 
-            if (!supplierId) {
-                container.classList.add('hidden');
-                return;
-            }
-
-            const supplierItems = ALL_STOCK_ITEMS.filter(it => it.supplier_id == supplierId);
-            if (supplierItems.length > 0) {
-                container.classList.remove('hidden');
-                supplierItems.forEach(it => {
-                    const isLow = parseFloat(it.quantity) <= parseFloat(it.reorder_point);
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = `px-2.5 py-1 rounded text-xs border font-medium flex items-center gap-1 ${isLow ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300' : 'bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700'}`;
-                    btn.innerHTML = `+ ${escapeHtml(it.name)} ${isLow ? '<b class="text-[10px] text-rose-600">(LOW)</b>' : ''}`;
-                    btn.onclick = () => addStockItemRow(it);
-                    chips.appendChild(btn);
-                });
-            } else {
-                container.classList.add('hidden');
-            }
-        }
-
-        function autoAddLowStock() {
-            const supplierId = parseInt(document.getElementById('supplier-select').value, 10);
-            const supplierItems = ALL_STOCK_ITEMS.filter(it => it.supplier_id == supplierId && parseFloat(it.quantity) <= parseFloat(it.reorder_point));
-            
-            if (supplierItems.length === 0) {
-                alert("No items from this supplier are currently below their Reorder Point.");
-                return;
-            }
-
-            supplierItems.forEach(it => {
-                // Check if already in table
-                const exists = Array.from(tbody.querySelectorAll('.item-select')).some(sel => sel.value == it.id);
-                if (!exists) {
-                    addStockItemRow(it);
-                }
-            });
-        }
-
-        function addStockItemRow(item) {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-stone-50 dark:hover:bg-stone-800/50";
             tr.innerHTML = `
-                <td class="p-2.5">
-                    <select class="item-select w-full p-1.5 border border-stone-300 dark:border-stone-700 rounded bg-white dark:bg-stone-800 font-semibold text-stone-800 dark:text-stone-200" onchange="onRowItemChange(this)">
-                        ${ALL_STOCK_ITEMS.map(si => `
-                            <option value="${si.id}" ${si.id == item.id ? 'selected' : ''} data-unit="${si.unit}" data-cost="${si.unit_cost}">
-                                ${escapeHtml(si.name)} (Stock: ${si.quantity} ${si.unit})
-                            </option>
-                        `).join('')}
+                <td>
+                    <select class="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-item-select" onchange="onPoItemChange(this)">
+                        <option value="0">-- Select Catalog Item --</option>
+                        ${stockCatalog.map(s => `<option value="${s.id}" data-cost="${s.unit_cost}" data-unit="${s.unit}" ${selectedItemId == s.id ? 'selected' : ''}>${s.NAME || s.name} (${s.unit})</option>`).join('')}
                     </select>
                 </td>
-                <td class="p-2.5">
-                    <input type="number" step="0.01" class="item-qty w-full p-1.5 border border-stone-300 dark:border-stone-700 rounded bg-white dark:bg-stone-800 font-mono font-bold"
-                           value="1.00" oninput="calculateSubtotal(this)">
-                </td>
-                <td class="p-2.5">
-                    <span class="item-unit text-stone-500 font-mono text-xs">${item.unit}</span>
-                </td>
-                <td class="p-2.5">
-                    <input type="number" step="0.01" class="item-price w-full p-1.5 border border-stone-300 dark:border-stone-700 rounded bg-white dark:bg-stone-800 font-mono"
-                           value="${item.unit_cost || 0.00}" oninput="calculateSubtotal(this)">
-                </td>
-                <td class="p-2.5 text-right font-mono font-bold item-subtotal">
-                    ₱${parseFloat(item.unit_cost || 0).toFixed(2)}
-                </td>
-                <td class="p-2.5 text-center">
-                    <button type="button" onclick="this.closest('tr').remove(); recalculateGrandTotal();" class="text-rose-600 hover:text-rose-700 font-bold text-sm">&times;</button>
-                </td>
+                <td><input type="number" step="0.01" min="0.1" value="${defaultQty}" class="w-24 text-xs p-1.5 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-qty" oninput="calcPoTotals()"></td>
+                <td><input type="number" step="0.01" min="0" value="0.00" class="w-28 text-xs p-1.5 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-cost" oninput="calcPoTotals()"></td>
+                <td class="font-mono font-bold text-right po-subtotal">₱0.00</td>
+                <td class="text-center"><button type="button" onclick="this.closest('tr').remove(); calcPoTotals();" class="text-rose-500 font-bold">&times;</button></td>
             `;
             tbody.appendChild(tr);
-            recalculateGrandTotal();
-        }
 
-        function addCustomRow() {
-            if (ALL_STOCK_ITEMS.length > 0) {
-                addStockItemRow(ALL_STOCK_ITEMS[0]);
+            if (selectedItemId > 0) {
+                const selectEl = tr.querySelector('.po-item-select');
+                onPoItemChange(selectEl);
             }
+            calcPoTotals();
         }
 
-        function onRowItemChange(selectEl) {
-            const tr = selectEl.closest('tr');
-            const opt = selectEl.options[selectEl.selectedIndex];
-            tr.querySelector('.item-unit').textContent = opt.dataset.unit || 'units';
-            tr.querySelector('.item-price').value = opt.dataset.cost || 0.00;
-            calculateSubtotal(tr.querySelector('.item-qty'));
+        function onPoItemChange(sel) {
+            const tr = sel.closest('tr');
+            const opt = sel.options[sel.selectedIndex];
+            const cost = parseFloat(opt.getAttribute('data-cost')) || 0;
+            tr.querySelector('.po-cost').value = cost.toFixed(2);
+            calcPoTotals();
         }
 
-        function calculateSubtotal(inputEl) {
-            const tr = inputEl.closest('tr');
-            const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
-            const price = parseFloat(tr.querySelector('.item-price').value) || 0;
-            const subtotal = qty * price;
-            tr.querySelector('.item-subtotal').textContent = `₱${subtotal.toFixed(2)}`;
-            recalculateGrandTotal();
-        }
-
-        function recalculateGrandTotal() {
-            let sum = 0;
-            tbody.querySelectorAll('tr').forEach(tr => {
-                const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
-                const price = parseFloat(tr.querySelector('.item-price').value) || 0;
-                sum += (qty * price);
-            });
-            grandTotalEl.textContent = `₱${sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
-
-        function submitPoForm() {
-            const rows = tbody.querySelectorAll('tr');
+        function calcPoTotals() {
+            let grand = 0;
             const items = [];
+            document.querySelectorAll('#po-lines-body tr').forEach(tr => {
+                const sel = tr.querySelector('.po-item-select');
+                if (!sel) return;
+                const itemId = parseInt(sel.value) || 0;
+                const qty = parseFloat(tr.querySelector('.po-qty')?.value) || 0;
+                const cost = parseFloat(tr.querySelector('.po-cost')?.value) || 0;
+                const opt = sel.options[sel.selectedIndex];
+                const unit = opt?.getAttribute('data-unit') || 'units';
+                const subtotal = round2(qty * cost);
 
-            rows.forEach(tr => {
-                const itemId = parseInt(tr.querySelector('.item-select').value, 10);
-                const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
-                const unit = tr.querySelector('.item-unit').textContent.trim();
-                const price = parseFloat(tr.querySelector('.item-price').value) || 0;
+                tr.querySelector('.po-subtotal').textContent = '₱' + subtotal.toFixed(2);
+                grand += subtotal;
 
                 if (itemId > 0 && qty > 0) {
-                    items.push({ item_id: itemId, quantity: qty, unit: unit, unit_price: price });
+                    items.push({ item_id: itemId, quantity: qty, unit: unit, unit_price: cost });
                 }
             });
 
-            if (items.length === 0) {
-                alert("Please add at least one line item to the order.");
-                return;
+            document.getElementById('grand-total-display').textContent = '₱' + grand.toFixed(2);
+            document.getElementById('po-items-json').value = JSON.stringify(items);
+        }
+
+        function autoFillLowStock() {
+            const tbody = document.getElementById('po-lines-body');
+            tbody.innerHTML = '';
+            let added = 0;
+
+            stockCatalog.forEach(it => {
+                if (parseFloat(it.quantity) <= parseFloat(it.reorder_point)) {
+                    const needed = Math.max(1, parseFloat(it.reorder_point) * 2 - parseFloat(it.quantity));
+                    addPoRow(it.id, Math.ceil(needed));
+                    added++;
+                }
+            });
+
+            if (added === 0) {
+                alert('All items are currently above their reorder points! Adding one empty line.');
+                addPoRow();
             }
-
-            document.getElementById('po_items_json').value = JSON.stringify(items);
-            document.getElementById('po-form').submit();
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        function round2(num) {
+            return Math.round((num + Number.EPSILON) * 100) / 100;
         }
-
-        document.getElementById('theme-toggle').addEventListener('click', () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
-        });
     </script>
 </body>
 </html>

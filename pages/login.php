@@ -21,95 +21,151 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Your account has been deactivated. Please contact the Owner.';
             } else {
                 session_regenerate_id(true);
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-            header("Location: dashboard.php");
-            exit();
+                header("Location: dashboard.php");
+                exit();
             }
         } else {
             $error = 'Invalid username or password.';
         }
     }
 }
+$pageTitle = 'Asterisko - Login';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aste Inventory Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-     <script>
-        tailwind.config = { darkMode: 'class' };
-
-        try {
-            const saved = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (saved === 'dark' || (!saved && prefersDark)) {
-                document.documentElement.classList.add('dark');
-            }
-        } catch (e) {}
-    </script>
-
-<link rel="stylesheet" href="../assets/app-enhancements.css">
-
+    <?php require_once __DIR__ . '/../includes/head.php'; ?>
 </head>
-<body class="bg-stone-100 dark:bg-stone-900 flex items-center justify-center min-h-screen p-4 transition-colors">
+<body class="bg-[#F4F7FB] dark:bg-[#071526] min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 transition-colors">
 
+    <!-- Theme Toggle Fixed Button -->
     <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
-            class="fixed top-4 right-4 p-2.5 rounded-full bg-white dark:bg-stone-800 text-stone-700 dark:text-emerald-400 shadow-md hover:scale-105 transition">
-        <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="4"/>
-            <path stroke-linecap="round" d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            class="fixed top-5 right-5 z-50 p-3 rounded-full bg-white dark:bg-[#0C2340] text-slate-600 dark:text-[#F28C28] shadow-lg border border-slate-200 dark:border-[#15345C] hover:scale-105 transition-transform">
+        <svg class="w-5 h-5 hidden dark:block text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
         </svg>
-        <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        <svg class="w-5 h-5 block dark:hidden text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
         </svg>
     </button>
 
-    <div class="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-md w-full max-w-sm transition-colors">
-        <h1 class="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-1">Asterisko Cafe</h1>
-        <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Inventory Management System</p>
-
-        <?php if ($error): ?>
-            <div class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 p-3 rounded mb-4 text-sm">
-                <?= htmlspecialchars($error) ?>
+    <!-- Main Card Container (Matching Canva Slide 1 Split View) -->
+    <div class="w-full max-w-4xl bg-white dark:bg-[#0C2340] rounded-2xl shadow-2xl border border-slate-200/80 dark:border-[#15345C] overflow-hidden flex flex-col md:flex-row transition-colors">
+        
+        <!-- Left Side: Brand Panel (Deep Navy with Orange Asterisk) -->
+        <div class="md:w-1/2 bg-[#0C2340] text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center relative border-b md:border-b-0 md:border-r border-[#15345C]">
+            <div class="relative z-10 flex flex-col items-center">
+                <!-- Asterisko Official Brand Logo -->
+                <div class="w-24 h-24 rounded-2xl overflow-hidden shadow-2xl mb-5 border-2 border-white/20 p-1.5 bg-[#FEF2DA] flex items-center justify-center transition-transform hover:scale-105 duration-200">
+                    <img src="../assets/logo.png" alt="Asterisko Logo" class="w-full h-full object-contain rounded-xl">
+                </div>
+                <h1 class="text-3xl font-extrabold tracking-wider uppercase text-white mb-2">ASTERISKO</h1>
+                <p class="text-slate-300 text-sm max-w-xs font-medium">Inventory Management System</p>
+                <div class="w-16 h-1 bg-[#F28C28] rounded-full mt-4"></div>
             </div>
-        <?php endif; ?>
+            
+            <!-- Subtle background aesthetic pattern -->
+            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-[#F28C28]/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-[#132E52]/40 rounded-full blur-2xl pointer-events-none"></div>
+        </div>
 
-        <form method="POST" class="space-y-4">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-            <div>
-                <label class="block text-sm font-medium text-stone-700 dark:text-stone-300">Username</label>
-                <input type="text" name="username" required
-                       class="mt-1 w-full p-2.5 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+        <!-- Right Side: Login Form (Matching Canva Slide 1 Form) -->
+        <div class="md:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-white dark:bg-[#0C2340]">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Welcome Back</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Sign in to your Asterisko account</p>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-stone-700 dark:text-stone-300">Password</label>
-                <input type="password" name="password" required
-                       class="mt-1 w-full p-2.5 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-            </div>
-            <button type="submit"
-                    class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-lg transition">
-                Sign In
-            </button>
-        </form>
 
-        <div class="mt-6 text-xs text-stone-500 dark:text-stone-400 border-t border-stone-200 dark:border-stone-700 pt-4">
-            <p class="font-semibold mb-1">Demo Accounts (Password: <code class="bg-stone-200 dark:bg-stone-700 dark:text-stone-200 px-1">aste123</code>):</p>
-            <ul class="space-y-1">
-                <li>• <b>manager</b> (Admin - Full Access)</li>
-                <li>• <b>barista</b> (Staff - No Prices/Finance)</li>
-                <li>• <b>owner</b> (Owner - Finance & Stock)</li>
-            </ul>
+            <?php if ($error): ?>
+                <div class="bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-4 py-3 rounded-xl mb-5 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span><?= htmlspecialchars($error) ?></span>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+
+                <!-- Username / Email Field -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Username or Email</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                            </svg>
+                        </div>
+                        <input type="text" name="username" required placeholder="Enter your username"
+                               class="w-full !pl-11 !pr-4 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all has-icon-left">
+                    </div>
+                </div>
+
+                <!-- Password Field with Toggle Eye -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                        </div>
+                        <input type="password" id="password-input" name="password" required placeholder="Enter your password"
+                               class="w-full !pl-11 !pr-11 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all has-icon-left has-icon-right">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Toggle password visibility">
+                            <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="flex items-center justify-between text-xs pt-1">
+                    <label class="flex items-center text-slate-600 dark:text-slate-400 cursor-pointer">
+                        <input type="checkbox" name="remember" class="w-4 h-4 rounded text-[#F28C28] focus:ring-[#F28C28] border-slate-300 dark:border-slate-700">
+                        <span class="ml-2 font-medium">Remember me</span>
+                    </label>
+                    <a href="javascript:alert('Please contact your System Owner or Manager to reset your password.')" class="font-semibold text-[#F28C28] hover:underline">Forgot password?</a>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit"
+                        class="w-full bg-[#F28C28] hover:bg-[#E07B18] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all text-sm tracking-wide">
+                    Log In
+                </button>
+            </form>
+
+            <p class="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
+                Don't have an account? <span class="font-medium text-slate-600 dark:text-slate-400">Contact your administrator.</span>
+            </p>
+
+            <!-- Quick Demo Credentials Box -->
+            <div class="mt-6 p-3 bg-slate-50 dark:bg-[#07172C] rounded-xl border border-slate-200 dark:border-[#173863] text-xs text-slate-500 dark:text-slate-400">
+                <span class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Demo Credentials (Password: <code class="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-1 py-0.5 rounded">aste123</code>):</span>
+                <div class="grid grid-cols-3 gap-1 text-[11px]">
+                    <div><b class="text-slate-700 dark:text-slate-300">manager</b><br><span class="text-[10px]">Manager</span></div>
+                    <div><b class="text-slate-700 dark:text-slate-300">barista</b><br><span class="text-[10px]">Staff</span></div>
+                    <div><b class="text-slate-700 dark:text-slate-300">owner</b><br><span class="text-[10px]">Owner</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        function togglePasswordVisibility() {
+            const pwd = document.getElementById('password-input');
+            pwd.type = pwd.type === 'password' ? 'text' : 'password';
+        }
+
         document.getElementById('theme-toggle').addEventListener('click', () => {
             const isDark = document.documentElement.classList.toggle('dark');
             try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
