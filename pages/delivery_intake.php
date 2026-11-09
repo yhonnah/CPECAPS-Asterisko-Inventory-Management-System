@@ -216,8 +216,8 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Deliveries</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View deliveries, scan supplier invoices, and confirm received stock.</p>
                 </div>
-                <button onclick="scrollToScanner()" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <button onclick="scrollToScanner()" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Add Delivery</span>
                 </button>
             </div>
@@ -269,8 +269,8 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="delivery-search" placeholder="Search supplier or invoice..." 
-                               class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <button class="btn-secondary px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">Filter</button>
+                               class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                        <button class="btn-secondary h-10 px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap shrink-0">Filter</button>
                     </div>
                 </div>
 
@@ -321,11 +321,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                                     </td>
                                     <td class="text-right">
                                         <?php if ($isPending): ?>
-                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1">
+                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                                 Review <span aria-hidden="true">&rarr;</span>
                                             </button>
                                         <?php else: ?>
-                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="text-slate-500 hover:text-slate-800 dark:hover:text-white font-semibold text-xs inline-flex items-center gap-1">
+                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="text-slate-500 hover:text-slate-800 dark:hover:text-white font-semibold text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                                 View <span aria-hidden="true">&rarr;</span>
                                             </button>
                                         <?php endif; ?>
@@ -348,7 +348,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                         </h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400">Upload paper invoices or receipts for client-side OCR parsing, supplier matching, and one-click stock verification.</p>
                     </div>
-                    <span class="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full font-semibold">Tesseract.js Engine Active</span>
+                    <span class="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full font-semibold whitespace-nowrap shrink-0">Tesseract.js Engine Active</span>
                 </div>
 
                 <!-- Upload Drag-Drop Area -->
@@ -408,9 +408,9 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
 
                             <!-- Extracted Items Review Table -->
                             <div class="rounded-xl border border-slate-200 dark:border-[#173863] overflow-hidden">
-                                <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#173863] flex justify-between items-center">
+                                <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#173863] flex justify-between items-center gap-2">
                                     <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Scanned Delivery Items</span>
-                                    <button type="button" onclick="addManualRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18]">+ Add Row</button>
+                                    <button type="button" onclick="addManualRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18] whitespace-nowrap shrink-0">+ Add Row</button>
                                 </div>
                                 <div class="overflow-x-auto max-h-56">
                                     <table class="w-full text-xs text-left" id="ocr-items-table">
@@ -431,11 +431,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-end gap-3 pt-2">
-                                <button type="submit" name="action" value="save_draft" class="btn-secondary px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm">
+                            <div class="flex flex-wrap sm:flex-nowrap items-center justify-end gap-3 pt-2">
+                                <button type="submit" name="action" value="save_draft" class="btn-secondary h-10 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
                                     Save as Draft
                                 </button>
-                                <button type="submit" name="action" value="confirm_delivery" class="btn-primary px-6 py-2.5 rounded-xl text-xs font-bold shadow-md">
+                                <button type="submit" name="action" value="confirm_delivery" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-xs font-bold shadow-md whitespace-nowrap shrink-0">
                                     Confirm Delivery & Update Stock
                                 </button>
                             </div>

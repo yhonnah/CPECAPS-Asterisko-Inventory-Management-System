@@ -206,9 +206,9 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                 <input type="hidden" name="action" value="reset_password">
                                 <input type="hidden" name="user_id" value="<?= $userId ?>">
-                                <div class="flex flex-col sm:flex-row gap-3">
+                                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                                     <input type="password" name="new_password" required placeholder="Enter new password..." class="flex-1">
-                                    <button type="submit" class="btn-secondary px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap">
+                                    <button type="submit" class="btn-secondary h-[42px] px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                         Change Password
                                     </button>
                                 </div>
@@ -216,12 +216,12 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                         </div>
 
                         <!-- Session Preferences -->
-                        <div class="pt-4 border-t border-slate-200 dark:border-[#15345C] flex items-center justify-between">
+                        <div class="pt-4 border-t border-slate-200 dark:border-[#15345C] flex items-center justify-between gap-3">
                             <div>
                                 <span class="font-bold text-sm block text-slate-800 dark:text-white">Session Security</span>
                                 <span class="text-xs text-slate-400">Strict CSRF token validation and HTTP session regeneration are active.</span>
                             </div>
-                            <span class="badge-good">Enabled</span>
+                            <span class="badge-good shrink-0">Enabled</span>
                         </div>
                     </div>
 
@@ -251,7 +251,7 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                     <input type="password" name="password" required placeholder="••••••••" class="w-full">
                                 </div>
                                 <div>
-                                    <button type="submit" class="btn-primary w-full py-2.5 rounded-xl font-bold shadow-md">
+                                    <button type="submit" class="btn-primary w-full h-[42px] px-4 py-2.5 rounded-xl text-xs font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap">
                                         Create User
                                     </button>
                                 </div>
@@ -300,13 +300,13 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                                             <input type="hidden" name="action" value="toggle_active">
                                                             <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
-                                                            <button type="submit" class="text-xs font-bold <?= $u['is_active'] ? 'text-rose-500 hover:underline' : 'text-emerald-500 hover:underline' ?>">
+                                                            <button type="submit" class="btn-link text-xs font-bold whitespace-nowrap <?= $u['is_active'] ? 'text-rose-500 hover:underline' : 'text-emerald-500 hover:underline' ?>">
                                                                 <?= $u['is_active'] ? 'Deactivate' : 'Activate' ?>
                                                             </button>
                                                         </form>
                                                     </div>
                                                 <?php else: ?>
-                                                    <span class="text-[11px] text-slate-400 italic">Current User</span>
+                                                    <span class="text-[11px] text-slate-400 italic whitespace-nowrap">Current User</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>

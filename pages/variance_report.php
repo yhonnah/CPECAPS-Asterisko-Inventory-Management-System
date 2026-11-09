@@ -77,11 +77,11 @@ $pageTitle = 'Variance Report - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Stock Count Variance Report</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Audit-tracked discrepancies between recorded book stock and physical barista counts.</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <a href="count.php" class="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold shadow-md">
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+                    <a href="count.php" class="btn-primary h-10 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         + Perform Stock Count
                     </a>
-                    <a href="financial_report.php" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#173863] text-xs font-bold hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                    <a href="financial_report.php" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         Financial Report &rarr;
                     </a>
                 </div>
@@ -137,8 +137,8 @@ $pageTitle = 'Variance Report - Asterisko Inventory';
                         <input type="date" name="end_date" value="<?= htmlspecialchars($endDate) ?>" class="w-full">
                     </div>
                     <div class="flex gap-2">
-                        <button type="submit" class="btn-primary w-full py-2.5 rounded-xl font-bold text-xs shadow-md">Filter</button>
-                        <a href="variance_report.php" class="px-4 py-2.5 border border-slate-300 dark:border-[#173863] rounded-xl text-center text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#132E52]">Reset</a>
+                        <button type="submit" class="btn-primary flex-1 h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs shadow-md inline-flex items-center justify-center whitespace-nowrap">Filter</button>
+                        <a href="variance_report.php" class="btn-outline flex-1 h-[42px] px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center justify-center whitespace-nowrap">Reset</a>
                     </div>
                 </form>
             </div>

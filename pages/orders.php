@@ -536,13 +536,13 @@ $activePage = 'orders';
                 </div>
 
                 <!-- Navigation Tabs Switcher -->
-                <div class="inline-flex p-1 bg-slate-200/80 dark:bg-[#0C2340] rounded-xl border border-slate-300/70 dark:border-[#173863] text-xs font-bold">
+                <div class="inline-flex p-1 bg-slate-200/80 dark:bg-[#0C2340] rounded-xl border border-slate-300/70 dark:border-[#173863] text-xs font-bold shrink-0">
                     <button id="btn-tab-coffee" onclick="switchMainTab('coffee')" 
-                            class="px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all flex items-center gap-2">
+                            class="h-9 px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span>☕ Coffee Drink Orders</span>
                     </button>
                     <button id="btn-tab-manual" onclick="switchMainTab('manual')" 
-                            class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2">
+                            class="h-9 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span>⚖️ Manual Stock Deduction</span>
                     </button>
                 </div>
@@ -632,32 +632,32 @@ $activePage = 'orders';
                             <!-- Category Filter Chips -->
                             <div class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
                                 <button onclick="filterCategory('All')" 
-                                        class="cat-chip active px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white">
+                                        class="cat-chip active h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                     All Drinks
                                 </button>
                                 <?php foreach ($categoriesList as $cat): ?>
                                     <button onclick="filterCategory('<?= htmlspecialchars($cat) ?>')" 
-                                            class="cat-chip px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                                            class="cat-chip h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                         <?= htmlspecialchars($cat) ?>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
 
                             <!-- Right Controls: Offline Sync Badge & Search Input -->
-                            <div class="flex items-center gap-2 w-full sm:w-auto">
-                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shrink-0">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                                     <span>Online (Synced)</span>
                                 </span>
-                                <button type="button" onclick="syncOfflineOutbox()" class="p-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors" title="Sync local offline outbox now">
+                                <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
                                     ↻ Sync
                                 </button>
-                                <div class="relative w-full sm:w-56">
+                                <div class="relative w-full sm:w-52">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     </div>
                                     <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
-                                           class="w-full !pl-10 !pr-4 py-1.5 bg-slate-50 dark:bg-[#07172C] text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                           class="w-full h-9 !pl-10 !pr-4 !py-1.5 bg-slate-50 dark:bg-[#07172C] !text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
                                 </div>
                             </div>
                         </div>
@@ -680,7 +680,7 @@ $activePage = 'orders';
                                                 </div>
                                                 <h3 class="text-base font-bold text-slate-900 dark:text-white mt-1"><?= htmlspecialchars($drink['name']) ?></h3>
                                             </div>
-                                            <span class="text-lg font-black text-[#F28C28]">₱<?= number_format($drink['price'], 2) ?></span>
+                                            <span class="text-lg font-black text-[#F28C28] whitespace-nowrap">₱<?= number_format($drink['price'], 2) ?></span>
                                         </div>
 
                                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2"><?= htmlspecialchars($drink['description']) ?></p>
@@ -702,41 +702,41 @@ $activePage = 'orders';
                                     <!-- Bottom Action Bar & Availability -->
                                     <div class="mt-4 pt-3 border-t border-slate-100 dark:border-[#15345C]/70 flex items-center justify-between gap-2">
                                         <!-- Stock status pill -->
-                                        <div>
+                                        <div class="shrink-0">
                                             <?php if ($drink['is_out_of_stock']): ?>
-                                                <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span> Out of Stock
+                                                <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1 whitespace-nowrap">
+                                                    <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span> Out of Stock
                                                 </span>
                                             <?php elseif ($drink['is_low_stock']): ?>
-                                                <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Low (<?= $drink['cups_available'] ?> cups)
+                                                <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1 whitespace-nowrap">
+                                                    <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span> Low (<?= $drink['cups_available'] ?> cups)
                                                 </span>
                                             <?php else: ?>
-                                                <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> In Stock (<?= $drink['cups_available'] ?> cups)
+                                                <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 whitespace-nowrap">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span> In Stock (<?= $drink['cups_available'] ?> cups)
                                                 </span>
                                             <?php endif; ?>
                                         </div>
 
-                                        <div class="flex items-center gap-1.5">
+                                        <div class="flex items-center gap-2 shrink-0">
                                             <!-- Add to Ticket Cart Button -->
                                             <button type="button" 
                                                     onclick="addToTicket(<?= htmlspecialchars(json_encode($drink)) ?>)"
                                                     <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                    class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    class="h-8 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center whitespace-nowrap shrink-0"
                                                     title="Add to active order ticket">
                                                 + Ticket
                                             </button>
 
                                             <!-- 1-Click Quick Order & Deduct (Offline-Aware) -->
-                                            <form method="POST" onsubmit="return handleQuickBrewSubmit(event, <?= htmlspecialchars(json_encode($drink)) ?>)">
+                                            <form method="POST" class="inline-flex m-0" onsubmit="return handleQuickBrewSubmit(event, <?= htmlspecialchars(json_encode($drink)) ?>)">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                                 <input type="hidden" name="action" value="quick_order">
                                                 <input type="hidden" name="menu_item_id" value="<?= $drink['id'] ?>">
                                                 <input type="hidden" name="quantity" value="1">
                                                 <button type="submit" 
                                                         <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#F28C28] hover:bg-[#E07B18] text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                                                        class="btn-primary h-8 px-3 py-1.5 !rounded-xl text-xs font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                                     Brew 1x
                                                 </button>
                                             </form>
@@ -852,19 +852,19 @@ $activePage = 'orders';
                                     <input type="number" step="0.001" min="0.001" name="quantity" id="manual-qty-input" required 
                                            oninput="updateManualStockPreview()" placeholder="0.00"
                                            class="w-full py-3 px-4 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm font-semibold focus:outline-none focus:border-[#F28C28]">
-                                    <span id="manual-unit-label" class="inline-flex items-center px-4 py-3 bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold min-w-[70px] justify-center">
+                                    <span id="manual-unit-label" class="inline-flex items-center px-4 py-3 bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold min-w-[70px] justify-center whitespace-nowrap shrink-0">
                                         Unit
                                     </span>
                                 </div>
 
                                 <!-- Quick Chips for fast barista entry -->
-                                <div class="flex items-center gap-2 mt-2">
-                                    <span class="text-[11px] text-slate-400 font-medium">Quick values:</span>
-                                    <button type="button" onclick="setQuickQty(0.018)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">18g (0.018)</button>
-                                    <button type="button" onclick="setQuickQty(0.05)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">50g (0.05)</button>
-                                    <button type="button" onclick="setQuickQty(0.20)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">200mL (0.20)</button>
-                                    <button type="button" onclick="setQuickQty(0.50)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">0.50</button>
-                                    <button type="button" onclick="setQuickQty(1.00)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">1.00</button>
+                                <div class="flex flex-wrap items-center gap-2 mt-2">
+                                    <span class="text-[11px] text-slate-400 font-medium whitespace-nowrap">Quick values:</span>
+                                    <button type="button" onclick="setQuickQty(0.018)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">18g (0.018)</button>
+                                    <button type="button" onclick="setQuickQty(0.05)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">50g (0.05)</button>
+                                    <button type="button" onclick="setQuickQty(0.20)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">200mL (0.20)</button>
+                                    <button type="button" onclick="setQuickQty(0.50)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">0.50</button>
+                                    <button type="button" onclick="setQuickQty(1.00)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">1.00</button>
                                 </div>
                             </div>
 
@@ -1047,13 +1047,13 @@ $activePage = 'orders';
             if (tab === 'coffee') {
                 secCoffee.classList.remove('hidden');
                 secManual.classList.add('hidden');
-                btnCoffee.className = "px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all flex items-center gap-2";
-                btnManual.className = "px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2";
+                btnCoffee.className = "h-9 px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnManual.className = "h-9 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             } else {
                 secCoffee.classList.add('hidden');
                 secManual.classList.remove('hidden');
-                btnManual.className = "px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all flex items-center gap-2";
-                btnCoffee.className = "px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2";
+                btnManual.className = "h-9 px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnCoffee.className = "h-9 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             }
         }
 
@@ -1066,9 +1066,9 @@ $activePage = 'orders';
             currentCategory = cat;
             document.querySelectorAll('.cat-chip').forEach(btn => {
                 if (btn.textContent.trim().toLowerCase() === cat.toLowerCase() || (cat === 'All' && btn.textContent.trim() === 'All Drinks')) {
-                    btn.className = "cat-chip active px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white";
+                    btn.className = "cat-chip active h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
                 } else {
-                    btn.className = "cat-chip px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white";
+                    btn.className = "cat-chip h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
                 }
             });
             applyMenuFilters();

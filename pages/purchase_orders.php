@@ -184,8 +184,8 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Purchase Orders & Pre-Orders</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate formal purchase orders, track vendor lead times, and export printable documents.</p>
                 </div>
-                <button onclick="document.getElementById('create-po-section').scrollIntoView({behavior: 'smooth'})" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <button onclick="document.getElementById('create-po-section').scrollIntoView({behavior: 'smooth'})" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ New Order</span>
                 </button>
             </div>
@@ -265,7 +265,7 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                     </table>
                 </div>
 
-                <div class="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-[#15345C] no-print">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] no-print">
                     <div class="flex items-center gap-2">
                         <form method="POST" class="inline">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
@@ -278,11 +278,11 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                             </select>
                         </form>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="window.print()" class="btn-primary px-5 py-2 rounded-xl text-xs font-bold shadow-md">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="window.print()" class="btn-primary h-10 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap shrink-0">
                             Print / Save PDF
                         </button>
-                        <a href="purchase_orders.php" class="px-4 py-2 border border-slate-300 dark:border-[#173863] rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                        <a href="purchase_orders.php" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center justify-center whitespace-nowrap shrink-0">
                             Close
                         </a>
                     </div>
@@ -317,12 +317,12 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
 
             <!-- Create Purchase Order Section -->
             <div id="create-po-section" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-6 no-print">
-                <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex justify-between items-center">
+                <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-slate-900 dark:text-white">Create Purchase Order or Pre-Order</h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400">Select preferred vendor, add line items or auto-fill items below reorder point.</p>
                     </div>
-                    <button type="button" onclick="autoFillLowStock()" class="btn-secondary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm">
+                    <button type="button" onclick="autoFillLowStock()" class="btn-secondary h-9 px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
                         Auto-Fill Low Stock Items
                     </button>
                 </div>
@@ -357,9 +357,9 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
 
                     <!-- Line Items Table -->
                     <div class="rounded-xl border border-slate-200 dark:border-[#15345C] overflow-hidden">
-                        <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#15345C] flex justify-between items-center">
+                        <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#15345C] flex justify-between items-center gap-2">
                             <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Order Line Items</span>
-                            <button type="button" onclick="addPoRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18]">+ Add Line</button>
+                            <button type="button" onclick="addPoRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18] whitespace-nowrap shrink-0">+ Add Line</button>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs text-left" id="po-lines-table">
@@ -389,7 +389,7 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                     </div>
 
                     <div class="flex justify-end pt-2">
-                        <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                        <button type="submit" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                             Generate Purchase Order
                         </button>
                     </div>
@@ -447,7 +447,7 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-right">
-                                        <a href="purchase_orders.php?view_po=<?= $ro['id'] ?>" class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1">
+                                        <a href="purchase_orders.php?view_po=<?= $ro['id'] ?>" class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                             View / Print &rarr;
                                         </a>
                                     </td>

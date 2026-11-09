@@ -163,11 +163,11 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Reports & Analytics</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate inventory, waste, and expenditure reports for selected dates.</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="document.getElementById('sales-modal').classList.remove('hidden')" class="btn-secondary px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm">
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+                    <button onclick="document.getElementById('sales-modal').classList.remove('hidden')" class="btn-secondary h-10 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         + Log POS Sales
                     </button>
-                    <a href="variance_report.php" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#173863] text-xs font-bold hover:bg-slate-100 dark:hover:bg-[#132E52] transition-colors">
+                    <a href="variance_report.php" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         Physical Variances &rarr;
                     </a>
                 </div>
@@ -204,13 +204,13 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                         </select>
                     </div>
                     <div>
-                        <button type="submit" class="btn-primary w-full py-2.5 rounded-xl font-bold text-xs shadow-md">
+                        <button type="submit" class="btn-primary w-full h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs shadow-md inline-flex items-center justify-center whitespace-nowrap">
                             Generate Report
                         </button>
                     </div>
                     <div>
-                        <a href="?month=<?= $selectedMonth ?>&year=<?= $selectedYear ?>&export=xlsx" class="btn-secondary w-full py-2.5 rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <a href="?month=<?= $selectedMonth ?>&year=<?= $selectedYear ?>&export=xlsx" class="btn-secondary w-full h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Export Excel (.xls)</span>
                         </a>
                     </div>
@@ -367,10 +367,10 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
-                    <button type="button" onclick="document.getElementById('sales-modal').classList.add('hidden')" class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-[#173863] text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                    <button type="button" onclick="document.getElementById('sales-modal').classList.add('hidden')" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                    <button type="submit" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Save Sales Record
                     </button>
                 </div>

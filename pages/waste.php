@@ -130,8 +130,8 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Waste & Spoilage</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Record discarded stock, select a reason, and review waste history.</p>
                 </div>
-                <button onclick="openWasteModal()" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <button onclick="openWasteModal()" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Log Waste</span>
                 </button>
             </div>
@@ -183,8 +183,8 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="waste-search" placeholder="Search item or reason..." 
-                               class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <select id="timeframe-filter" class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C]">
+                               class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                        <select id="timeframe-filter" class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] shrink-0">
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
                         </select>
@@ -298,10 +298,10 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
-                    <button type="button" onclick="closeWasteModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-[#173863] text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                    <button type="button" onclick="closeWasteModal()" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                    <button type="submit" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Record Waste
                     </button>
                 </div>
