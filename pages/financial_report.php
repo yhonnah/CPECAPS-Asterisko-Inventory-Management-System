@@ -184,7 +184,7 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
             <!-- Report Filter Card (Canva Slide 8 Spec) -->
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-5">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Report Filters</h3>
-                <form method="GET" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+                <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-xs items-end">
                     <div>
                         <label class="block font-bold mb-1 text-slate-600 dark:text-slate-300">Reporting Month</label>
                         <select name="month" class="w-full">
@@ -204,12 +204,12 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                         </select>
                     </div>
                     <div>
-                        <button type="submit" class="btn-primary w-full h-[46px] px-5 py-3 rounded-xl font-bold text-sm shadow-md inline-flex items-center justify-center whitespace-nowrap">
+                        <button type="submit" class="btn-primary w-full h-[46px] !px-4 py-2.5 rounded-xl font-bold text-sm shadow-md inline-flex items-center justify-center whitespace-nowrap">
                             Generate Report
                         </button>
                     </div>
                     <div>
-                        <a href="?month=<?= $selectedMonth ?>&year=<?= $selectedYear ?>&export=xlsx" class="btn-secondary w-full h-[46px] px-5 py-3 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                        <a href="?month=<?= $selectedMonth ?>&year=<?= $selectedYear ?>&export=xlsx" class="btn-secondary w-full h-[46px] !px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center gap-2 whitespace-nowrap">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Export Excel (.xls)</span>
                         </a>

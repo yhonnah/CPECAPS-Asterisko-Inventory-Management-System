@@ -132,6 +132,8 @@ html.dark .stat-card {
 /* Global Button Normalization, No-Wrap & Mobile/Tablet Touch Sizing */
 button {
     white-space: nowrap;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Primary Action Buttons */
@@ -141,8 +143,8 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     color: #FFFFFF !important;
     font-weight: 700 !important;
     font-size: 0.875rem;
-    min-height: 46px;
-    padding: 0.6875rem 1.375rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
     border-radius: 12px !important;
     border: 1px solid transparent !important;
     box-shadow: 0 4px 14px rgba(242, 140, 40, 0.25) !important;
@@ -152,6 +154,8 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     justify-content: center;
     white-space: nowrap;
     flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     line-height: 1.25rem;
 }
 .btn-primary:hover,
@@ -167,8 +171,8 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     color: #FFFFFF !important;
     font-weight: 700 !important;
     font-size: 0.875rem;
-    min-height: 46px;
-    padding: 0.6875rem 1.375rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
     border-radius: 12px !important;
     border: 1px solid transparent !important;
     transition: all 0.2s ease !important;
@@ -177,6 +181,8 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     justify-content: center;
     white-space: nowrap;
     flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     line-height: 1.25rem;
 }
 .btn-secondary:hover {
@@ -189,8 +195,8 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     color: #FFFFFF !important;
     font-weight: 700 !important;
     font-size: 0.875rem;
-    min-height: 46px;
-    padding: 0.6875rem 1.375rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
     border-radius: 12px !important;
     border: 1px solid transparent !important;
     transition: all 0.2s ease !important;
@@ -199,6 +205,8 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     justify-content: center;
     white-space: nowrap;
     flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     line-height: 1.25rem;
 }
 .btn-danger:hover {
@@ -211,14 +219,16 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     border: 1px solid #CBD5E1 !important;
     font-weight: 700 !important;
     font-size: 0.875rem;
-    min-height: 46px;
-    padding: 0.6875rem 1.375rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
     transition: all 0.2s ease !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
     flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     line-height: 1.25rem;
 }
 html.dark .btn-outline {

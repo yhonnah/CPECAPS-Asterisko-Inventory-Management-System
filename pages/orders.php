@@ -628,9 +628,9 @@ $activePage = 'orders';
                     <div class="lg:col-span-2 space-y-4">
                         
                         <!-- Search & Filter Controls -->
-                        <div class="bg-white dark:bg-[#0C2340] p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <div class="bg-white dark:bg-[#0C2340] p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] flex flex-col gap-3 overflow-hidden">
                             <!-- Category Filter Chips -->
-                            <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
+                            <div class="flex items-center gap-2 overflow-x-auto w-full custom-scrollbar pb-1">
                                 <button onclick="filterCategory('All')" 
                                         class="cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                     All Drinks
@@ -643,21 +643,23 @@ $activePage = 'orders';
                                 <?php endforeach; ?>
                             </div>
 
-                            <!-- Right Controls: Offline Sync Badge & Search Input -->
-                            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                                    <span>Online (Synced)</span>
-                                </span>
-                                <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
-                                    ↻ Sync
-                                </button>
-                                <div class="relative w-full sm:w-52">
+                            <!-- Bottom Controls: Search Input, Offline Sync Badge & Sync Button -->
+                            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 w-full">
+                                <div class="relative flex-1 min-w-[180px]">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     </div>
                                     <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
                                            class="w-full h-11 !min-h-[44px] !pl-10 !pr-4 !py-2 bg-slate-50 dark:bg-[#07172C] !text-xs sm:!text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                                        <span>Online (Synced)</span>
+                                    </span>
+                                    <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
+                                        ↻ Sync
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -665,7 +667,7 @@ $activePage = 'orders';
                         <!-- Beverage Cards Grid -->
                         <div id="drinks-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <?php foreach ($menuItems as $drink): ?>
-                                <div class="drink-card bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-sm flex flex-col justify-between"
+                                <div class="drink-card bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-sm flex flex-col justify-between overflow-hidden"
                                      data-category="<?= htmlspecialchars($drink['category']) ?>"
                                      data-name="<?= htmlspecialchars(strtolower($drink['name'])) ?>">
                                     
@@ -700,43 +702,43 @@ $activePage = 'orders';
                                     </div>
 
                                     <!-- Bottom Action Bar & Availability -->
-                                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-[#15345C]/70 flex items-center justify-between gap-2">
+                                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-[#15345C]/70 flex flex-col gap-2.5">
                                         <!-- Stock status pill -->
-                                        <div class="shrink-0">
+                                        <div class="flex items-center justify-between">
                                             <?php if ($drink['is_out_of_stock']): ?>
-                                                <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1 whitespace-nowrap">
+                                                <span class="text-xs font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1.5 whitespace-nowrap">
                                                     <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span> Out of Stock
                                                 </span>
                                             <?php elseif ($drink['is_low_stock']): ?>
-                                                <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1 whitespace-nowrap">
+                                                <span class="text-xs font-bold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1.5 whitespace-nowrap">
                                                     <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span> Low (<?= $drink['cups_available'] ?> cups)
                                                 </span>
                                             <?php else: ?>
-                                                <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 whitespace-nowrap">
+                                                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5 whitespace-nowrap">
                                                     <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span> In Stock (<?= $drink['cups_available'] ?> cups)
                                                 </span>
                                             <?php endif; ?>
                                         </div>
 
-                                        <div class="flex items-center gap-2 shrink-0">
+                                        <div class="grid grid-cols-2 gap-2.5 w-full">
                                             <!-- Add to Ticket Cart Button -->
                                             <button type="button" 
                                                     onclick="addToTicket(<?= htmlspecialchars(json_encode($drink)) ?>)"
                                                     <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                    class="min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center whitespace-nowrap shrink-0"
+                                                    class="w-full min-h-[42px] h-10 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center whitespace-nowrap"
                                                     title="Add to active order ticket">
                                                 + Ticket
                                             </button>
 
                                             <!-- 1-Click Quick Order & Deduct (Offline-Aware) -->
-                                            <form method="POST" class="inline-flex m-0" onsubmit="return handleQuickBrewSubmit(event, <?= htmlspecialchars(json_encode($drink)) ?>)">
+                                            <form method="POST" class="flex w-full m-0" onsubmit="return handleQuickBrewSubmit(event, <?= htmlspecialchars(json_encode($drink)) ?>)">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                                 <input type="hidden" name="action" value="quick_order">
                                                 <input type="hidden" name="menu_item_id" value="<?= $drink['id'] ?>">
                                                 <input type="hidden" name="quantity" value="1">
                                                 <button type="submit" 
                                                         <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                        class="btn-primary !min-h-[42px] h-10 !px-4 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                                        class="btn-primary w-full !min-h-[42px] h-10 !px-3 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center whitespace-nowrap">
                                                     Brew 1x
                                                 </button>
                                             </form>
@@ -748,7 +750,7 @@ $activePage = 'orders';
                     </div>
 
                     <!-- Right: Active Order Ticket Panel (Cart) -->
-                    <div class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20">
+                    <div class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20 overflow-hidden">
                         <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-[#15345C]">
                             <div class="flex items-center gap-2">
                                 <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">
@@ -793,7 +795,7 @@ $activePage = 'orders';
                                 <input type="hidden" name="ticket_data" id="ticket-data-input" value="[]">
 
                                 <button type="submit" id="btn-complete-ticket" disabled
-                                        class="w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
+                                        class="w-full min-h-[48px] !py-3 !px-4 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold !text-xs xl:!text-sm !whitespace-normal text-center leading-snug shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
                                     <span>Complete Order & Deduct Stock</span>
                                 </button>
                             </form>

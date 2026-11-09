@@ -431,11 +431,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                                 </div>
                             </div>
 
-                            <div class="flex flex-wrap sm:flex-nowrap items-center justify-end gap-3 pt-2">
-                                <button type="submit" name="action" value="save_draft" class="btn-secondary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-sm whitespace-nowrap shrink-0">
+                            <div class="flex flex-wrap items-center justify-end gap-3 pt-2">
+                                <button type="submit" name="action" value="save_draft" class="btn-secondary min-h-[46px] h-11 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm whitespace-nowrap shrink-0">
                                     Save as Draft
                                 </button>
-                                <button type="submit" name="action" value="confirm_delivery" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                                <button type="submit" name="action" value="confirm_delivery" class="btn-primary min-h-[46px] h-11 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                                     Confirm Delivery & Update Stock
                                 </button>
                             </div>

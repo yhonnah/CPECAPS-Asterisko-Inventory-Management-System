@@ -231,7 +231,7 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                         <!-- Provision User Form Card -->
                         <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-4">
                             <h2 class="text-base font-bold text-slate-900 dark:text-white">Provision New User Account</h2>
-                            <form method="POST" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+                            <form method="POST" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-xs items-end">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                 <input type="hidden" name="action" value="create_user">
 
@@ -251,7 +251,7 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                     <input type="password" name="password" required placeholder="••••••••" class="w-full">
                                 </div>
                                 <div>
-                                    <button type="submit" class="btn-primary w-full h-[46px] px-5 py-3 rounded-xl text-sm font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap">
+                                    <button type="submit" class="btn-primary w-full h-[46px] !px-4 py-2.5 rounded-xl text-sm font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap">
                                         Create User
                                     </button>
                                 </div>

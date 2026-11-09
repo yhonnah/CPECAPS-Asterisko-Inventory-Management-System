@@ -483,7 +483,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
 
                 <!-- Audit Filter Form -->
                 <div class="p-4 bg-slate-50/70 dark:bg-[#091B33] border-b border-slate-200 dark:border-[#15345C]">
-                    <form method="GET" class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs items-end">
+                    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 text-xs items-end">
                         <div>
                             <label class="block font-bold mb-1 text-[11px] text-slate-600 dark:text-slate-300">Filter by Item</label>
                             <select name="audit_item" class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
@@ -517,9 +517,9 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                             <input type="date" name="audit_end" value="<?= htmlspecialchars($filterEnd) ?>"
                                    class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="submit" class="btn-secondary flex-1 h-[46px] px-5 py-3 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center whitespace-nowrap">Filter</button>
-                            <a href="dashboard.php" class="btn-outline flex-1 h-[46px] px-5 py-3 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52] inline-flex items-center justify-center whitespace-nowrap">Reset</a>
+                        <div class="sm:col-span-2 xl:col-span-1 flex items-center gap-2">
+                            <button type="submit" class="btn-secondary flex-1 h-[46px] !px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center whitespace-nowrap">Filter</button>
+                            <a href="dashboard.php" class="btn-outline flex-1 h-[46px] !px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52] inline-flex items-center justify-center whitespace-nowrap">Reset</a>
                         </div>
                     </form>
                 </div>
