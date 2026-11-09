@@ -46,7 +46,7 @@ $pageTitle = 'Asterisko - Login';
 
     <!-- Theme Toggle Fixed Button -->
     <button id="theme-toggle" type="button" aria-label="Toggle dark mode"
-            class="fixed top-5 right-5 z-50 p-3 rounded-full bg-white dark:bg-[#0C2340] text-slate-600 dark:text-[#F28C28] shadow-lg border border-slate-200 dark:border-[#15345C] hover:scale-105 transition-transform">
+            class="fixed top-5 right-5 z-50 w-12 h-12 inline-flex items-center justify-center rounded-full bg-white dark:bg-[#0C2340] text-slate-600 dark:text-[#F28C28] shadow-lg border border-slate-200 dark:border-[#15345C] hover:scale-105 transition-transform">
         <svg class="w-5 h-5 hidden dark:block text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
         </svg>
@@ -119,8 +119,8 @@ $pageTitle = 'Asterisko - Login';
                         </div>
                         <input type="password" id="password-input" name="password" required placeholder="Enter your password"
                                class="w-full !pl-11 !pr-11 py-3 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all has-icon-left has-icon-right">
-                        <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Toggle password visibility">
-                            <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 w-11 h-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Toggle password visibility">
+                            <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
@@ -139,7 +139,7 @@ $pageTitle = 'Asterisko - Login';
 
                 <!-- Submit Button -->
                 <button type="submit"
-                        class="w-full bg-[#F28C28] hover:bg-[#E07B18] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all text-sm tracking-wide">
+                        class="w-full min-h-[48px] bg-[#F28C28] hover:bg-[#E07B18] text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all text-base tracking-wide">
                     Log In
                 </button>
             </form>

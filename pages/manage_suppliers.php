@@ -108,7 +108,7 @@ $pageTitle = 'Suppliers - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Suppliers</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage supplier contacts, lead times, and item description mappings.</p>
                 </div>
-                <button onclick="openCreateModal()" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                <button onclick="openCreateModal()" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Add Supplier</span>
                 </button>
@@ -161,8 +161,8 @@ $pageTitle = 'Suppliers - Asterisko Inventory';
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="supplier-search" placeholder="Search suppliers..." 
-                               class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <button onclick="window.print()" class="btn-secondary h-10 px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap shrink-0">Export</button>
+                               class="h-11 !py-2.5 !px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                        <button onclick="window.print()" class="btn-secondary min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap shrink-0">Export</button>
                     </div>
                 </div>
 
@@ -204,15 +204,15 @@ $pageTitle = 'Suppliers - Asterisko Inventory';
                                     <div class="inline-flex items-center gap-2">
                                         <button type="button" 
                                                 onclick='openEditModal(<?= json_encode($sup) ?>)'
-                                                class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                                                class="btn-link text-[#F28C28] hover:text-[#E07B18] hover:bg-orange-50 dark:hover:bg-[#132E52] font-bold text-xs sm:text-sm inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                             Edit <span aria-hidden="true">&rarr;</span>
                                         </button>
                                         <form method="POST" class="inline-flex" onsubmit="return confirm('Toggle active status?');">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                             <input type="hidden" name="action" value="toggle_active">
                                             <input type="hidden" name="id" value="<?= $sup['id'] ?>">
-                                            <button type="submit" class="btn-icon w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0" title="Toggle Active">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <button type="submit" class="btn-icon w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0" title="Toggle Active">
+                                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
                                         </form>
                                     </div>
@@ -231,7 +231,7 @@ $pageTitle = 'Suppliers - Asterisko Inventory';
         <div class="bg-white dark:bg-[#0C2340] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-[#15345C] relative">
             <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#15345C] mb-5">
                 <h3 id="modal-title" class="text-lg font-bold text-slate-900 dark:text-white">Add New Supplier</h3>
-                <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                <button type="button" onclick="closeModal()" class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -257,10 +257,10 @@ $pageTitle = 'Suppliers - Asterisko Inventory';
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
-                    <button type="button" onclick="closeModal()" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
+                    <button type="button" onclick="closeModal()" class="btn-outline min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <button type="submit" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Save Supplier
                     </button>
                 </div>

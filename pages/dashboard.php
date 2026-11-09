@@ -192,7 +192,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                 </div>
                 <div class="flex items-center gap-2.5 shrink-0">
                     <?php if ($role !== 'Staff'): ?>
-                        <a href="manage_items.php" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                        <a href="manage_items.php" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>+ Add Item</span>
                         </a>
@@ -206,7 +206,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                     <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
                     <span><b>Offline Mode:</b> Quick deductions or counts will be saved locally and auto-synced when connection returns.</span>
                 </div>
-                <button id="btn-sync-now" type="button" onclick="triggerOfflineSync()" class="hidden inline-flex items-center justify-center px-3 py-1.5 bg-[#F28C28] hover:bg-[#E07B18] text-white rounded-lg font-semibold text-xs whitespace-nowrap shrink-0">
+                <button id="btn-sync-now" type="button" onclick="triggerOfflineSync()" class="hidden inline-flex items-center justify-center min-h-[40px] px-4 py-2 bg-[#F28C28] hover:bg-[#E07B18] text-white rounded-xl font-semibold text-xs sm:text-sm whitespace-nowrap shrink-0">
                     Sync <span id="queue-count" class="mx-1">0</span> Items Now
                 </button>
             </div>
@@ -331,7 +331,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                             <h2 class="text-base font-bold text-slate-900 dark:text-white">Recent Inventory</h2>
                             <p class="text-xs text-slate-400">Latest active item catalog</p>
                         </div>
-                        <a href="manage_items.php" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18] inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                        <a href="manage_items.php" class="btn-link text-xs sm:text-sm font-bold text-[#F28C28] hover:text-[#E07B18] hover:bg-orange-50 dark:hover:bg-[#132E52] inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                             View All <span aria-hidden="true">&rarr;</span>
                         </a>
                     </div>
@@ -387,7 +387,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
                         <input type="text" id="filter-stock-input" placeholder="Search catalog..."
-                               class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                               class="text-xs sm:text-sm p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
                     </div>
                 </div>
 
@@ -429,8 +429,8 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                         <?php if ($role !== 'Staff'): ?>
                                             <button type="button" 
                                                     onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($item['NAME'] ?? $item['name'])) ?>", <?= (float)$item['reorder_point'] ?>, "<?= addslashes(htmlspecialchars($item['unit'])) ?>")'
-                                                    class="p-1 rounded text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Change Reorder Point (ROP)">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                    class="btn-icon w-9 h-9 rounded-lg text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Change Reorder Point (ROP)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -448,19 +448,19 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                 <?php endif; ?>
 
                                 <td>
-                                    <form method="POST" class="flex flex-nowrap items-center gap-1.5 quick-action-form" data-item-id="<?= $item['id'] ?>" data-unit="<?= htmlspecialchars($item['unit']) ?>">
+                                    <form method="POST" class="flex flex-nowrap items-center gap-2 quick-action-form" data-item-id="<?= $item['id'] ?>" data-unit="<?= htmlspecialchars($item['unit']) ?>">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                         <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
                                         <input type="number" step="0.01" name="amount" placeholder="Qty" required
-                                               class="w-16 h-8 !py-1 !px-2 border border-slate-200 dark:border-[#173863] !rounded-lg !text-xs bg-slate-50 dark:bg-[#07172C] shrink-0">
+                                               class="w-20 h-10 !min-h-[40px] !py-2 !px-3 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
                                         <input type="text" name="reason" placeholder="Reason (e.g. usage)" 
-                                               class="w-32 h-8 !py-1 !px-2.5 border border-slate-200 dark:border-[#173863] !rounded-lg !text-xs bg-slate-50 dark:bg-[#07172C] shrink-0">
+                                               class="w-36 sm:w-40 h-10 !min-h-[40px] !py-2 !px-3 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
                                         <button type="submit" name="action" value="deduction" 
-                                                class="btn-primary h-8 px-3 py-1.5 !rounded-lg text-xs font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                                class="btn-primary !min-h-[40px] h-10 !px-4 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                             Deduct
                                         </button>
                                         <button type="submit" name="action" value="waste" 
-                                                class="btn-danger h-8 px-3 py-1.5 !rounded-lg text-xs font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                                class="btn-danger !min-h-[40px] h-10 !px-4 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                             Waste
                                         </button>
                                     </form>
@@ -518,8 +518,8 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                    class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
                         </div>
                         <div class="flex items-center gap-2">
-                            <button type="submit" class="btn-secondary flex-1 h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm inline-flex items-center justify-center whitespace-nowrap">Filter</button>
-                            <a href="dashboard.php" class="btn-outline flex-1 h-[42px] px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52] inline-flex items-center justify-center whitespace-nowrap">Reset</a>
+                            <button type="submit" class="btn-secondary flex-1 h-[46px] px-5 py-3 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center whitespace-nowrap">Filter</button>
+                            <a href="dashboard.php" class="btn-outline flex-1 h-[46px] px-5 py-3 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52] inline-flex items-center justify-center whitespace-nowrap">Reset</a>
                         </div>
                     </form>
                 </div>
@@ -644,7 +644,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                     <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">⚙️</span>
                     <h3 class="text-base font-bold text-slate-900 dark:text-white">Change Reorder Point</h3>
                 </div>
-                <button type="button" onclick="closeRopModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">✕</button>
+                <button type="button" onclick="closeRopModal()" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">✕</button>
             </div>
 
             <form method="POST" class="space-y-4">
@@ -670,10 +670,10 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                 </div>
 
                 <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-[#15345C]">
-                    <button type="button" onclick="closeRopModal()" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                    <button type="button" onclick="closeRopModal()" class="btn-outline min-h-[46px] h-11 px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary h-10 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md">
+                    <button type="submit" class="btn-primary min-h-[46px] h-11 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
                         Update ROP
                     </button>
                 </div>

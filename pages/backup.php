@@ -155,7 +155,7 @@ $pageTitle = 'Database Backups - Asterisko Inventory';
                 <form method="POST" class="shrink-0" onsubmit="return confirm('Generate an immediate full SQL snapshot of the inventory database?');">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                     <input type="hidden" name="action" value="trigger_backup">
-                    <button type="submit" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <button type="submit" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                         <span>+ Backup Database Now</span>
                     </button>
@@ -228,8 +228,8 @@ $pageTitle = 'Database Backups - Asterisko Inventory';
                                     <td class="text-slate-500 whitespace-nowrap"><?= htmlspecialchars($b['created_at']) ?></td>
                                     <td class="font-semibold text-slate-800 dark:text-slate-200"><?= htmlspecialchars($b['created_by']) ?></td>
                                     <td class="text-right">
-                                        <a href="backup.php?download=<?= urlencode($b['filename']) ?>" class="btn-primary h-8 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
-                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                        <a href="backup.php?download=<?= urlencode($b['filename']) ?>" class="btn-primary !min-h-[40px] h-10 inline-flex items-center justify-center gap-2 !px-4 !py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap shrink-0">
+                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                             <span>Download SQL</span>
                                         </a>
                                     </td>

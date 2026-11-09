@@ -130,7 +130,7 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Waste & Spoilage</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Record discarded stock, select a reason, and review waste history.</p>
                 </div>
-                <button onclick="openWasteModal()" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                <button onclick="openWasteModal()" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Log Waste</span>
                 </button>
@@ -183,8 +183,8 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="waste-search" placeholder="Search item or reason..." 
-                               class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <select id="timeframe-filter" class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] shrink-0">
+                               class="h-11 !py-2.5 !px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                        <select id="timeframe-filter" class="h-11 !py-2.5 !px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] shrink-0">
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
                         </select>
@@ -253,7 +253,7 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
         <div class="bg-white dark:bg-[#0C2340] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-[#15345C] relative">
             <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#15345C] mb-5">
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white">Log Waste & Spoilage</h3>
-                <button type="button" onclick="closeWasteModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                <button type="button" onclick="closeWasteModal()" class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -298,10 +298,10 @@ $pageTitle = 'Waste & Spoilage - Asterisko Inventory';
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
-                    <button type="button" onclick="closeWasteModal()" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
+                    <button type="button" onclick="closeWasteModal()" class="btn-outline min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <button type="submit" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Record Waste
                     </button>
                 </div>

@@ -216,7 +216,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Deliveries</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View deliveries, scan supplier invoices, and confirm received stock.</p>
                 </div>
-                <button onclick="scrollToScanner()" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                <button onclick="scrollToScanner()" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Add Delivery</span>
                 </button>
@@ -269,8 +269,8 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="delivery-search" placeholder="Search supplier or invoice..." 
-                               class="h-10 !py-2 !px-3.5 text-xs rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <button class="btn-secondary h-10 px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap shrink-0">Filter</button>
+                               class="h-11 !py-2.5 !px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                        <button class="btn-secondary min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap shrink-0">Filter</button>
                     </div>
                 </div>
 
@@ -321,11 +321,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                                     </td>
                                     <td class="text-right">
                                         <?php if ($isPending): ?>
-                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="btn-link text-[#F28C28] hover:text-[#E07B18] hover:bg-orange-50 dark:hover:bg-[#132E52] font-bold text-xs sm:text-sm inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                                 Review <span aria-hidden="true">&rarr;</span>
                                             </button>
                                         <?php else: ?>
-                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="text-slate-500 hover:text-slate-800 dark:hover:text-white font-semibold text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                                            <button type="button" onclick='loadDraftForReview(<?= json_encode($del) ?>)' class="btn-link text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#132E52] font-semibold text-xs sm:text-sm inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                                 View <span aria-hidden="true">&rarr;</span>
                                             </button>
                                         <?php endif; ?>
@@ -410,7 +410,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                             <div class="rounded-xl border border-slate-200 dark:border-[#173863] overflow-hidden">
                                 <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#173863] flex justify-between items-center gap-2">
                                     <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Scanned Delivery Items</span>
-                                    <button type="button" onclick="addManualRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18] whitespace-nowrap shrink-0">+ Add Row</button>
+                                    <button type="button" onclick="addManualRow()" class="btn-link min-h-[38px] px-3 py-1.5 rounded-lg bg-[#F28C28]/10 text-[#F28C28] hover:bg-[#F28C28]/20 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0">+ Add Row</button>
                                 </div>
                                 <div class="overflow-x-auto max-h-56">
                                     <table class="w-full text-xs text-left" id="ocr-items-table">
@@ -432,10 +432,10 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                             </div>
 
                             <div class="flex flex-wrap sm:flex-nowrap items-center justify-end gap-3 pt-2">
-                                <button type="submit" name="action" value="save_draft" class="btn-secondary h-10 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap shrink-0">
+                                <button type="submit" name="action" value="save_draft" class="btn-secondary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-sm whitespace-nowrap shrink-0">
                                     Save as Draft
                                 </button>
-                                <button type="submit" name="action" value="confirm_delivery" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-xs font-bold shadow-md whitespace-nowrap shrink-0">
+                                <button type="submit" name="action" value="confirm_delivery" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                                     Confirm Delivery & Update Stock
                                 </button>
                             </div>
@@ -539,15 +539,15 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                 const matchedInternal = findCatalogMatch(it.desc);
 
                 tr.innerHTML = `
-                    <td><input type="text" class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-desc" value="${escapeHtml(it.desc)}"></td>
+                    <td><input type="text" class="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-desc" value="${escapeHtml(it.desc)}"></td>
                     <td>
-                        <select class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-select">
+                        <select class="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-select">
                             <option value="0">-- Select Catalog Item --</option>
                             ${catalogItems.map(c => `<option value="${c.id}" ${matchedInternal === c.id ? 'selected' : ''}>${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
                         </select>
                     </td>
-                    <td><input type="number" step="0.01" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="${it.qty}"></td>
-                    <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="text-rose-500 font-bold">&times;</button></td>
+                    <td><input type="number" step="0.01" class="w-20 text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-qty" value="${it.qty}"></td>
+                    <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="btn-icon w-9 h-9 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-base inline-flex items-center justify-center">&times;</button></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -577,15 +577,15 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><input type="text" class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-desc" placeholder="Description"></td>
+                <td><input type="text" class="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-desc" placeholder="Description"></td>
                 <td>
-                    <select class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-select">
+                    <select class="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-select">
                         <option value="0">-- Select Catalog Item --</option>
                         ${catalogItems.map(c => `<option value="${c.id}">${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="1"></td>
-                <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="text-rose-500 font-bold">&times;</button></td>
+                <td><input type="number" step="0.01" class="w-20 text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-qty" value="1"></td>
+                <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="btn-icon w-9 h-9 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-base inline-flex items-center justify-center">&times;</button></td>
             `;
             tbody.appendChild(tr);
             syncJson();

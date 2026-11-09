@@ -536,13 +536,13 @@ $activePage = 'orders';
                 </div>
 
                 <!-- Navigation Tabs Switcher -->
-                <div class="inline-flex p-1 bg-slate-200/80 dark:bg-[#0C2340] rounded-xl border border-slate-300/70 dark:border-[#173863] text-xs font-bold shrink-0">
+                <div class="w-full sm:w-auto flex p-1.5 bg-slate-200/80 dark:bg-[#0C2340] rounded-2xl border border-slate-300/70 dark:border-[#173863] text-xs sm:text-sm font-bold shrink-0">
                     <button id="btn-tab-coffee" onclick="switchMainTab('coffee')" 
-                            class="h-9 px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                            class="flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span>☕ Coffee Drink Orders</span>
                     </button>
                     <button id="btn-tab-manual" onclick="switchMainTab('manual')" 
-                            class="h-9 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                            class="flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span>⚖️ Manual Stock Deduction</span>
                     </button>
                 </div>
@@ -555,7 +555,7 @@ $activePage = 'orders';
                         <span class="text-base"><?= $messageType === 'success' ? '✓' : '⚠️' ?></span>
                         <span class="font-medium"><?= htmlspecialchars($message) ?></span>
                     </div>
-                    <button onclick="this.parentElement.remove()" class="opacity-60 hover:opacity-100 font-bold ml-4">✕</button>
+                    <button onclick="this.parentElement.remove()" class="w-9 h-9 inline-flex items-center justify-center rounded-lg opacity-60 hover:opacity-100 font-bold ml-4">✕</button>
                 </div>
             <?php endif; ?>
 
@@ -630,14 +630,14 @@ $activePage = 'orders';
                         <!-- Search & Filter Controls -->
                         <div class="bg-white dark:bg-[#0C2340] p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
                             <!-- Category Filter Chips -->
-                            <div class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
+                            <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
                                 <button onclick="filterCategory('All')" 
-                                        class="cat-chip active h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                        class="cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                     All Drinks
                                 </button>
                                 <?php foreach ($categoriesList as $cat): ?>
                                     <button onclick="filterCategory('<?= htmlspecialchars($cat) ?>')" 
-                                            class="cat-chip h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                            class="cat-chip min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                         <?= htmlspecialchars($cat) ?>
                                     </button>
                                 <?php endforeach; ?>
@@ -645,11 +645,11 @@ $activePage = 'orders';
 
                             <!-- Right Controls: Offline Sync Badge & Search Input -->
                             <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
+                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                                     <span>Online (Synced)</span>
                                 </span>
-                                <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
+                                <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
                                     ↻ Sync
                                 </button>
                                 <div class="relative w-full sm:w-52">
@@ -657,7 +657,7 @@ $activePage = 'orders';
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     </div>
                                     <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
-                                           class="w-full h-9 !pl-10 !pr-4 !py-1.5 bg-slate-50 dark:bg-[#07172C] !text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                           class="w-full h-11 !min-h-[44px] !pl-10 !pr-4 !py-2 bg-slate-50 dark:bg-[#07172C] !text-xs sm:!text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
                                 </div>
                             </div>
                         </div>
@@ -723,7 +723,7 @@ $activePage = 'orders';
                                             <button type="button" 
                                                     onclick="addToTicket(<?= htmlspecialchars(json_encode($drink)) ?>)"
                                                     <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                    class="h-8 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center whitespace-nowrap shrink-0"
+                                                    class="min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center whitespace-nowrap shrink-0"
                                                     title="Add to active order ticket">
                                                 + Ticket
                                             </button>
@@ -736,7 +736,7 @@ $activePage = 'orders';
                                                 <input type="hidden" name="quantity" value="1">
                                                 <button type="submit" 
                                                         <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                        class="btn-primary h-8 px-3 py-1.5 !rounded-xl text-xs font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                                        class="btn-primary !min-h-[42px] h-10 !px-4 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                                     Brew 1x
                                                 </button>
                                             </form>
@@ -756,7 +756,7 @@ $activePage = 'orders';
                                 </span>
                                 <h3 class="font-extrabold text-slate-900 dark:text-white text-base">Current Ticket</h3>
                             </div>
-                            <button type="button" onclick="clearTicket()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold">
+                            <button type="button" onclick="clearTicket()" class="min-h-[36px] px-3 py-1.5 rounded-lg text-xs sm:text-sm text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold transition-colors">
                                 Clear
                             </button>
                         </div>
@@ -793,7 +793,7 @@ $activePage = 'orders';
                                 <input type="hidden" name="ticket_data" id="ticket-data-input" value="[]">
 
                                 <button type="submit" id="btn-complete-ticket" disabled
-                                        class="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
+                                        class="w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
                                     <span>Complete Order & Deduct Stock</span>
                                 </button>
                             </form>
@@ -858,13 +858,13 @@ $activePage = 'orders';
                                 </div>
 
                                 <!-- Quick Chips for fast barista entry -->
-                                <div class="flex flex-wrap items-center gap-2 mt-2">
-                                    <span class="text-[11px] text-slate-400 font-medium whitespace-nowrap">Quick values:</span>
-                                    <button type="button" onclick="setQuickQty(0.018)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">18g (0.018)</button>
-                                    <button type="button" onclick="setQuickQty(0.05)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">50g (0.05)</button>
-                                    <button type="button" onclick="setQuickQty(0.20)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">200mL (0.20)</button>
-                                    <button type="button" onclick="setQuickQty(0.50)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">0.50</button>
-                                    <button type="button" onclick="setQuickQty(1.00)" class="inline-flex items-center justify-center h-7 px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">1.00</button>
+                                <div class="flex flex-wrap items-center gap-2 mt-2.5">
+                                    <span class="text-xs text-slate-400 font-medium whitespace-nowrap">Quick values:</span>
+                                    <button type="button" onclick="setQuickQty(0.018)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">18g (0.018)</button>
+                                    <button type="button" onclick="setQuickQty(0.05)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">50g (0.05)</button>
+                                    <button type="button" onclick="setQuickQty(0.20)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">200mL (0.20)</button>
+                                    <button type="button" onclick="setQuickQty(0.50)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">0.50</button>
+                                    <button type="button" onclick="setQuickQty(1.00)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">1.00</button>
                                 </div>
                             </div>
 
@@ -911,7 +911,7 @@ $activePage = 'orders';
                             </div>
 
                             <button type="submit"
-                                    class="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all">
+                                    class="w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all">
                                 Confirm Manual Stock Deduction
                             </button>
                         </form>
@@ -1047,13 +1047,13 @@ $activePage = 'orders';
             if (tab === 'coffee') {
                 secCoffee.classList.remove('hidden');
                 secManual.classList.add('hidden');
-                btnCoffee.className = "h-9 px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
-                btnManual.className = "h-9 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             } else {
                 secCoffee.classList.add('hidden');
                 secManual.classList.remove('hidden');
-                btnManual.className = "h-9 px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
-                btnCoffee.className = "h-9 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             }
         }
 
@@ -1066,9 +1066,9 @@ $activePage = 'orders';
             currentCategory = cat;
             document.querySelectorAll('.cat-chip').forEach(btn => {
                 if (btn.textContent.trim().toLowerCase() === cat.toLowerCase() || (cat === 'All' && btn.textContent.trim() === 'All Drinks')) {
-                    btn.className = "cat-chip active h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
+                    btn.className = "cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
                 } else {
-                    btn.className = "cat-chip h-8 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
+                    btn.className = "cat-chip min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
                 }
             });
             applyMenuFilters();
@@ -1188,19 +1188,19 @@ $activePage = 'orders';
                 });
 
                 html += `
-                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex items-center justify-between gap-2 text-xs">
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex items-center justify-between gap-2 text-xs">
                         <div class="flex-1 min-w-0">
                             <h4 class="font-bold text-slate-900 dark:text-white truncate">${item.name}</h4>
                             <span class="text-[11px] text-slate-400">₱${item.price.toFixed(2)} each</span>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="updateTicketQty(${item.id}, -1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">-</button>
-                            <span class="font-mono font-bold text-slate-900 dark:text-white px-1">${item.qty}</span>
-                            <button type="button" onclick="updateTicketQty(${item.id}, 1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">+</button>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" onclick="updateTicketQty(${item.id}, -1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">-</button>
+                            <span class="font-mono font-bold text-sm text-slate-900 dark:text-white px-1.5">${item.qty}</span>
+                            <button type="button" onclick="updateTicketQty(${item.id}, 1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">+</button>
                         </div>
-                        <div class="text-right pl-2">
+                        <div class="text-right pl-2 shrink-0">
                             <span class="font-bold font-mono text-slate-900 dark:text-white block">₱${subtotal.toFixed(2)}</span>
-                            <button type="button" onclick="removeTicketItem(${item.id})" class="text-[10px] text-rose-500 hover:underline">Remove</button>
+                            <button type="button" onclick="removeTicketItem(${item.id})" class="text-xs font-semibold text-rose-500 hover:underline px-2 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">Remove</button>
                         </div>
                     </div>
                 `;
@@ -1247,11 +1247,11 @@ $activePage = 'orders';
                 `;
                 btnComplete.disabled = true;
                 btnComplete.innerHTML = '<span>⚠️ Insufficient Stock to Order</span>';
-                btnComplete.className = "w-full py-3.5 rounded-xl bg-rose-600 text-white font-extrabold text-sm shadow-md opacity-70 cursor-not-allowed flex items-center justify-center gap-2";
+                btnComplete.className = "w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-rose-600 text-white font-extrabold text-sm sm:text-base shadow-md opacity-70 cursor-not-allowed flex items-center justify-center gap-2";
             } else {
                 btnComplete.disabled = false;
                 btnComplete.innerHTML = '<span>Complete Order & Deduct Stock</span>';
-                btnComplete.className = "w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
+                btnComplete.className = "w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
             }
 
             deductionsList.innerHTML = dedHtml;

@@ -68,14 +68,14 @@ $items = $pdo->query("
                         Input actual physical quantities. Discrepancies will be automatically calculated as variance and recorded to the immutable audit log.
                     </p>
                 </div>
-                <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
-                    <button id="btn-sync-queue" type="button" class="hidden h-9 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition inline-flex items-center justify-center gap-1.5 shadow whitespace-nowrap shrink-0">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+                    <button id="btn-sync-queue" type="button" class="hidden min-h-[44px] h-11 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold transition inline-flex items-center justify-center gap-2 shadow whitespace-nowrap shrink-0">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         <span>Sync Offline Queue</span>
                     </button>
-                    <button id="btn-fill-recorded" type="button" class="h-9 px-3.5 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold transition inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                    <button id="btn-fill-recorded" type="button" class="min-h-[44px] h-11 px-4 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs sm:text-sm font-bold transition inline-flex items-center justify-center whitespace-nowrap shrink-0">
                         Autofill Current Stock
                     </button>
                 </div>
@@ -85,7 +85,7 @@ $items = $pdo->query("
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label class="block text-xs font-semibold uppercase text-stone-600 dark:text-stone-400 mb-1">Shift Type *</label>
-                    <select id="shift-type" class="w-full p-2.5 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium">
+                    <select id="shift-type" class="w-full p-2.5 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium">
                         <option value="Closing Shift">Closing Stock Count</option>
                         <option value="Opening Shift">Opening Stock Count</option>
                         <option value="Shift Handover">Shift Handover Stock Count</option>
@@ -94,7 +94,7 @@ $items = $pdo->query("
                 <div class="sm:col-span-2">
                     <label class="block text-xs font-semibold uppercase text-stone-600 dark:text-stone-400 mb-1">Shift Notes / Reason for Count</label>
                     <input type="text" id="batch-reason" placeholder="e.g., Regular turnover, count verification, discrepancy review"
-                           class="w-full p-2.5 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                           class="w-full p-2.5 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                 </div>
             </div>
         </div>
@@ -104,7 +104,7 @@ $items = $pdo->query("
             <div class="bg-white dark:bg-stone-900 rounded-xl shadow overflow-hidden border border-stone-200 dark:border-stone-800">
                 <div class="p-4 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center gap-2">
                     <span class="text-xs uppercase font-bold text-stone-500 dark:text-stone-400 tracking-wider">Item Details & Variance Calculation</span>
-                    <span id="items-count-badge" class="text-xs font-semibold bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded text-stone-600 dark:text-stone-400 whitespace-nowrap shrink-0">
+                    <span id="items-count-badge" class="text-xs font-semibold bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-lg text-stone-600 dark:text-stone-400 whitespace-nowrap shrink-0">
                         <?= count($items) ?> items loaded
                     </span>
                 </div>
@@ -120,10 +120,10 @@ $items = $pdo->query("
                     <span id="footer-status-text">Ready to record stock count.</span>
                 </div>
                 <div class="flex items-center gap-3 w-full sm:w-auto shrink-0">
-                    <button type="button" id="btn-reset" class="btn-outline flex-1 sm:flex-initial h-10 px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                    <button type="button" id="btn-reset" class="btn-outline flex-1 sm:flex-initial min-h-[48px] h-12 px-6 py-3 rounded-xl text-sm sm:text-base font-bold inline-flex items-center justify-center whitespace-nowrap shrink-0">
                         Reset Inputs
                     </button>
-                    <button type="submit" id="btn-submit" class="btn-primary flex-1 sm:flex-initial h-10 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                    <button type="submit" id="btn-submit" class="btn-primary flex-1 sm:flex-initial min-h-[48px] h-12 px-6 py-3 rounded-xl text-sm sm:text-base font-bold transition shadow inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span id="btn-submit-text">Submit Closing Count</span>
                     </button>
                 </div>
@@ -134,7 +134,7 @@ $items = $pdo->query("
         <div id="queue-card" class="hidden bg-stone-50 dark:bg-stone-900/50 rounded-xl p-4 border border-stone-200 dark:border-stone-800 text-xs">
             <div class="flex justify-between items-center mb-2 gap-2">
                 <span class="font-bold text-stone-700 dark:text-stone-300 uppercase">Local Offline Queue Details</span>
-                <button id="btn-clear-queue" type="button" class="text-red-600 hover:underline whitespace-nowrap shrink-0">Clear Local Queue</button>
+                <button id="btn-clear-queue" type="button" class="btn-link min-h-[38px] px-3 py-1.5 rounded-lg font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 whitespace-nowrap shrink-0">Clear Local Queue</button>
             </div>
             <pre id="queue-details" class="bg-stone-100 dark:bg-stone-950 p-3 rounded text-stone-700 dark:text-stone-300 overflow-x-auto text-[11px]"></pre>
         </div>
@@ -287,21 +287,21 @@ $items = $pdo->query("
 
                         <div class="sm:w-7/12 flex flex-col sm:flex-row items-start sm:items-center gap-2">
                             <!-- Physical Count Input -->
-                            <div class="w-full sm:w-36">
-                                <label class="block sm:hidden text-[11px] font-semibold text-stone-500">Physical Count</label>
+                            <div class="w-full sm:w-40">
+                                <label class="block sm:hidden text-[11px] font-semibold text-stone-500 mb-1">Physical Count</label>
                                 <div class="relative">
                                     <input type="number" step="0.01" min="0" 
                                            data-item-id="${item.id}"
                                            data-system-stock="${systemStock}"
                                            placeholder="0.00" 
-                                           class="input-physical w-full p-2 text-sm font-mono border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                                    <span class="absolute right-2 top-2 text-xs text-stone-400 pointer-events-none">${escapeHtml(unit)}</span>
+                                           class="input-physical w-full h-11 py-2.5 px-3 text-sm font-mono border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                                    <span class="absolute right-3 top-3 text-xs text-stone-400 pointer-events-none">${escapeHtml(unit)}</span>
                                 </div>
                             </div>
 
                             <!-- Real-time Variance Badge -->
                             <div class="w-full sm:w-36 text-xs">
-                                <span class="variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400">
+                                <span class="variance-badge flex items-center justify-center h-11 px-3 py-2 rounded-xl text-center font-mono font-semibold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400">
                                     Variance: —
                                 </span>
                             </div>
@@ -311,7 +311,7 @@ $items = $pdo->query("
                                 <input type="text" 
                                        data-item-id="${item.id}"
                                        placeholder="Notes (optional, e.g. spill)"
-                                       class="input-note w-full p-2 text-xs border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                                       class="input-note w-full h-11 py-2.5 px-3 text-xs sm:text-sm border border-stone-300 dark:border-stone-700 rounded-xl bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                             </div>
                         </div>
                     `;
@@ -339,7 +339,7 @@ $items = $pdo->query("
                 const rawVal = input.value.trim();
 
                 if (rawVal === '') {
-                    badge.className = "variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400";
+                    badge.className = "variance-badge flex items-center justify-center h-11 px-3 py-2 rounded-xl text-center font-mono font-semibold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400";
                     badge.textContent = "Variance: —";
                     return;
                 }
@@ -354,13 +354,13 @@ $items = $pdo->query("
                 const sign = variance > 0 ? '+' : '';
 
                 if (variance === 0) {
-                    badge.className = "variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800";
+                    badge.className = "variance-badge flex items-center justify-center h-11 px-3 py-2 rounded-xl text-center font-mono font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800";
                     badge.textContent = `Match: 0.00`;
                 } else if (variance < 0) {
-                    badge.className = "variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800";
+                    badge.className = "variance-badge flex items-center justify-center h-11 px-3 py-2 rounded-xl text-center font-mono font-semibold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800";
                     badge.textContent = `${variance.toFixed(2)} (Short)`;
                 } else {
-                    badge.className = "variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800";
+                    badge.className = "variance-badge flex items-center justify-center h-11 px-3 py-2 rounded-xl text-center font-mono font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800";
                     badge.textContent = `+${variance.toFixed(2)} (Surplus)`;
                 }
             }

@@ -129,7 +129,7 @@ html.dark .stat-card {
     background: var(--stat-accent, #F28C28);
 }
 
-/* Global Button Normalization & No-Wrap */
+/* Global Button Normalization, No-Wrap & Mobile/Tablet Touch Sizing */
 button {
     white-space: nowrap;
 }
@@ -140,6 +140,9 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     background-color: #F28C28 !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 46px;
+    padding: 0.6875rem 1.375rem;
     border-radius: 12px !important;
     border: 1px solid transparent !important;
     box-shadow: 0 4px 14px rgba(242, 140, 40, 0.25) !important;
@@ -163,6 +166,9 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     background-color: #0C2340 !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 46px;
+    padding: 0.6875rem 1.375rem;
     border-radius: 12px !important;
     border: 1px solid transparent !important;
     transition: all 0.2s ease !important;
@@ -182,6 +188,9 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     background-color: #E11D48 !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 46px;
+    padding: 0.6875rem 1.375rem;
     border-radius: 12px !important;
     border: 1px solid transparent !important;
     transition: all 0.2s ease !important;
@@ -201,6 +210,9 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     border-radius: 12px !important;
     border: 1px solid #CBD5E1 !important;
     font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 46px;
+    padding: 0.6875rem 1.375rem;
     transition: all 0.2s ease !important;
     display: inline-flex;
     align-items: center;
@@ -211,6 +223,27 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
 }
 html.dark .btn-outline {
     border-color: #173863 !important;
+}
+
+/* Icon & Table Action Touch Targets */
+.btn-icon {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-link {
+    min-height: 38px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Status Badges */
@@ -320,7 +353,8 @@ select,
 textarea {
     border-radius: 12px;
     border: 1px solid #E2E8F0;
-    padding: 0.625rem 1rem;
+    min-height: 46px;
+    padding: 0.6875rem 1rem;
     font-size: 0.875rem;
     line-height: 1.25rem;
     background-color: #FFFFFF;

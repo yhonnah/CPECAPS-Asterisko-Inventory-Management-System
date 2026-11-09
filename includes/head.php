@@ -228,6 +228,8 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
         .modal-overlay:not(.hidden) { @apply max-sm:!items-end max-sm:!p-0; }
         .modal-overlay:not(.hidden) > div { @apply max-sm:!max-w-full max-sm:!rounded-b-none max-sm:!rounded-t-[20px] max-sm:max-h-[92vh] max-sm:!p-5 max-sm:animate-ast-fade-up; }
         .modal-overlay .grid { @apply max-sm:!grid-cols-1; }
+        /* Mobile & tablet button ergonomics */
+        .modal-overlay form > div:last-child button { @apply max-sm:flex-1 max-sm:min-h-[48px] max-sm:text-sm; }
         header.sticky > div { @apply max-sm:!py-2.5 max-sm:!gap-2; }
         #global-connectivity-pill { @apply max-[360px]:!hidden; }
 

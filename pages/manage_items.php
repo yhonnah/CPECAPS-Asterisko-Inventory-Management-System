@@ -164,7 +164,7 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Manage Items</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View, add, edit and manage your inventory items</p>
                 </div>
-                <button onclick="openCreateModal()" class="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                <button onclick="openCreateModal()" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Add Item</span>
                 </button>
@@ -186,7 +186,7 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         </div>
                         <input type="text" id="item-search" placeholder="Search catalog..." 
-                               class="w-full !pl-10 !pr-4 py-2 bg-slate-50 dark:bg-[#07172C] text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                               class="w-full !pl-10 !pr-4 py-2.5 bg-slate-50 dark:bg-[#07172C] text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
                     </div>
                     <span class="text-xs text-slate-400">Total Items: <b><?= count($items) ?></b></span>
                 </div>
@@ -233,8 +233,8 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                                         <span class="text-[11px] text-slate-400"><?= htmlspecialchars($item['unit']) ?></span>
                                         <button type="button" 
                                                 onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($item['NAME'] ?? $item['name'])) ?>", <?= (float)$item['reorder_point'] ?>, "<?= addslashes(htmlspecialchars($item['unit'])) ?>")'
-                                                class="btn-icon w-6 h-6 inline-flex items-center justify-center rounded text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Change Reorder Point (ROP)">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                class="btn-icon w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Change Reorder Point (ROP)">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                         </button>
                                     </div>
                                 </td>
@@ -251,12 +251,12 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-right">
-                                    <div class="inline-flex items-center gap-1.5">
+                                    <div class="inline-flex items-center gap-2">
                                         <!-- Edit Action (Canva Slide 3 Spec) -->
                                         <button type="button" 
                                                 onclick='openEditModal(<?= json_encode($item) ?>)'
-                                                class="btn-icon w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Edit Item">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                class="btn-icon w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Edit Item">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         </button>
 
                                         <!-- Deactivate / Toggle Action (Canva Slide 3 Spec) -->
@@ -264,8 +264,8 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                             <input type="hidden" name="action" value="toggle_active">
                                             <input type="hidden" name="id" value="<?= $item['id'] ?>">
-                                            <button type="submit" class="btn-icon w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0" title="<?= $item['is_active'] ? 'Deactivate' : 'Reactivate' ?>">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <button type="submit" class="btn-icon w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0" title="<?= $item['is_active'] ? 'Deactivate' : 'Reactivate' ?>">
+                                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
                                         </form>
                                     </div>
@@ -278,10 +278,10 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
 
                 <div class="p-4 border-t border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-2">
                     <span>Showing 1-<?= count($items) ?> of <?= count($items) ?> items</span>
-                    <div class="inline-flex items-center gap-1">
-                        <button class="h-8 min-w-[2rem] px-2.5 inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] disabled:opacity-50" disabled>&larr;</button>
-                        <span class="h-8 min-w-[2rem] px-2.5 inline-flex items-center justify-center rounded-lg bg-[#0C2340] dark:bg-[#132E52] text-white font-bold">1</span>
-                        <button class="h-8 min-w-[2rem] px-2.5 inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] disabled:opacity-50" disabled>&rarr;</button>
+                    <div class="inline-flex items-center gap-1.5">
+                        <button class="h-10 min-w-[2.5rem] px-3.5 text-xs sm:text-sm inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] disabled:opacity-50" disabled>&larr;</button>
+                        <span class="h-10 min-w-[2.5rem] px-3.5 text-xs sm:text-sm inline-flex items-center justify-center rounded-xl bg-[#0C2340] dark:bg-[#132E52] text-white font-bold">1</span>
+                        <button class="h-10 min-w-[2.5rem] px-3.5 text-xs sm:text-sm inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] disabled:opacity-50" disabled>&rarr;</button>
                     </div>
                 </div>
             </div>
@@ -294,7 +294,7 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
             <!-- Modal Header -->
             <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#15345C] mb-5">
                 <h3 id="modal-title" class="text-lg font-bold text-slate-900 dark:text-white">Add New Item</h3>
-                <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                <button type="button" onclick="closeModal()" class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -377,11 +377,11 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                 <!-- Footer Action Buttons (Canva Slide 4 Spec) -->
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
                     <button type="button" onclick="closeModal()" 
-                            class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
+                            class="btn-outline min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
                     <button type="submit" 
-                            class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                            class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Save Item
                     </button>
                 </div>
@@ -446,7 +446,7 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                     <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">⚙️</span>
                     <h3 class="text-base font-bold text-slate-900 dark:text-white">Change Reorder Point</h3>
                 </div>
-                <button type="button" onclick="closeRopModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">✕</button>
+                <button type="button" onclick="closeRopModal()" class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">✕</button>
             </div>
 
             <form method="POST" class="space-y-4">
@@ -471,11 +471,11 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
                     <span class="text-[11px] text-slate-400 mt-1 block">When inventory drops to or below this threshold, Low Stock alerts and purchase reorder recommendations are triggered.</span>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-[#15345C]">
-                    <button type="button" onclick="closeRopModal()" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0">
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-[#15345C]">
+                    <button type="button" onclick="closeRopModal()" class="btn-outline min-h-[46px] h-11 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary h-10 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md whitespace-nowrap shrink-0">
+                    <button type="submit" class="btn-primary min-h-[46px] h-11 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Update ROP
                     </button>
                 </div>

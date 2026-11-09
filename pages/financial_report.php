@@ -164,10 +164,10 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate inventory, waste, and expenditure reports for selected dates.</p>
                 </div>
                 <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-                    <button onclick="document.getElementById('sales-modal').classList.remove('hidden')" class="btn-secondary h-10 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                    <button onclick="document.getElementById('sales-modal').classList.remove('hidden')" class="btn-secondary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-sm inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         + Log POS Sales
                     </button>
-                    <a href="variance_report.php" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                    <a href="variance_report.php" class="btn-outline min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         Physical Variances &rarr;
                     </a>
                 </div>
@@ -204,12 +204,12 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                         </select>
                     </div>
                     <div>
-                        <button type="submit" class="btn-primary w-full h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs shadow-md inline-flex items-center justify-center whitespace-nowrap">
+                        <button type="submit" class="btn-primary w-full h-[46px] px-5 py-3 rounded-xl font-bold text-sm shadow-md inline-flex items-center justify-center whitespace-nowrap">
                             Generate Report
                         </button>
                     </div>
                     <div>
-                        <a href="?month=<?= $selectedMonth ?>&year=<?= $selectedYear ?>&export=xlsx" class="btn-secondary w-full h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+                        <a href="?month=<?= $selectedMonth ?>&year=<?= $selectedYear ?>&export=xlsx" class="btn-secondary w-full h-[46px] px-5 py-3 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center gap-2 whitespace-nowrap">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Export Excel (.xls)</span>
                         </a>
@@ -332,7 +332,7 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
         <div class="bg-white dark:bg-[#0C2340] rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-[#15345C] relative">
             <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#15345C] mb-5">
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white">Record Daily POS Sales</h3>
-                <button type="button" onclick="document.getElementById('sales-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                <button type="button" onclick="document.getElementById('sales-modal').classList.add('hidden')" class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -367,10 +367,10 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] mt-6">
-                    <button type="button" onclick="document.getElementById('sales-modal').classList.add('hidden')" class="btn-outline h-10 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
+                    <button type="button" onclick="document.getElementById('sales-modal').classList.add('hidden')" class="btn-outline min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-primary h-10 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <button type="submit" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                         Save Sales Record
                     </button>
                 </div>
