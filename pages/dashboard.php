@@ -447,20 +447,20 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                     <td class="font-mono font-semibold">₱<?= number_format($item['unit_cost'], 2) ?></td>
                                 <?php endif; ?>
 
-                                <td>
-                                    <form method="POST" class="flex flex-nowrap items-center gap-2 quick-action-form" data-item-id="<?= $item['id'] ?>" data-unit="<?= htmlspecialchars($item['unit']) ?>">
+                                <td class="whitespace-nowrap">
+                                    <form method="POST" class="flex flex-nowrap items-center gap-1.5 quick-action-form" data-item-id="<?= $item['id'] ?>" data-unit="<?= htmlspecialchars($item['unit']) ?>">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                         <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
                                         <input type="number" step="0.01" name="amount" placeholder="Qty" required
-                                               class="w-20 h-10 !min-h-[40px] !py-2 !px-3 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
+                                               class="w-16 sm:w-20 h-10 !min-h-[40px] !py-2 !px-2.5 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
                                         <input type="text" name="reason" placeholder="Reason (e.g. usage)" 
-                                               class="w-36 sm:w-40 h-10 !min-h-[40px] !py-2 !px-3 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
+                                               class="w-28 sm:w-36 h-10 !min-h-[40px] !py-2 !px-2.5 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
                                         <button type="submit" name="action" value="deduction" 
-                                                class="btn-primary !min-h-[40px] h-10 !px-4 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                                class="btn-primary !min-h-[40px] h-10 !px-3.5 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                             Deduct
                                         </button>
                                         <button type="submit" name="action" value="waste" 
-                                                class="btn-danger !min-h-[40px] h-10 !px-4 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                                class="btn-danger !min-h-[40px] h-10 !px-3.5 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                             Waste
                                         </button>
                                     </form>
@@ -597,9 +597,23 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
             if (modal) modal.classList.add('hidden');
         }
 
-        // Initialize Chart.js matching Canva Slide 2 Overview
+        // Initialize Chart.js matching Canva Slide 2 Overview (Theme-Aware for Light & Dark Mode)
         const ctx = document.getElementById('overviewChart').getContext('2d');
-        new Chart(ctx, {
+        function getChartThemePalette() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                inStockColor: isDark ? '#38BDF8' : '#0C2340',
+                inStockHover: isDark ? '#7DD3FC' : '#132E52',
+                targetColor: '#F28C28',
+                targetHover: '#FFA347',
+                tickColor: isDark ? '#CBD5E1' : '#64748B',
+                legendColor: isDark ? '#E2E8F0' : '#475569',
+                gridColor: isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.22)'
+            };
+        }
+
+        const initialPalette = getChartThemePalette();
+        const overviewChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Beans', 'Dairy', 'Syrups', 'Cups', 'Pastry', 'Teas'],
@@ -607,13 +621,15 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                     {
                         label: 'In Stock',
                         data: [75, 82, 86, 78, 65, 95],
-                        backgroundColor: '#0C2340',
+                        backgroundColor: initialPalette.inStockColor,
+                        hoverBackgroundColor: initialPalette.inStockHover,
                         borderRadius: 6
                     },
                     {
                         label: 'Target',
                         data: [50, 60, 68, 70, 75, 55],
-                        backgroundColor: '#F28C28',
+                        backgroundColor: initialPalette.targetColor,
+                        hoverBackgroundColor: initialPalette.targetHover,
                         borderRadius: 6
                     }
                 ]
@@ -624,15 +640,39 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { boxWidth: 12, font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" } }
+                        labels: {
+                            color: initialPalette.legendColor,
+                            boxWidth: 12,
+                            font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }
+                        }
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(200, 200, 200, 0.15)' } },
-                    x: { grid: { display: false } }
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: initialPalette.tickColor },
+                        grid: { color: initialPalette.gridColor }
+                    },
+                    x: {
+                        ticks: { color: initialPalette.tickColor },
+                        grid: { display: false }
+                    }
                 }
             }
         });
+
+        // Dynamically update chart colors when switching between Dark and Light mode
+        const themeObserver = new MutationObserver(() => {
+            const palette = getChartThemePalette();
+            overviewChart.data.datasets[0].backgroundColor = palette.inStockColor;
+            overviewChart.data.datasets[0].hoverBackgroundColor = palette.inStockHover;
+            overviewChart.options.plugins.legend.labels.color = palette.legendColor;
+            overviewChart.options.scales.y.ticks.color = palette.tickColor;
+            overviewChart.options.scales.y.grid.color = palette.gridColor;
+            overviewChart.options.scales.x.ticks.color = palette.tickColor;
+            overviewChart.update();
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     </script>
 
     <?php if ($role !== 'Staff'): ?>
