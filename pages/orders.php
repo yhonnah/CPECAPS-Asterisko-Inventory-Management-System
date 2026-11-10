@@ -407,8 +407,8 @@ if ($isCacheValid) {
     $baseMenuItems = $_SESSION['cached_base_menu'];
     $baseIngredients = $_SESSION['cached_base_ingredients'];
 } else {
-    // Cache miss or invalidated by recent catalog edit: Query database once and cache
-    $baseMenuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY category ASC, price ASC")->fetchAll(PDO::FETCH_ASSOC);
+    // Cache miss or invalidated by recent catalog edit: Query database once and cache in logical drink sequence
+    $baseMenuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
     $stmtAllIng = $pdo->query("
         SELECT id, menu_item_id, stock_item_id, quantity_required, unit
         FROM menu_item_ingredients

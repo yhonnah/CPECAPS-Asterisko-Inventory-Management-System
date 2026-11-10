@@ -107,6 +107,10 @@ $lowStockItems = array_filter($items, function($i) {
     return (float)$i['quantity'] <= (float)$i['reorder_point'];
 });
 
+// Unique sorted categories for touch filters
+$stockCategories = array_values(array_unique(array_filter(array_column($items, 'category'))));
+sort($stockCategories);
+
 // Consolidated Metric Counts for Cards (Single Aggregated SELECT over cloud SSL)
 $totalItemsCount = count($items);
 $lowStockCount = count($lowStockItems);
@@ -378,20 +382,181 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                 </div>
             </div>
 
-            <!-- Live Inventory Table with Direct Quick Actions -->
+            <!-- Live Stock Management & Quick Actions (Touch & Tablet Optimized) -->
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
-                <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <div>
-                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Live Stock Management & Quick Actions</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Atomic inventory updates across all barista and management terminals.</p>
+                <!-- Section Header -->
+                <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col md:flex-row justify-between md:items-center gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-[#F28C28]/15 border border-[#F28C28]/30 flex items-center justify-center text-[#F28C28] text-lg shrink-0">
+                            📦
+                        </span>
+                        <div>
+                            <h2 class="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                                Live Stock Management & Quick Actions
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Touch-first inventory monitoring and instant shift deductions.
+                            </p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                        <input type="text" id="filter-stock-input" placeholder="Search catalog..."
-                               class="text-xs sm:text-sm p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
+                    <!-- Right Controls: Search + View Switcher -->
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <!-- Search Box with Clear Button -->
+                        <div class="relative flex-1 md:w-56">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </div>
+                            <input type="text" id="filter-stock-input" placeholder="Search catalog..."
+                                   class="w-full text-xs pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28]">
+                            <button type="button" id="clear-stock-search" onclick="clearStockSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                ✕
+                            </button>
+                        </div>
+
+                        <!-- View Switcher (Cards vs Table) -->
+                        <div class="inline-flex p-1 bg-slate-100 dark:bg-[#07172C] rounded-xl border border-slate-200 dark:border-[#173863] shrink-0">
+                            <button type="button" id="btn-view-cards" onclick="switchStockView('cards')"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm flex items-center gap-1.5"
+                                    title="Touch Cards (Recommended for Tablet & Mobile)">
+                                <span>📱</span>
+                                <span class="hidden sm:inline">Cards</span>
+                            </button>
+                            <button type="button" id="btn-view-table" onclick="switchStockView('table')"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5"
+                                    title="Compact Table (Desktop)">
+                                <span>📄</span>
+                                <span class="hidden sm:inline">Table</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                <!-- Touch-Swipeable Category & Status Ribbon -->
+                <div class="px-4 sm:px-5 py-3 bg-slate-50/70 dark:bg-[#07172C]/60 border-b border-slate-200/80 dark:border-[#15345C] flex items-center gap-2 overflow-x-auto scrollbar-none touch-pan-x">
+                    <button type="button" onclick="filterStockCategory('all')" 
+                            class="stock-cat-pill active px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 bg-[#F28C28] text-white shadow-sm">
+                        All Items (<?= $totalItemsCount ?>)
+                    </button>
+                    <button type="button" onclick="filterStockCategory('low')" 
+                            class="stock-cat-pill px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 <?= $lowStockCount > 0 ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 hover:bg-rose-200' : 'bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300' ?>">
+                        ⚠️ Low Stock (<?= $lowStockCount ?>)
+                    </button>
+                    <?php foreach ($stockCategories as $cat): 
+                        $catCount = count(array_filter($items, fn($i) => ($i['category'] ?? '') === $cat));
+                    ?>
+                        <button type="button" onclick="filterStockCategory('<?= htmlspecialchars($cat) ?>')" 
+                                class="stock-cat-pill px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                            <?= htmlspecialchars($cat) ?> (<?= $catCount ?>)
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- VIEW 1: TOUCH CARDS GRID (PRIMARY FOR TABLET & MOBILE) -->
+                <div id="stock-cards-view" class="p-4 sm:p-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5" id="stock-cards-grid">
+                        <?php foreach ($items as $item): 
+                            $qty = (float)$item['quantity'];
+                            $rop = (float)$item['reorder_point'];
+                            $isLow = $qty <= $rop;
+                            $targetMax = max($rop * 2.5, 10.0);
+                            $pct = min(100, max(5, round(($qty / $targetMax) * 100)));
+                            $name = $item['NAME'] ?? $item['name'];
+                            $category = $item['category'] ?? 'General';
+                            $unit = $item['unit'] ?? 'units';
+                            $supplierName = $item['supplier_name'] ?? 'Supplier';
+                        ?>
+                        <div class="stock-card-item bg-white dark:bg-[#0C2340] rounded-2xl p-4 border <?= $isLow ? 'border-rose-300 dark:border-rose-900/60 shadow-sm shadow-rose-100 dark:shadow-none bg-rose-50/20 dark:bg-rose-950/10' : 'border-slate-200/80 dark:border-[#15345C] hover:border-slate-300 dark:hover:border-[#1C3E69]' ?> shadow-sm flex flex-col justify-between transition-all"
+                             data-category="<?= htmlspecialchars(strtolower($category)) ?>"
+                             data-name="<?= htmlspecialchars(strtolower($name)) ?>"
+                             data-low="<?= $isLow ? '1' : '0' ?>">
+                            
+                            <!-- Card Top Bar: Category Pill & Status Badge -->
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300">
+                                    <?= htmlspecialchars($category) ?>
+                                </span>
+                                <?php if ($isLow): ?>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 animate-pulse">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        LOW STOCK
+                                    </span>
+                                <?php else: ?>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        In Stock
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Card Middle: Title, Supplier & Live Stock Numbers -->
+                            <div class="mb-3">
+                                <h3 class="font-extrabold text-base text-slate-900 dark:text-white leading-tight line-clamp-1" title="<?= htmlspecialchars($name) ?>">
+                                    <?= htmlspecialchars($name) ?>
+                                </h3>
+                                <p class="text-[11px] text-slate-400 truncate mt-0.5 flex items-center gap-1">
+                                    <span>🚚</span> <?= htmlspecialchars($supplierName) ?>
+                                </p>
+
+                                <!-- Big Live In-Stock Metric -->
+                                <div class="mt-3 flex items-baseline justify-between">
+                                    <div>
+                                        <span class="text-2xl sm:text-3xl font-black font-mono tracking-tight <?= $isLow ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white' ?>">
+                                            <?= number_format($qty, 2) ?>
+                                        </span>
+                                        <span class="text-xs font-extrabold text-slate-400 uppercase ml-0.5">
+                                            <?= htmlspecialchars($unit) ?>
+                                        </span>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-[11px] text-slate-400">Reorder Point</div>
+                                        <div class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1">
+                                            <span><?= number_format($rop, 2) ?> <?= htmlspecialchars($unit) ?></span>
+                                            <?php if ($role !== 'Staff'): ?>
+                                                <button type="button" 
+                                                        onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($name)) ?>", <?= (float)$rop ?>, "<?= addslashes(htmlspecialchars($unit)) ?>")'
+                                                        class="p-1 rounded text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors" title="Change Reorder Point">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Visual Stock Bar -->
+                                <div class="w-full bg-slate-100 dark:bg-[#07172C] rounded-full h-2 mt-2 overflow-hidden border border-slate-200/60 dark:border-[#173863]">
+                                    <div class="h-full rounded-full transition-all duration-300 <?= $isLow ? 'bg-gradient-to-r from-rose-500 to-amber-500' : 'bg-gradient-to-r from-emerald-500 to-[#F28C28]' ?>"
+                                         style="width: <?= $pct ?>%;"></div>
+                                </div>
+
+                                <?php if ($role !== 'Staff'): ?>
+                                    <div class="mt-2 text-[11px] text-slate-400 font-mono">
+                                        Unit Cost: <b class="text-slate-700 dark:text-slate-300">₱<?= number_format((float)$item['unit_cost'], 2) ?></b>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Card Bottom: Touch-Optimized Quick Action Buttons -->
+                            <div class="pt-3 border-t border-slate-100 dark:border-[#15345C] grid grid-cols-2 gap-2">
+                                <button type="button"
+                                        onclick='openTouchQuickActionModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($name)) ?>", "<?= addslashes(htmlspecialchars($category)) ?>", <?= (float)$qty ?>, "<?= addslashes(htmlspecialchars($unit)) ?>", "deduction")'
+                                        class="w-full py-2.5 px-3 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] active:scale-[0.98] text-white text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5">
+                                    <span>⚡</span>
+                                    <span>Deduct</span>
+                                </button>
+                                <button type="button"
+                                        onclick='openTouchQuickActionModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($name)) ?>", "<?= addslashes(htmlspecialchars($category)) ?>", <?= (float)$qty ?>, "<?= addslashes(htmlspecialchars($unit)) ?>", "waste")'
+                                        class="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 active:scale-[0.98] text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                                    <span>🗑️</span>
+                                    <span>Waste</span>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: COMPACT TABLE VIEW (TOGGLEABLE FOR DESKTOP / SPREADSHEET USERS) -->
+                <div id="stock-table-view" class="hidden overflow-x-auto">
                     <table class="w-full text-xs text-left" id="stock-table">
                         <thead>
                             <tr>
@@ -408,29 +573,38 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                         </thead>
                         <tbody>
                             <?php foreach ($items as $item): 
-                                $isLow = (float)$item['quantity'] <= (float)$item['reorder_point'];
+                                $qty = (float)$item['quantity'];
+                                $rop = (float)$item['reorder_point'];
+                                $isLow = $qty <= $rop;
+                                $name = $item['NAME'] ?? $item['name'];
+                                $category = $item['category'] ?? 'General';
+                                $unit = $item['unit'] ?? 'units';
                             ?>
-                            <tr class="<?= $isLow ? 'bg-rose-50/30 dark:bg-rose-950/20' : '' ?>">
+                            <tr class="stock-table-row <?= $isLow ? 'bg-rose-50/30 dark:bg-rose-950/20' : '' ?>"
+                                data-category="<?= htmlspecialchars(strtolower($category)) ?>"
+                                data-name="<?= htmlspecialchars(strtolower($name)) ?>"
+                                data-low="<?= $isLow ? '1' : '0' ?>">
                                 <td class="font-bold text-slate-900 dark:text-white">
-                                    <?= htmlspecialchars($item['NAME'] ?? $item['name']) ?>
+                                    <div><?= htmlspecialchars($name) ?></div>
+                                    <div class="text-[10px] text-slate-400 font-normal"><?= htmlspecialchars($item['supplier_name'] ?? '') ?></div>
                                 </td>
                                 <td>
                                     <span class="bg-slate-100 dark:bg-[#132E52] px-2 py-0.5 rounded text-[11px] text-slate-600 dark:text-slate-300">
-                                        <?= htmlspecialchars($item['category']) ?>
+                                        <?= htmlspecialchars($category) ?>
                                     </span>
                                 </td>
                                 <td class="font-mono font-bold text-sm text-slate-800 dark:text-slate-100">
-                                    <?= number_format($item['quantity'], 2) ?> <?= htmlspecialchars($item['unit']) ?>
+                                    <?= number_format($qty, 2) ?> <?= htmlspecialchars($unit) ?>
                                 </td>
                                 <td class="font-mono text-slate-500">
                                     <div class="inline-flex items-center gap-1.5">
-                                        <span class="font-semibold text-slate-700 dark:text-slate-300"><?= number_format($item['reorder_point'], 2) ?></span>
-                                        <span class="text-[11px] text-slate-400"><?= htmlspecialchars($item['unit']) ?></span>
+                                        <span class="font-semibold text-slate-700 dark:text-slate-300"><?= number_format($rop, 2) ?></span>
+                                        <span class="text-[11px] text-slate-400"><?= htmlspecialchars($unit) ?></span>
                                         <?php if ($role !== 'Staff'): ?>
                                             <button type="button" 
-                                                    onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($item['NAME'] ?? $item['name'])) ?>", <?= (float)$item['reorder_point'] ?>, "<?= addslashes(htmlspecialchars($item['unit'])) ?>")'
-                                                    class="btn-icon w-9 h-9 rounded-lg text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0" title="Change Reorder Point (ROP)">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                    onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($name)) ?>", <?= (float)$rop ?>, "<?= addslashes(htmlspecialchars($unit)) ?>")'
+                                                    class="btn-icon w-8 h-8 rounded-lg text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors shrink-0 flex items-center justify-center" title="Change Reorder Point">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -447,28 +621,34 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                     <td class="font-mono font-semibold">₱<?= number_format($item['unit_cost'], 2) ?></td>
                                 <?php endif; ?>
 
-                                <td class="whitespace-nowrap">
-                                    <form method="POST" class="flex flex-nowrap items-center gap-1.5 quick-action-form" data-item-id="<?= $item['id'] ?>" data-unit="<?= htmlspecialchars($item['unit']) ?>">
-                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                                        <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
-                                        <input type="number" step="0.01" name="amount" placeholder="Qty" required
-                                               class="w-16 sm:w-20 h-10 !min-h-[40px] !py-2 !px-2.5 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
-                                        <input type="text" name="reason" placeholder="Reason (e.g. usage)" 
-                                               class="w-28 sm:w-36 h-10 !min-h-[40px] !py-2 !px-2.5 border border-slate-200 dark:border-[#173863] !rounded-xl !text-xs sm:!text-sm bg-slate-50 dark:bg-[#07172C] shrink-0">
-                                        <button type="submit" name="action" value="deduction" 
-                                                class="btn-primary !min-h-[40px] h-10 !px-3.5 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
-                                            Deduct
+                                <td>
+                                    <div class="flex items-center gap-1.5">
+                                        <button type="button"
+                                                onclick='openTouchQuickActionModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($name)) ?>", "<?= addslashes(htmlspecialchars($category)) ?>", <?= (float)$qty ?>, "<?= addslashes(htmlspecialchars($unit)) ?>", "deduction")'
+                                                class="px-2.5 py-1.5 rounded-lg bg-[#F28C28] hover:bg-[#E07B18] text-white text-xs font-bold transition-all shadow-sm">
+                                            ⚡ Deduct
                                         </button>
-                                        <button type="submit" name="action" value="waste" 
-                                                class="btn-danger !min-h-[40px] h-10 !px-3.5 !py-2 !rounded-xl !text-xs sm:!text-sm font-bold shadow-sm inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                        <button type="button"
+                                                onclick='openTouchQuickActionModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($name)) ?>", "<?= addslashes(htmlspecialchars($category)) ?>", <?= (float)$qty ?>, "<?= addslashes(htmlspecialchars($unit)) ?>", "waste")'
+                                                class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all shadow-sm">
                                             Waste
                                         </button>
-                                    </form>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Empty Search / Filter State -->
+                <div id="stock-empty-state" class="hidden p-12 text-center">
+                    <span class="text-3xl block mb-2">🔍</span>
+                    <h4 class="font-bold text-slate-800 dark:text-white text-sm">No inventory items found</h4>
+                    <p class="text-xs text-slate-400 mt-1">Try selecting another category or clearing your search term.</p>
+                    <button type="button" onclick="resetStockFilters()" class="mt-3 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#132E52] text-xs font-bold text-slate-700 dark:text-slate-200">
+                        Reset Filters
+                    </button>
                 </div>
             </div>
 
@@ -576,16 +756,401 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
         </main>
     </div>
 
-    <!-- Script for Live Filter & Chart -->
+    <!-- Dedicated Touch-First Quick Action Modal (Tablet & Mobile Optimized) -->
+    <div id="quick-action-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#0C2340] rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-[#15345C] relative animate-fade-in">
+            
+            <!-- Modal Header -->
+            <div class="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-[#15345C] mb-4">
+                <div>
+                    <span id="qa-category-badge" class="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300">
+                        Category
+                    </span>
+                    <h3 id="qa-item-name" class="text-lg font-black text-slate-900 dark:text-white mt-1 leading-snug">
+                        Item Name
+                    </h3>
+                    <div class="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        <span>Current Stock:</span>
+                        <b id="qa-current-stock" class="font-mono text-slate-900 dark:text-white font-extrabold">0.00 kg</b>
+                        <span class="text-slate-300 dark:text-slate-600">•</span>
+                        <span id="qa-rop-info" class="text-[11px] font-semibold">ROP: 0.00</span>
+                    </div>
+                </div>
+                <button type="button" onclick="closeTouchQuickActionModal()" 
+                        class="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#132E52] text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Action Mode Tabs (Large Touch Segmented Control) -->
+            <div class="grid grid-cols-2 p-1 bg-slate-100 dark:bg-[#07172C] rounded-2xl border border-slate-200 dark:border-[#173863] mb-4">
+                <button type="button" id="qa-tab-deduct" onclick="setTouchActionTab('deduction')"
+                        class="py-2.5 rounded-xl text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm flex items-center justify-center gap-1.5">
+                    <span>📉</span>
+                    <span>Stock Deduction</span>
+                </button>
+                <button type="button" id="qa-tab-waste" onclick="setTouchActionTab('waste')"
+                        class="py-2.5 rounded-xl text-xs font-bold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5">
+                    <span>🗑️</span>
+                    <span>Log Waste</span>
+                </button>
+            </div>
+
+            <form method="POST" id="touch-quick-action-form" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                <input type="hidden" name="action" id="qa-action-input" value="deduction">
+                <input type="hidden" name="item_id" id="qa-item-id" value="">
+
+                <!-- Quantity Stepper & Big Numeric Input -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Quantity to Deduct *</label>
+                        <span id="qa-max-hint" class="text-[11px] text-slate-400"></span>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adjustQaAmount(-1)" 
+                                class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#132E52] hover:bg-slate-200 dark:hover:bg-[#1C3E69] text-slate-800 dark:text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all select-none shrink-0 shadow-sm">
+                            −
+                        </button>
+                        <div class="relative flex-1">
+                            <input type="number" step="0.01" min="0.01" name="amount" id="qa-amount-input" required placeholder="0.00"
+                                   class="w-full text-center text-2xl font-black font-mono py-2 bg-slate-50 dark:bg-[#07172C] text-slate-900 dark:text-white border border-slate-200 dark:border-[#173863] rounded-2xl focus:outline-none focus:border-[#F28C28]">
+                            <span id="qa-unit-badge" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase pointer-events-none">
+                                kg
+                            </span>
+                        </div>
+                        <button type="button" onclick="adjustQaAmount(+1)" 
+                                class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#132E52] hover:bg-slate-200 dark:hover:bg-[#1C3E69] text-slate-800 dark:text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all select-none shrink-0 shadow-sm">
+                            +
+                        </button>
+                    </div>
+
+                    <!-- Fast Amount Presets (Touch Pills) -->
+                    <div class="flex items-center gap-1.5 flex-wrap mt-2.5" id="qa-presets-container">
+                        <!-- Populated dynamically based on unit (kg, L, pcs) -->
+                    </div>
+                </div>
+
+                <!-- Reason Section with Quick Presets -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Reason / Operation Note</label>
+                    
+                    <!-- Quick Reason Tap Buttons -->
+                    <div class="flex items-center gap-1.5 flex-wrap mb-2" id="qa-reason-presets">
+                        <!-- Populated dynamically depending on Deduct vs Waste -->
+                    </div>
+
+                    <input type="text" name="reason" id="qa-reason-input" placeholder="Custom note or specify batch..." 
+                           class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28]">
+                </div>
+
+                <!-- Submit & Cancel Buttons -->
+                <div class="pt-3 border-t border-slate-200 dark:border-[#15345C] flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeTouchQuickActionModal()" 
+                            class="px-4 py-3 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="qa-submit-btn" 
+                            class="flex-1 py-3 px-5 rounded-2xl bg-[#F28C28] hover:bg-[#E07B18] active:scale-[0.98] text-white text-xs font-extrabold shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-1.5">
+                        <span>⚡</span>
+                        <span id="qa-submit-text">Confirm Deduction</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script for Live Filter, View Switcher & Touch Quick Actions -->
     <script>
-        // Catalog search filter
-        document.getElementById('filter-stock-input').addEventListener('input', function() {
-            const query = this.value.toLowerCase();
-            document.querySelectorAll('#stock-table tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(query) ? '' : 'none';
+        // -------------------------------------------------------------
+        // 1. TOUCH & SEARCH FILTERING (CARDS + TABLE)
+        // -------------------------------------------------------------
+        let currentStockCategory = 'all';
+
+        const stockSearchInput = document.getElementById('filter-stock-input');
+        const clearStockBtn = document.getElementById('clear-stock-search');
+
+        if (stockSearchInput) {
+            stockSearchInput.addEventListener('input', function() {
+                if (clearStockBtn) {
+                    clearStockBtn.classList.toggle('hidden', this.value.trim() === '');
+                }
+                applyStockFilters();
             });
+        }
+
+        function clearStockSearch() {
+            if (stockSearchInput) {
+                stockSearchInput.value = '';
+                if (clearStockBtn) clearStockBtn.classList.add('hidden');
+                applyStockFilters();
+            }
+        }
+
+        function filterStockCategory(cat) {
+            currentStockCategory = cat.toLowerCase();
+
+            // Highlight active category pill
+            document.querySelectorAll('.stock-cat-pill').forEach(btn => {
+                const text = btn.textContent.toLowerCase();
+                let matches = false;
+                if (currentStockCategory === 'all' && text.includes('all items')) matches = true;
+                else if (currentStockCategory === 'low' && text.includes('low stock')) matches = true;
+                else if (text.startsWith(currentStockCategory)) matches = true;
+
+                if (matches) {
+                    btn.className = "stock-cat-pill active px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 bg-[#F28C28] text-white shadow-sm";
+                } else {
+                    btn.className = "stock-cat-pill px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white";
+                }
+            });
+
+            applyStockFilters();
+        }
+
+        function resetStockFilters() {
+            clearStockSearch();
+            filterStockCategory('all');
+        }
+
+        function applyStockFilters() {
+            const query = (stockSearchInput ? stockSearchInput.value : '').trim().toLowerCase();
+            let visibleCount = 0;
+
+            // Filter Cards
+            document.querySelectorAll('.stock-card-item').forEach(card => {
+                const name = (card.getAttribute('data-name') || '').toLowerCase();
+                const cat = (card.getAttribute('data-category') || '').toLowerCase();
+                const isLow = card.getAttribute('data-low') === '1';
+
+                let matchCat = true;
+                if (currentStockCategory === 'low') {
+                    matchCat = isLow;
+                } else if (currentStockCategory !== 'all') {
+                    matchCat = (cat === currentStockCategory);
+                }
+
+                const matchQuery = (!query || name.includes(query) || cat.includes(query));
+
+                if (matchCat && matchQuery) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Filter Table Rows
+            document.querySelectorAll('.stock-table-row').forEach(row => {
+                const name = (row.getAttribute('data-name') || '').toLowerCase();
+                const cat = (row.getAttribute('data-category') || '').toLowerCase();
+                const isLow = row.getAttribute('data-low') === '1';
+
+                let matchCat = true;
+                if (currentStockCategory === 'low') {
+                    matchCat = isLow;
+                } else if (currentStockCategory !== 'all') {
+                    matchCat = (cat === currentStockCategory);
+                }
+
+                const matchQuery = (!query || name.includes(query) || cat.includes(query));
+
+                if (matchCat && matchQuery) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Empty state feedback
+            const emptyEl = document.getElementById('stock-empty-state');
+            if (emptyEl) {
+                emptyEl.classList.toggle('hidden', visibleCount > 0);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 2. VIEW SWITCHER (TOUCH CARDS VS TABLE)
+        // -------------------------------------------------------------
+        function switchStockView(view) {
+            const cardsView = document.getElementById('stock-cards-view');
+            const tableView = document.getElementById('stock-table-view');
+            const btnCards = document.getElementById('btn-view-cards');
+            const btnTable = document.getElementById('btn-view-table');
+
+            if (view === 'table') {
+                if (cardsView) cardsView.classList.add('hidden');
+                if (tableView) tableView.classList.remove('hidden');
+                if (btnTable) btnTable.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm flex items-center gap-1.5";
+                if (btnCards) btnCards.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5";
+                localStorage.setItem('asterisko_stock_view', 'table');
+            } else {
+                if (cardsView) cardsView.classList.remove('hidden');
+                if (tableView) tableView.classList.add('hidden');
+                if (btnCards) btnCards.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm flex items-center gap-1.5";
+                if (btnTable) btnTable.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5";
+                localStorage.setItem('asterisko_stock_view', 'cards');
+            }
+        }
+
+        // Restore user view preference (Defaults to Cards for mobile/tablets)
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedView = localStorage.getItem('asterisko_stock_view');
+            if (savedView === 'table' && window.innerWidth >= 1024) {
+                switchStockView('table');
+            } else {
+                switchStockView('cards');
+            }
         });
 
+        // -------------------------------------------------------------
+        // 3. TOUCH QUICK ACTION MODAL LOGIC
+        // -------------------------------------------------------------
+        let currentQaItem = null;
+        let currentQaAction = 'deduction';
+
+        function openTouchQuickActionModal(id, name, category, currentStock, unit, defaultAction = 'deduction') {
+            currentQaItem = { id, name, category, currentStock: parseFloat(currentStock), unit };
+            currentQaAction = defaultAction;
+
+            const modal = document.getElementById('quick-action-modal');
+            if (!modal) return;
+
+            // Fill header info
+            document.getElementById('qa-item-id').value = id;
+            document.getElementById('qa-item-name').textContent = name;
+            document.getElementById('qa-category-badge').textContent = category;
+            document.getElementById('qa-current-stock').textContent = currentStock.toFixed(2) + ' ' + unit;
+            document.getElementById('qa-unit-badge').textContent = unit;
+            document.getElementById('qa-max-hint').textContent = 'Max available: ' + currentStock.toFixed(2) + ' ' + unit;
+
+            // Default amount
+            const defaultAmt = unit === 'pcs' ? '1' : (currentStock > 1 ? '0.50' : '0.10');
+            document.getElementById('qa-amount-input').value = defaultAmt;
+            document.getElementById('qa-reason-input').value = '';
+
+            // Render fast amount presets
+            renderQaPresets(unit);
+
+            // Switch to requested action tab
+            setTouchActionTab(defaultAction);
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeTouchQuickActionModal() {
+            const modal = document.getElementById('quick-action-modal');
+            if (modal) modal.classList.add('hidden');
+            currentQaItem = null;
+        }
+
+        function setTouchActionTab(action) {
+            currentQaAction = action;
+            document.getElementById('qa-action-input').value = action;
+
+            const tabDeduct = document.getElementById('qa-tab-deduct');
+            const tabWaste = document.getElementById('qa-tab-waste');
+            const submitBtn = document.getElementById('qa-submit-btn');
+            const submitText = document.getElementById('qa-submit-text');
+
+            if (action === 'waste') {
+                tabWaste.className = "py-2.5 rounded-xl text-xs font-bold transition-all bg-rose-600 text-white shadow-sm flex items-center justify-center gap-1.5";
+                tabDeduct.className = "py-2.5 rounded-xl text-xs font-bold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5";
+                submitBtn.className = "flex-1 py-3 px-5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-extrabold shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center gap-1.5";
+                submitText.textContent = "Confirm Waste Entry";
+            } else {
+                tabDeduct.className = "py-2.5 rounded-xl text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm flex items-center justify-center gap-1.5";
+                tabWaste.className = "py-2.5 rounded-xl text-xs font-bold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5";
+                submitBtn.className = "flex-1 py-3 px-5 rounded-2xl bg-[#F28C28] hover:bg-[#E07B18] active:scale-[0.98] text-white text-xs font-extrabold shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-1.5";
+                submitText.textContent = "Confirm Stock Deduction";
+            }
+
+            renderQaReasonPresets(action);
+        }
+
+        function renderQaPresets(unit) {
+            const container = document.getElementById('qa-presets-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let presets = [];
+            if (unit === 'pcs' || unit === 'boxes' || unit === 'packs') {
+                presets = [1, 2, 5, 10, 20];
+            } else {
+                presets = [0.05, 0.1, 0.25, 0.5, 1.0, 2.0];
+            }
+
+            presets.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = "px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 transition-colors";
+                btn.textContent = '+' + p;
+                btn.onclick = () => {
+                    const inp = document.getElementById('qa-amount-input');
+                    const curr = parseFloat(inp.value) || 0;
+                    inp.value = (curr + p).toFixed(p < 1 ? 2 : (p % 1 === 0 ? 0 : 2));
+                };
+                container.appendChild(btn);
+            });
+
+            // Set Exact 1-Tap Reset
+            const resetBtn = document.createElement('button');
+            resetBtn.type = 'button';
+            resetBtn.className = "px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-200/60 dark:bg-[#07172C] text-slate-500 dark:text-slate-400 hover:text-slate-700";
+            resetBtn.textContent = 'Clear';
+            resetBtn.onclick = () => {
+                document.getElementById('qa-amount-input').value = '';
+            };
+            container.appendChild(resetBtn);
+        }
+
+        function renderQaReasonPresets(action) {
+            const container = document.getElementById('qa-reason-presets');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let reasons = [];
+            if (action === 'waste') {
+                reasons = [
+                    'Grinder Calibration Spoilage',
+                    'Milk Steaming Spillage',
+                    'Expired / Sour Product',
+                    'Damaged Goods'
+                ];
+            } else {
+                reasons = [
+                    'Shift Barista Usage',
+                    'Recipe Formulation Test',
+                    'Staff Beverage Duty',
+                    'Shift Handover Adj'
+                ];
+            }
+
+            reasons.forEach(r => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 transition-colors";
+                btn.textContent = r;
+                btn.onclick = () => {
+                    document.getElementById('qa-reason-input').value = r;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function adjustQaAmount(delta) {
+            const inp = document.getElementById('qa-amount-input');
+            if (!inp) return;
+            let val = parseFloat(inp.value) || 0;
+            const step = (currentQaItem && currentQaItem.unit === 'pcs') ? 1 : (val >= 1 ? 1 : 0.1);
+            val = Math.max(0, val + (delta * step));
+            inp.value = (val % 1 === 0) ? val.toFixed(0) : val.toFixed(2);
+        }
+
+        // -------------------------------------------------------------
+        // 4. MANAGER QUICK ROP MODAL
+        // -------------------------------------------------------------
         function openQuickRopModal(id, name, currentRop, unit) {
             const modal = document.getElementById('rop-modal');
             if (!modal) return;
@@ -601,7 +1166,9 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
             if (modal) modal.classList.add('hidden');
         }
 
-        // Initialize Chart.js matching Canva Slide 2 Overview (Theme-Aware for Light & Dark Mode)
+        // -------------------------------------------------------------
+        // 5. CHART.JS OVERVIEW (Theme-Aware for Light & Dark Mode)
+        // -------------------------------------------------------------
         const ctx = document.getElementById('overviewChart').getContext('2d');
         function getChartThemePalette() {
             const isDark = document.documentElement.classList.contains('dark');
