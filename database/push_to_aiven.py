@@ -191,7 +191,8 @@ try:
             (54, 'Sticky Cinnamon Roll', 'Pastries', 130.00, 'Warm spiced roll drizzled with sweet sticky glaze', 'coffee', [(17, 1.0, 'pcs')]),
 
             # ADD-ON
-            (55, 'Sub-Oat Milk (Add-on)', 'Add-ons', 20.00, 'Substitute dairy milk with creamy barista oat milk', 'coffee', [(3, 0.18, 'L')])
+            (55, 'Sub-Oat Milk (Add-on)', 'Add-ons', 20.00, 'Substitute dairy milk with creamy barista oat milk', 'coffee', [(3, 0.18, 'L')]),
+            (56, 'Extra Espresso Shot (Add-on)', 'Add-ons', 20.00, 'Additional shot of rich houseblend espresso', 'coffee', [(1, 0.010, 'kg')])
         ]
 
         menus_to_insert = []

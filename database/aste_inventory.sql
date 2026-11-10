@@ -398,7 +398,8 @@ INSERT INTO "menu_items" ("id", "name", "category", "price", "description", "ico
 ('52', 'Croissant', 'Pastries', '120.00', 'Flaky, butter-layered golden French croissant baked daily', 'coffee', '1'),
 ('53', 'Pain Au Chocolat', 'Pastries', '135.00', 'Traditional French pastry filled with dark chocolate', 'coffee', '1'),
 ('54', 'Sticky Cinnamon Roll', 'Pastries', '130.00', 'Warm spiced roll drizzled with sweet sticky glaze', 'coffee', '1'),
-('55', 'Sub-Oat Milk (Add-on)', 'Add-ons', '20.00', 'Substitute dairy milk with barista oat milk', 'coffee', '1');
+('55', 'Sub-Oat Milk (Add-on)', 'Add-ons', '20.00', 'Substitute dairy milk with barista oat milk', 'coffee', '1'),
+('56', 'Extra Espresso Shot (Add-on)', 'Add-ons', '20.00', 'Additional shot of rich houseblend espresso', 'coffee', '1');
 
 --
 -- Dumping data for table "menu_item_ingredients"
@@ -634,6 +635,7 @@ INSERT INTO "menu_item_ingredients" ("menu_item_id", "stock_item_id", "quantity_
 ('52', '15', '1.0000', 'pcs'),
 ('53', '16', '1.0000', 'pcs'),
 ('54', '17', '1.0000', 'pcs'),
-('55', '3', '0.1800', 'L');
+('55', '3', '0.1800', 'L'),
+('56', '1', '0.0100', 'kg');
 
 COMMIT;

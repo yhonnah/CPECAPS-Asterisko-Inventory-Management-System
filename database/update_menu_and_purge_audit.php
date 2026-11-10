@@ -347,7 +347,9 @@ try {
 
         // ADD-ONS
         ['name' => 'Sub-Oat Milk (Add-on)', 'cat' => 'Add-ons', 'price' => 20.00, 'desc' => 'Substitute dairy milk with creamy barista oat milk', 'icon' => 'coffee',
-         'ings' => [[3, 0.18, 'L']]]
+         'ings' => [[3, 0.18, 'L']]],
+        ['name' => 'Extra Espresso Shot (Add-on)', 'cat' => 'Add-ons', 'price' => 20.00, 'desc' => 'Additional shot of rich houseblend espresso', 'icon' => 'coffee',
+         'ings' => [[1, 0.010, 'kg']]]
     ];
 
     $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
