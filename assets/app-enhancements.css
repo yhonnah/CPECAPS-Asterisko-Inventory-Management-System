@@ -158,6 +158,10 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.b
     box-sizing: border-box;
     line-height: 1.25rem;
 }
+.btn-wrap {
+    white-space: normal !important;
+    text-align: center !important;
+}
 .btn-primary:hover,
 button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.btn-link):hover {
     background-color: #E07B18 !important;

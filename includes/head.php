@@ -152,7 +152,8 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
         .stat-card .text-3xl { @apply tabular-nums; }
 
         /* ===== Buttons ===== */
-        .btn-primary, .btn-secondary, .btn-danger, button[type="submit"]:not(.btn-icon):not(.btn-link) { @apply relative overflow-hidden whitespace-nowrap shrink-0; }
+        .btn-primary:not(.btn-wrap), .btn-secondary:not(.btn-wrap), .btn-danger:not(.btn-wrap), button[type="submit"]:not(.btn-icon):not(.btn-link):not(.btn-wrap) { @apply relative overflow-hidden whitespace-nowrap shrink-0; }
+        .btn-wrap { @apply relative overflow-hidden whitespace-normal text-center; }
         .btn-primary:active, .btn-secondary:active, button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.btn-link):active { @apply !translate-y-0 !scale-[0.97] !shadow-[0_2px_8px_rgba(242,140,40,0.25)]; }
         .btn-primary::after, button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.btn-link)::after { @apply content-[''] absolute top-0 -left-[60%] w-2/5 h-full -skew-x-[20deg] pointer-events-none bg-gradient-to-r from-transparent via-white/30 to-transparent transition-[left] duration-[600ms] ease-in-out; }
         .btn-primary:hover::after, button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.btn-link):hover::after { @apply left-[130%]; }

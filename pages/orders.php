@@ -795,7 +795,8 @@ $activePage = 'orders';
                                 <input type="hidden" name="ticket_data" id="ticket-data-input" value="[]">
 
                                 <button type="submit" id="btn-complete-ticket" disabled
-                                        class="w-full min-h-[48px] !py-3 !px-4 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold !text-xs xl:!text-sm !whitespace-normal text-center leading-snug shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
+                                        style="white-space: normal; padding: 0.75rem 0.875rem; line-height: 1.25;"
+                                        class="btn-wrap w-full min-h-[48px] rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-xs xl:text-sm text-center shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
                                     <span>Complete Order & Deduct Stock</span>
                                 </button>
                             </form>
@@ -1190,19 +1191,21 @@ $activePage = 'orders';
                 });
 
                 html += `
-                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex items-center justify-between gap-2 text-xs">
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${item.name}</h4>
-                            <span class="text-[11px] text-slate-400">₱${item.price.toFixed(2)} each</span>
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex flex-col gap-2.5 text-xs">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <h4 class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-snug break-words">${item.name}</h4>
+                                <span class="text-[11px] text-slate-400 block mt-0.5">₱${item.price.toFixed(2)} each</span>
+                            </div>
+                            <span class="font-extrabold font-mono text-sm text-slate-900 dark:text-white whitespace-nowrap shrink-0">₱${subtotal.toFixed(2)}</span>
                         </div>
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <button type="button" onclick="updateTicketQty(${item.id}, -1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">-</button>
-                            <span class="font-mono font-bold text-sm text-slate-900 dark:text-white px-1.5">${item.qty}</span>
-                            <button type="button" onclick="updateTicketQty(${item.id}, 1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">+</button>
-                        </div>
-                        <div class="text-right pl-2 shrink-0">
-                            <span class="font-bold font-mono text-slate-900 dark:text-white block">₱${subtotal.toFixed(2)}</span>
-                            <button type="button" onclick="removeTicketItem(${item.id})" class="text-xs font-semibold text-rose-500 hover:underline px-2 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">Remove</button>
+                        <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-[#173863]/60">
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button type="button" onclick="updateTicketQty(${item.id}, -1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">-</button>
+                                <span class="font-mono font-bold text-sm text-slate-900 dark:text-white min-w-[1.5rem] text-center">${item.qty}</span>
+                                <button type="button" onclick="updateTicketQty(${item.id}, 1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">+</button>
+                            </div>
+                            <button type="button" onclick="removeTicketItem(${item.id})" class="min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-bold text-rose-500 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 transition-colors whitespace-nowrap shrink-0">Remove</button>
                         </div>
                     </div>
                 `;
@@ -1226,16 +1229,16 @@ $activePage = 'orders';
                     hasInsufficientStock = true;
                     insufficientDetails.push({ name: name, needed: roundedQty, available: data.current.toFixed(2), unit: data.unit });
                     dedHtml += `
-                        <div class="flex justify-between items-center text-[11px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/40">
-                            <span>⚠️ ${name} (Shortage):</span>
-                            <span class="font-mono">-${roundedQty} / ${data.current.toFixed(2)} ${data.unit}</span>
+                        <div class="flex items-start justify-between gap-2 text-[11px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg border border-rose-200 dark:border-rose-900/40">
+                            <span class="min-w-0 flex-1 break-words leading-snug">⚠️ ${name} (Shortage):</span>
+                            <span class="font-mono whitespace-nowrap shrink-0">-${roundedQty} / ${data.current.toFixed(2)} ${data.unit}</span>
                         </div>
                     `;
                 } else {
                     dedHtml += `
-                        <div class="flex justify-between items-center text-[11px]">
-                            <span>• ${name}:</span>
-                            <b class="font-mono text-amber-600 dark:text-amber-400">-${roundedQty} ${data.unit}</b>
+                        <div class="flex items-start justify-between gap-2 text-[11px] py-0.5">
+                            <span class="min-w-0 flex-1 break-words leading-snug">• ${name}:</span>
+                            <b class="font-mono text-amber-600 dark:text-amber-400 whitespace-nowrap shrink-0">-${roundedQty} ${data.unit}</b>
                         </div>
                     `;
                 }
