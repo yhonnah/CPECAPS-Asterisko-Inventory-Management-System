@@ -1,5 +1,5 @@
 // Asterisko PWA Service Worker (Offline-First Cache Engine)
-const CACHE_NAME = 'asterisko-cache-v6';
+const CACHE_NAME = 'asterisko-cache-v7';
 const PRECACHE_ASSETS = [
     '/manifest.json',
     '/assets/logo.png',
@@ -10,6 +10,7 @@ const PRECACHE_ASSETS = [
     '/pages/count.php',
     '/pages/waste.php',
     '/pages/delivery_intake.php',
+    '/pages/manage_menu.php',
     'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'
 ];
 

@@ -90,13 +90,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $messageType = "error";
             }
         }
+    } elseif ($action === 'receive_restock' || ($action === 'update_status' && ($_POST['status'] ?? '') === 'received')) {
+        $poId = (int)($_POST['po_id'] ?? 0);
+        if ($poId > 0) {
+            try {
+                $pdo->beginTransaction();
+                $chkPo = $pdo->prepare("SELECT * FROM purchase_orders WHERE id = ? FOR UPDATE");
+                $chkPo->execute([$poId]);
+                $po = $chkPo->fetch(PDO::FETCH_ASSOC);
+
+                if (!$po) {
+                    throw new Exception("Purchase Order not found.");
+                }
+                if ($po['status'] === 'received') {
+                    throw new Exception("This Purchase Order has already been received.");
+                }
+
+                $fetchPoi = $pdo->prepare("
+                    SELECT poi.*, si.name AS item_name, si.quantity AS current_stock, si.unit AS stock_unit
+                    FROM purchase_order_items poi
+                    JOIN stock_items si ON si.id = poi.item_id
+                    WHERE poi.po_id = ?
+                    FOR UPDATE
+                ");
+                $fetchPoi->execute([$poId]);
+                $poiList = $fetchPoi->fetchAll(PDO::FETCH_ASSOC);
+
+                if (empty($poiList)) {
+                    throw new Exception("No items found in this purchase order.");
+                }
+
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = quantity + ? WHERE id = ?");
+                $insAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'delivery', ?, ?)
+                ");
+
+                $itemsReceived = 0;
+                foreach ($poiList as $poi) {
+                    $qtyReceived = (float)$poi['quantity'];
+                    $prevStock = (float)$poi['current_stock'];
+                    $newStock = round($prevStock + $qtyReceived, 4);
+
+                    $updStock->execute([$qtyReceived, $poi['item_id']]);
+                    $auditReason = "PO {$po['po_number']} Received (+{$qtyReceived} {$poi['unit']})";
+                    $insAudit->execute([$poi['item_id'], $prevStock, $newStock, $auditReason, $username]);
+                    $itemsReceived++;
+                }
+
+                $updPo = $pdo->prepare("UPDATE purchase_orders SET status = 'received' WHERE id = ?");
+                $updPo->execute([$poId]);
+
+                $pdo->commit();
+                $message = "PO {$po['po_number']} marked as received! Restocked {$itemsReceived} inventory items.";
+                $messageType = "success";
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $message = "Failed to receive order: " . $e->getMessage();
+                $messageType = "error";
+            }
+        }
     } elseif ($action === 'update_status') {
         $poId = (int)($_POST['po_id'] ?? 0);
         $newStatus = $_POST['status'] ?? 'ordered';
-        if ($poId > 0 && in_array($newStatus, ['ordered', 'received', 'cancelled'])) {
+        if ($poId > 0 && in_array($newStatus, ['ordered', 'cancelled'])) {
             $stmt = $pdo->prepare("UPDATE purchase_orders SET status = ? WHERE id = ?");
             $stmt->execute([$newStatus, $poId]);
-            $message = "Order status updated.";
+            $message = "Order status updated to " . ucfirst($newStatus) . ".";
             $messageType = "success";
         }
     }
@@ -266,7 +328,7 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                 </div>
 
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] no-print">
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <form method="POST" class="inline">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                             <input type="hidden" name="action" value="update_status">
@@ -277,6 +339,18 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                                 <option value="cancelled" <?= $poData['status'] === 'cancelled' ? 'selected' : '' ?>>Status: Cancelled</option>
                             </select>
                         </form>
+
+                        <?php if ($poData['status'] === 'ordered'): ?>
+                            <form method="POST" class="inline" onsubmit="return confirm('Confirm receiving PO #<?= htmlspecialchars($poData['po_number']) ?> and restock all items in inventory?');">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                                <input type="hidden" name="action" value="receive_restock">
+                                <input type="hidden" name="po_id" value="<?= $poData['id'] ?>">
+                                <button type="submit" class="min-h-[42px] h-10 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm inline-flex items-center gap-1.5 whitespace-nowrap">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Receive & Restock Inventory</span>
+                                </button>
+                            </form>
+                        <?php endif; ?>
                     </div>
                     <div class="flex items-center gap-2.5 shrink-0">
                         <button onclick="window.print()" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap shrink-0">
@@ -547,6 +621,18 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
         function round2(num) {
             return Math.round((num + Number.EPSILON) * 100) / 100;
         }
+
+        // Auto-fill low stock if arrived with ?auto_rop=1
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('auto_rop')) {
+                const sec = document.getElementById('create-po-section');
+                if (sec) {
+                    sec.scrollIntoView({ behavior: 'smooth' });
+                    autoFillLowStock();
+                }
+            }
+        });
     </script>
 </body>
 </html>

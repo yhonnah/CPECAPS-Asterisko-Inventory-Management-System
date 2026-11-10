@@ -157,6 +157,8 @@ CREATE TABLE "audit_logs" (
   "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("id"),
   KEY "item_id" ("item_id"),
+  KEY "idx_type_created" ("change_type","created_at"),
+  KEY "idx_created" ("created_at"),
   CONSTRAINT "audit_logs_ibfk_1" FOREIGN KEY ("item_id") REFERENCES "stock_items" ("id")
 );
 
@@ -238,7 +240,8 @@ CREATE TABLE "sales_records" (
   "recorded_by" varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("id"),
-  KEY "sale_date" ("sale_date")
+  KEY "sale_date" ("sale_date"),
+  KEY "idx_date_source" ("sale_date","source")
 );
 
 -- --------------------------------------------------------

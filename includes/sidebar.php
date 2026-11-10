@@ -68,6 +68,14 @@ $isManagerOrOwner = in_array(strtolower($currentUserRole), ['admin', 'manager', 
                 </svg>
                 <span>Manage Items</span>
             </a>
+
+            <!-- Menu & Recipes (Admin & Owner) -->
+            <a href="manage_menu.php" class="group/link relative flex items-center gap-3.5 min-h-[48px] px-4 py-3.5 rounded-xl text-sm font-semibold transition-all animate-ast-slide-right [animation-delay:95ms] <?= ($currentPage === 'manage_menu') ? 'bg-[#F28C28] text-white shadow-[0_6px_18px_rgba(242,140,40,0.32)] before:content-[\'\'] before:absolute before:-left-4 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-[60%] before:rounded-r before:bg-[#F28C28]' : 'text-slate-300 hover:text-white hover:bg-[#132E52] hover:translate-x-[3px]' ?>">
+                <svg class="w-5 h-5 transition-transform duration-150 <?= ($currentPage === 'manage_menu') ? 'text-white' : 'text-slate-400 group-hover/link:text-[#F28C28] group-hover/link:scale-110' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+                <span>Menu & Recipes</span>
+            </a>
             <?php endif; ?>
 
             <!-- Stock Count -->

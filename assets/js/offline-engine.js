@@ -177,25 +177,13 @@ async function syncOfflineOutbox() {
 
     console.log(`[Sync] Attempting to synchronize ${pending.length} outbox items to cloud...`);
 
-    // Prepare sync payload items for api/sync.php with Delta Commutative metadata
+    // Prepare sync payload with coffee orders and manual stock items
+    const syncOrders = [];
     const syncPayloadItems = [];
 
     for (const entry of pending) {
         if (entry.action === 'coffee_order') {
-            // Aggregate ingredients from order items
-            for (const item of entry.items) {
-                if (Array.isArray(item.ingredients)) {
-                    for (const ing of item.ingredients) {
-                        syncPayloadItems.push({
-                            uuid: entry.uuid,
-                            item_id: parseInt(ing.stock_item_id),
-                            amount: (parseFloat(ing.quantity_required) || 0) * (parseInt(item.qty) || 1),
-                            change_type: 'deduction',
-                            reason: `Order ${entry.order_number}: ${item.qty}x ${item.name}`
-                        });
-                    }
-                }
-            }
+            syncOrders.push(entry);
         } else if (entry.action === 'manual_deduction') {
             syncPayloadItems.push({
                 uuid: entry.uuid,
@@ -207,7 +195,7 @@ async function syncOfflineOutbox() {
         }
     }
 
-    if (syncPayloadItems.length === 0) {
+    if (syncOrders.length === 0 && syncPayloadItems.length === 0) {
         // Mark all as synced if empty payload
         for (const entry of pending) {
             await offlineDb.outbox.update(entry.id, { status: 'synced' });
@@ -226,7 +214,8 @@ async function syncOfflineOutbox() {
                 'X-CSRF-Token': csrfToken
             },
             body: JSON.stringify({
-                reason: 'Offline Terminal Outbox Sync (Commutative Delta)',
+                reason: 'Offline Terminal Outbox Sync',
+                orders: syncOrders,
                 items: syncPayloadItems
             })
         });

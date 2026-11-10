@@ -49,6 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'purchase_order_items',
                 'invoice_drafts',
                 'sales_records',
+                'menu_items',
+                'menu_item_ingredients',
+                'coffee_orders',
+                'coffee_order_items',
+                'system_cache_meta',
                 'database_backups'
             ];
 

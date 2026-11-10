@@ -195,6 +195,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
 <head>
     <?php require_once __DIR__ . '/../includes/head.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body class="bg-[#F4F7FB] dark:bg-[#071526] text-slate-800 dark:text-slate-100 min-h-screen">
 
@@ -351,28 +352,69 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                     <span class="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full font-semibold whitespace-nowrap shrink-0">Tesseract.js Engine Active</span>
                 </div>
 
-                <!-- Upload Drag-Drop Area -->
+                <!-- Scanner Mode Tabs & Workbench -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     <div class="lg:col-span-5 space-y-4">
-                        <div class="border-2 border-dashed border-slate-300 dark:border-[#1C3E69] rounded-2xl p-6 text-center hover:border-[#F28C28] transition-colors cursor-pointer bg-slate-50 dark:bg-[#07172C]" onclick="document.getElementById('file-input').click()">
-                            <input type="file" id="file-input" accept="image/*" class="hidden">
-                            <div class="w-12 h-12 rounded-2xl bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center mx-auto mb-3">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            </div>
-                            <span class="font-bold text-sm text-slate-800 dark:text-white block">Click to upload invoice image</span>
-                            <span class="text-xs text-slate-400 mt-1 block">Supports JPG, PNG, WEBP</span>
+                        <!-- Mode Selector Tabs -->
+                        <div class="flex items-center gap-2 p-1 bg-slate-100 dark:bg-[#07172C] rounded-xl border border-slate-200 dark:border-[#173863]">
+                            <button type="button" id="tab-btn-ocr" onclick="switchIntakeMode('ocr')" class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm inline-flex items-center justify-center gap-1.5">
+                                <span>📄</span>
+                                <span>Invoice OCR</span>
+                            </button>
+                            <button type="button" id="tab-btn-cam" onclick="switchIntakeMode('camera')" class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-1.5">
+                                <span>📷</span>
+                                <span>Camera Barcode</span>
+                            </button>
                         </div>
 
-                        <!-- Preview & OCR Progress -->
-                        <div id="preview-box" class="hidden space-y-3">
-                            <img id="image-preview" src="" alt="Invoice Preview" class="w-full max-h-56 object-contain rounded-xl border border-slate-200 dark:border-[#173863] bg-black/5">
-                            <div id="ocr-progress-box" class="hidden space-y-1.5">
-                                <div class="flex justify-between text-xs text-slate-500 font-semibold">
-                                    <span id="ocr-status-text">Processing text...</span>
-                                    <span id="ocr-pct">0%</span>
+                        <!-- Panel A: OCR File Upload -->
+                        <div id="mode-ocr-box" class="space-y-4">
+                            <div class="border-2 border-dashed border-slate-300 dark:border-[#1C3E69] rounded-2xl p-6 text-center hover:border-[#F28C28] transition-colors cursor-pointer bg-slate-50 dark:bg-[#07172C]" onclick="document.getElementById('file-input').click()">
+                                <input type="file" id="file-input" accept="image/*" class="hidden">
+                                <div class="w-12 h-12 rounded-2xl bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center mx-auto mb-3">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 </div>
-                                <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-[#132E52] overflow-hidden">
-                                    <div id="ocr-bar" class="h-full bg-[#F28C28] transition-all duration-200" style="width: 0%"></div>
+                                <span class="font-bold text-sm text-slate-800 dark:text-white block">Click to upload invoice image</span>
+                                <span class="text-xs text-slate-400 mt-1 block">Supports JPG, PNG, WEBP</span>
+                            </div>
+
+                            <!-- Preview & OCR Progress -->
+                            <div id="preview-box" class="hidden space-y-3">
+                                <img id="image-preview" src="" alt="Invoice Preview" class="w-full max-h-56 object-contain rounded-xl border border-slate-200 dark:border-[#173863] bg-black/5">
+                                <div id="ocr-progress-box" class="hidden space-y-1.5">
+                                    <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                        <span id="ocr-status-text">Processing text...</span>
+                                        <span id="ocr-pct">0%</span>
+                                    </div>
+                                    <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-[#132E52] overflow-hidden">
+                                        <div id="ocr-bar" class="h-full bg-[#F28C28] transition-all duration-200" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel B: Live Tablet Camera Barcode Scanner -->
+                        <div id="mode-camera-box" class="hidden space-y-3">
+                            <div class="bg-slate-50 dark:bg-[#07172C] rounded-2xl p-4 border border-slate-200 dark:border-[#173863] space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Live Camera Barcode Scanner</span>
+                                    <span id="cam-status-pill" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 dark:bg-[#132E52] text-slate-600 dark:text-slate-300">Camera Off</span>
+                                </div>
+
+                                <div id="barcode-reader-viewport" class="w-full rounded-xl overflow-hidden bg-black aspect-video max-h-64 flex items-center justify-center text-slate-400 text-xs">
+                                    <span>Camera stream will appear here when started</span>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2 items-center justify-between pt-1">
+                                    <button type="button" id="btn-toggle-cam" onclick="toggleCameraScanner()" class="btn-primary flex-1 !min-h-[40px] h-10 px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center justify-center gap-1.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                        <span id="btn-cam-label">Start Camera Scanner</span>
+                                    </button>
+                                </div>
+
+                                <div id="last-scanned-banner" class="hidden p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 font-medium flex items-center justify-between">
+                                    <span id="last-scanned-text">Scanned item</span>
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400">✓ Added</span>
                                 </div>
                             </div>
                         </div>
@@ -450,13 +492,177 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
         </main>
     </div>
 
-    <!-- OCR Engine and Client Scripts -->
+    <!-- OCR Engine, Camera Barcode Scanner, and Client Scripts -->
     <script>
         const catalogItems = <?= json_encode($stockItems) ?>;
         const knownMappings = <?= json_encode($mappings) ?>;
+        let html5QrCode = null;
+        let isCameraRunning = false;
+        let lastScannedCode = '';
+        let lastScanTime = 0;
 
         function scrollToScanner() {
             document.getElementById('scanner-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Intake Mode Switching (OCR vs Camera)
+        function switchIntakeMode(mode) {
+            const btnOcr = document.getElementById('tab-btn-ocr');
+            const btnCam = document.getElementById('tab-btn-cam');
+            const boxOcr = document.getElementById('mode-ocr-box');
+            const boxCam = document.getElementById('mode-camera-box');
+
+            if (mode === 'ocr') {
+                btnOcr.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm inline-flex items-center justify-center gap-1.5';
+                btnCam.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-1.5';
+                boxOcr.classList.remove('hidden');
+                boxCam.classList.add('hidden');
+                if (isCameraRunning) stopCameraScanner();
+            } else {
+                btnCam.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white shadow-sm inline-flex items-center justify-center gap-1.5';
+                btnOcr.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-1.5';
+                boxCam.classList.remove('hidden');
+                boxOcr.classList.add('hidden');
+            }
+        }
+
+        // Live Camera Scanner Toggle
+        async function toggleCameraScanner() {
+            if (isCameraRunning) {
+                await stopCameraScanner();
+            } else {
+                await startCameraScanner();
+            }
+        }
+
+        async function startCameraScanner() {
+            const viewport = document.getElementById('barcode-reader-viewport');
+            const btnLabel = document.getElementById('btn-cam-label');
+            const pill = document.getElementById('cam-status-pill');
+
+            try {
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("barcode-reader-viewport");
+                }
+
+                btnLabel.textContent = 'Starting camera...';
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 160 },
+                    aspectRatio: 1.777778
+                };
+
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText, decodedResult) => {
+                        handleBarcodeScanned(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Frame decode failure (expected per tick)
+                    }
+                );
+
+                isCameraRunning = true;
+                btnLabel.textContent = 'Stop Camera Scanner';
+                pill.textContent = 'Live Scanning';
+                pill.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 animate-pulse';
+            } catch (err) {
+                console.error("Camera startup error:", err);
+                alert("Could not access camera. Please check camera permissions or ensure HTTPS/localhost is active.");
+                btnLabel.textContent = 'Start Camera Scanner';
+                pill.textContent = 'Camera Blocked';
+            }
+        }
+
+        async function stopCameraScanner() {
+            if (html5QrCode && isCameraRunning) {
+                try {
+                    await html5QrCode.stop();
+                } catch (e) {}
+                isCameraRunning = false;
+                document.getElementById('btn-cam-label').textContent = 'Start Camera Scanner';
+                const pill = document.getElementById('cam-status-pill');
+                pill.textContent = 'Camera Off';
+                pill.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 dark:bg-[#132E52] text-slate-600 dark:text-slate-300';
+            }
+        }
+
+        // Handle Decoded Barcode
+        function handleBarcodeScanned(barcode) {
+            const now = Date.now();
+            // Debounce same barcode within 1.5 seconds
+            if (barcode === lastScannedCode && (now - lastScanTime) < 1500) {
+                return;
+            }
+            lastScannedCode = barcode;
+            lastScanTime = now;
+
+            // Beep tone via Web Audio API
+            playScanBeep();
+
+            // Match barcode against catalog and mappings
+            const matchedItemId = findCatalogMatch(barcode);
+            const matchedItem = catalogItems.find(c => parseInt(c.id) === parseInt(matchedItemId));
+            const itemName = matchedItem ? (matchedItem.NAME || matchedItem.name) : `Barcode: ${barcode}`;
+
+            // Show scan feedback
+            const banner = document.getElementById('last-scanned-banner');
+            const txt = document.getElementById('last-scanned-text');
+            if (banner && txt) {
+                txt.textContent = `Scanned: ${itemName} (${barcode})`;
+                banner.classList.remove('hidden');
+            }
+
+            // Check if already in table
+            const tbody = document.getElementById('ocr-table-body');
+            const empty = document.getElementById('empty-row');
+            if (empty) empty.remove();
+
+            let rowFound = false;
+            tbody.querySelectorAll('tr').forEach(tr => {
+                const sel = tr.querySelector('.item-select');
+                if (sel && parseInt(sel.value) === matchedItemId && matchedItemId > 0) {
+                    const qtyInput = tr.querySelector('.item-qty');
+                    if (qtyInput) {
+                        qtyInput.value = (parseFloat(qtyInput.value) || 0) + 1;
+                        rowFound = true;
+                    }
+                }
+            });
+
+            if (!rowFound) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" class="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-desc" value="Barcode: ${escapeHtml(barcode)}"></td>
+                    <td>
+                        <select class="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-select" onchange="syncJson()">
+                            <option value="0">-- Select Catalog Item --</option>
+                            ${catalogItems.map(c => `<option value="${c.id}" ${matchedItemId === parseInt(c.id) ? 'selected' : ''}>${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
+                        </select>
+                    </td>
+                    <td><input type="number" step="0.01" class="w-20 text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#07172C] item-qty" value="1" oninput="syncJson()"></td>
+                    <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="btn-icon w-9 h-9 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-base inline-flex items-center justify-center">&times;</button></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            syncJson();
+        }
+
+        function playScanBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz high note
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.12);
+            } catch (e) {}
         }
 
         document.getElementById('file-input').addEventListener('change', async function(e) {

@@ -49,19 +49,28 @@ validateCsrfToken($csrfToken);
 $username = $_SESSION['username'] ?? 'barista';
 $batch_reason = trim($payload['reason'] ?? 'Offline background sync');
 
-// Normalize items array
+// Extract orders and stock items from payload
+$orders = [];
+if (isset($payload['orders']) && is_array($payload['orders'])) {
+    $orders = $payload['orders'];
+} elseif (isset($payload['action']) && $payload['action'] === 'coffee_order') {
+    $orders = [$payload];
+}
+
 $items = [];
 if (isset($payload['items']) && is_array($payload['items'])) {
     $items = $payload['items'];
 } elseif (isset($payload['item_id'])) {
     $items = [$payload];
-} elseif (array_is_list($payload)) {
+} elseif (array_is_list($payload) && empty($orders)) {
     $items = $payload;
-} else {
+}
+
+if (empty($orders) && empty($items)) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error' => 'Missing item data.'
+        'error' => 'Missing order or stock item data in sync payload.'
     ]);
     exit;
 }
@@ -69,9 +78,126 @@ if (isset($payload['items']) && is_array($payload['items'])) {
 try {
     $pdo->beginTransaction();
 
+    $syncedOrders = 0;
     $results = [];
     $discrepancies = 0;
 
+    // -------------------------------------------------------------
+    // 1. PROCESS OFFLINE COFFEE ORDERS
+    // -------------------------------------------------------------
+    if (!empty($orders)) {
+        $stmtCheckOrder = $pdo->prepare("SELECT id FROM coffee_orders WHERE order_number = ? LIMIT 1");
+        $stmtInsertOrder = $pdo->prepare("
+            INSERT INTO coffee_orders (order_number, order_type, total_amount, items_count, notes, served_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmtInsertItem = $pdo->prepare("
+            INSERT INTO coffee_order_items (order_id, menu_item_id, item_name, quantity, price, subtotal, deductions_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmtInsertSale = $pdo->prepare("
+            INSERT INTO sales_records (sale_date, gross_sales, source, notes, recorded_by, created_at)
+            VALUES (?, ?, 'Offline POS Sync', ?, ?, ?)
+        ");
+        $stmtLockStock = $pdo->prepare("SELECT id, NAME, NAME AS name, quantity, unit FROM stock_items WHERE id = ? FOR UPDATE");
+        $stmtUpdateStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
+        $stmtAuditSale = $pdo->prepare("
+            INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+            VALUES (?, ?, ?, 'order_sale', ?, ?)
+        ");
+
+        foreach ($orders as $ord) {
+            $orderNum = trim($ord['order_number'] ?? ('ORD-SYNC-' . date('Ymd') . '-' . substr(uniqid(), -4)));
+            $uuid = trim($ord['uuid'] ?? '');
+            
+            // Idempotency check: Skip if already inserted
+            $stmtCheckOrder->execute([$orderNum]);
+            if ($stmtCheckOrder->fetchColumn()) {
+                continue;
+            }
+
+            $orderType = $ord['order_type'] ?? 'coffee_drink';
+            $totalAmount = max(0, (float)($ord['total_amount'] ?? 0));
+            $itemsCount = max(1, (int)($ord['items_count'] ?? 1));
+            $notes = trim($ord['notes'] ?? 'Offline Terminal Order');
+            $servedBy = trim($ord['served_by'] ?? $username);
+            $createdAt = !empty($ord['created_at']) ? $ord['created_at'] : date('Y-m-d H:i:s');
+            $saleDate = date('Y-m-d', strtotime($createdAt));
+
+            // Insert Coffee Order
+            $stmtInsertOrder->execute([$orderNum, $orderType, $totalAmount, $itemsCount, $notes, $servedBy, $createdAt]);
+            $orderId = (int)$pdo->lastInsertId();
+
+            // Insert Order Items & Aggregate Deductions
+            $orderLines = $ord['items'] ?? [];
+            $stockDeltas = []; // stock_id => ['name' => ..., 'needed' => ..., 'unit' => ...]
+
+            foreach ($orderLines as $line) {
+                $menuId = !empty($line['id']) ? (int)$line['id'] : null;
+                $lineName = trim($line['name'] ?? 'Drink Item');
+                $lineQty = max(1, (int)($line['qty'] ?? 1));
+                $linePrice = max(0, (float)($line['price'] ?? 0));
+                $subtotal = round($lineQty * $linePrice, 2);
+
+                $lineDeductions = [];
+                // If ingredients were included in payload
+                if (!empty($line['ingredients']) && is_array($line['ingredients'])) {
+                    foreach ($line['ingredients'] as $ing) {
+                        $sId = (int)($ing['stock_item_id'] ?? $ing['id'] ?? 0);
+                        $req = round((float)($ing['quantity_required'] ?? $ing['amount'] ?? 0) * $lineQty, 4);
+                        if ($sId > 0 && $req > 0) {
+                            if (!isset($stockDeltas[$sId])) {
+                                $stockDeltas[$sId] = [
+                                    'needed' => 0,
+                                    'unit' => $ing['unit'] ?? $ing['stock_unit'] ?? 'units',
+                                    'name' => $ing['stock_name'] ?? $ing['name'] ?? ''
+                                ];
+                            }
+                            $stockDeltas[$sId]['needed'] += $req;
+                            $lineDeductions[] = "-{$req} {$stockDeltas[$sId]['unit']} (ID: {$sId})";
+                        }
+                    }
+                }
+
+                $stmtInsertItem->execute([
+                    $orderId,
+                    $menuId,
+                    $lineName,
+                    $lineQty,
+                    $linePrice,
+                    $subtotal,
+                    json_encode($lineDeductions)
+                ]);
+            }
+
+            // Deduct stock items & record audit logs
+            foreach ($stockDeltas as $stockId => $d) {
+                $stmtLockStock->execute([$stockId]);
+                $st = $stmtLockStock->fetch(PDO::FETCH_ASSOC);
+                if ($st) {
+                    $prevStock = (float)$st['quantity'];
+                    $newStock = max(0, round($prevStock - $d['needed'], 4));
+                    $stmtUpdateStock->execute([$newStock, $stockId]);
+
+                    $auditReason = "Offline Order {$orderNum}: -{$d['needed']} {$st['unit']}";
+                    if ($uuid !== '') $auditReason .= " [UUID: {$uuid}]";
+                    if (mb_strlen($auditReason) > 255) $auditReason = mb_substr($auditReason, 0, 252) . '...';
+
+                    $stmtAuditSale->execute([$stockId, $prevStock, $newStock, $auditReason, $servedBy]);
+                }
+            }
+
+            // Record Sales Record
+            $saleNotes = "Offline Order #{$orderNum} ({$itemsCount} items)";
+            $stmtInsertSale->execute([$saleDate, $totalAmount, $saleNotes, $servedBy, $createdAt]);
+
+            $syncedOrders++;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 2. PROCESS STOCK ITEMS (MANUAL DEDUCTION, COUNT, WASTE, DELIVERY)
+    // -------------------------------------------------------------
     $selectStmt = $pdo->prepare("SELECT id, NAME, NAME AS name, quantity, unit, reorder_point FROM stock_items WHERE id = ? FOR UPDATE");
     $updateStmt = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
     $auditStmt  = $pdo->prepare("
@@ -195,6 +321,7 @@ try {
         'synced_at' => date('Y-m-d H:i:s'),
         'acting_user' => $username,
         'summary' => [
+            'orders_synced' => $syncedOrders,
             'total_items' => count($results),
             'discrepancies' => $discrepancies
         ],

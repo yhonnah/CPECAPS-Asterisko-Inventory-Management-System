@@ -170,14 +170,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $ingredientTotals = []; // [stock_item_id => ['name' => ..., 'needed' => ..., 'unit' => ...]]
                 $orderLines = [];
 
+                // 1. Batch Fetch all distinct drinks in ticket (Eliminates N+1 queries)
+                $menuIds = array_values(array_unique(array_filter(array_map(fn($i) => (int)($i['id'] ?? 0), $ticketItems))));
+                if (empty($menuIds)) {
+                    throw new Exception("Invalid order ticket data.");
+                }
+
+                $placeholders = implode(',', array_fill(0, count($menuIds), '?'));
+                $stmtDrinks = $pdo->prepare("SELECT * FROM menu_items WHERE id IN ($placeholders) AND is_active = 1");
+                $stmtDrinks->execute($menuIds);
+                $drinksMap = [];
+                foreach ($stmtDrinks->fetchAll(PDO::FETCH_ASSOC) as $d) {
+                    $drinksMap[$d['id']] = $d;
+                }
+
+                // 2. Batch Fetch all ingredients in one single query
+                $stmtIngs = $pdo->prepare("SELECT * FROM menu_item_ingredients WHERE menu_item_id IN ($placeholders)");
+                $stmtIngs->execute($menuIds);
+                $ingredientsByMenu = [];
+                foreach ($stmtIngs->fetchAll(PDO::FETCH_ASSOC) as $ing) {
+                    $ingredientsByMenu[$ing['menu_item_id']][] = $ing;
+                }
+
+                // Process ticket items
                 foreach ($ticketItems as $tItem) {
                     $menuId = (int)($tItem['id'] ?? 0);
                     $qty = max(1, (int)($tItem['qty'] ?? 1));
 
-                    $stmtDrink = $pdo->prepare("SELECT * FROM menu_items WHERE id = ? AND is_active = 1");
-                    $stmtDrink->execute([$menuId]);
-                    $drink = $stmtDrink->fetch(PDO::FETCH_ASSOC);
-
+                    $drink = $drinksMap[$menuId] ?? null;
                     if (!$drink) {
                         throw new Exception("Drink item ID #{$menuId} is not available.");
                     }
@@ -186,11 +206,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $orderTotal += $subtotal;
                     $totalCups += $qty;
 
-                    // Ingredients
-                    $stmtIng = $pdo->prepare("SELECT * FROM menu_item_ingredients WHERE menu_item_id = ?");
-                    $stmtIng->execute([$menuId]);
-                    $ings = $stmtIng->fetchAll(PDO::FETCH_ASSOC);
-
+                    $ings = $ingredientsByMenu[$menuId] ?? [];
                     foreach ($ings as $ing) {
                         $sId = (int)$ing['stock_item_id'];
                         $req = round((float)$ing['quantity_required'] * $qty, 4);
@@ -213,14 +229,30 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     ];
                 }
 
-                // Lock and deduct stock items
+                // 3. Batch Lock and deduct stock items in one query
+                $stockIds = array_keys($ingredientTotals);
+                if (!empty($stockIds)) {
+                    $stockPlaceholders = implode(',', array_fill(0, count($stockIds), '?'));
+                    $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id IN ($stockPlaceholders) FOR UPDATE");
+                    $stmtLock->execute($stockIds);
+                    $stockMap = [];
+                    foreach ($stmtLock->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                        $stockMap[$s['id']] = $s;
+                    }
+                } else {
+                    $stockMap = [];
+                }
+
                 $deductionSummaries = [];
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
+                $stmtAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'order_sale', ?, ?)
+                ");
+
                 foreach ($ingredientTotals as $stockId => $data) {
                     $needed = $data['needed'];
-
-                    $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id = ? FOR UPDATE");
-                    $stmtLock->execute([$stockId]);
-                    $stockItem = $stmtLock->fetch(PDO::FETCH_ASSOC);
+                    $stockItem = $stockMap[$stockId] ?? null;
 
                     if (!$stockItem) {
                         throw new Exception("Stock item #{$stockId} not found.");
@@ -232,15 +264,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     }
 
                     $newStock = max(0, round($prevStock - $needed, 4));
-
-                    $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
                     $updStock->execute([$newStock, $stockId]);
 
                     $auditReason = "Order Ticket {$orderNum}: {$totalCups} cups (-{$needed} {$stockItem['unit']})";
-                    $stmtAudit = $pdo->prepare("
-                        INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
-                        VALUES (?, ?, ?, 'order_sale', ?, ?)
-                    ");
                     $stmtAudit->execute([$stockId, $prevStock, $newStock, $auditReason, $username]);
 
                     $deductionSummaries[] = "-{$needed} {$stockItem['unit']} {$stockItem['NAME']}";
@@ -646,11 +672,14 @@ $activePage = 'orders';
                             <!-- Bottom Controls: Search Input, Offline Sync Badge & Sync Button -->
                             <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 w-full">
                                 <div class="relative flex-1 min-w-[180px]">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     </div>
-                                    <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
-                                           class="w-full h-11 !min-h-[44px] !pl-10 !pr-4 !py-2 bg-slate-50 dark:bg-[#07172C] !text-xs sm:!text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                    <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search drinks (e.g. Spanish, Matcha, Chong)..." 
+                                           class="w-full h-11 !min-h-[44px] !pl-10 !pr-10 !py-2 bg-slate-50 dark:bg-[#07172C] !text-xs sm:!text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                    <button type="button" id="clear-menu-search" onclick="clearMenuSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold">
+                                        ✕
+                                    </button>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
                                     <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
@@ -666,6 +695,20 @@ $activePage = 'orders';
 
                         <!-- Beverage Cards Grid -->
                         <div id="drinks-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- No Matches Empty State -->
+                            <div id="no-drinks-match" class="hidden col-span-1 sm:col-span-2 bg-white dark:bg-[#0C2340] rounded-2xl p-8 border border-dashed border-slate-300 dark:border-[#173863] text-center space-y-3">
+                                <div class="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto text-xl font-bold">
+                                    🔍
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">No matching drinks found</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                    No beverages match your search term in this category. Try clearing your search or selecting "All Drinks".
+                                </p>
+                                <button type="button" onclick="clearMenuSearch(); filterCategory('All');" class="btn-secondary !min-h-[38px] h-9 px-4 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
+                                    Reset Filters
+                                </button>
+                            </div>
+
                             <?php foreach ($menuItems as $drink): ?>
                                 <div class="drink-card bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-sm flex flex-col justify-between overflow-hidden"
                                      data-category="<?= htmlspecialchars($drink['category']) ?>"
@@ -1147,12 +1190,33 @@ $activePage = 'orders';
         }
 
         function filterMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('clear-menu-search');
+            if (clearBtn) {
+                if (input && input.value.trim().length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            applyMenuFilters();
+        }
+
+        function clearMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('clear-menu-search');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            if (clearBtn) clearBtn.classList.add('hidden');
             applyMenuFilters();
         }
 
         function applyMenuFilters() {
             const query = (document.getElementById('menu-search-input').value || '').trim().toLowerCase();
             const cards = document.querySelectorAll('.drink-card');
+            let visibleCount = 0;
 
             cards.forEach(card => {
                 const cat = card.getAttribute('data-category') || '';
@@ -1163,10 +1227,20 @@ $activePage = 'orders';
 
                 if (matchesCat && matchesQuery) {
                     card.style.display = 'flex';
+                    visibleCount++;
                 } else {
                     card.style.display = 'none';
                 }
             });
+
+            const noMatchBox = document.getElementById('no-drinks-match');
+            if (noMatchBox) {
+                if (visibleCount === 0) {
+                    noMatchBox.classList.remove('hidden');
+                } else {
+                    noMatchBox.classList.add('hidden');
+                }
+            }
         }
 
         // -------------------------------------------------------------
