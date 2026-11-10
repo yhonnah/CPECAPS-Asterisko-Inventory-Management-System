@@ -484,7 +484,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                 <!-- Audit Filter Form -->
                 <div class="p-4 bg-slate-50/70 dark:bg-[#091B33] border-b border-slate-200 dark:border-[#15345C]">
                     <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 text-xs items-end">
-                        <div>
+                        <div class="min-w-0 w-full">
                             <label class="block font-bold mb-1 text-[11px] text-slate-600 dark:text-slate-300">Filter by Item</label>
                             <select name="audit_item" class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
                                 <option value="0">All Items</option>
@@ -495,7 +495,7 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div>
+                        <div class="min-w-0 w-full">
                             <label class="block font-bold mb-1 text-[11px] text-slate-600 dark:text-slate-300">Change Type</label>
                             <select name="audit_type" class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
                                 <option value="">All Types</option>
@@ -507,17 +507,21 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                 <option value="unauthorized_access" <?= $filterType === 'unauthorized_access' ? 'selected' : '' ?>>Unauthorized Access</option>
                             </select>
                         </div>
-                        <div>
+                        <div class="min-w-0 w-full">
                             <label class="block font-bold mb-1 text-[11px] text-slate-600 dark:text-slate-300">From Date</label>
-                            <input type="date" name="audit_start" value="<?= htmlspecialchars($filterStart) ?>"
-                                   class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
+                            <div class="flex w-full min-w-0">
+                                <input type="date" name="audit_start" value="<?= htmlspecialchars($filterStart) ?>"
+                                       class="flex-1 min-w-0 w-0 p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
+                            </div>
                         </div>
-                        <div>
+                        <div class="min-w-0 w-full">
                             <label class="block font-bold mb-1 text-[11px] text-slate-600 dark:text-slate-300">To Date</label>
-                            <input type="date" name="audit_end" value="<?= htmlspecialchars($filterEnd) ?>"
-                                   class="w-full p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
+                            <div class="flex w-full min-w-0">
+                                <input type="date" name="audit_end" value="<?= htmlspecialchars($filterEnd) ?>"
+                                       class="flex-1 min-w-0 w-0 p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-white dark:bg-[#07172C]">
+                            </div>
                         </div>
-                        <div class="sm:col-span-2 xl:col-span-1 flex items-center gap-2">
+                        <div class="sm:col-span-2 xl:col-span-1 flex items-center gap-2 min-w-0 w-full">
                             <button type="submit" class="btn-secondary flex-1 h-[46px] !px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm inline-flex items-center justify-center whitespace-nowrap">Filter</button>
                             <a href="dashboard.php" class="btn-outline flex-1 h-[46px] !px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#132E52] inline-flex items-center justify-center whitespace-nowrap">Reset</a>
                         </div>

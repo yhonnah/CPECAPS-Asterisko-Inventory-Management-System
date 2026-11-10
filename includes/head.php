@@ -113,7 +113,7 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
 </script>
 
 <!-- Asterisko Enhanced CSS -->
-<link rel="stylesheet" href="../assets/app-enhancements.css">
+<link rel="stylesheet" href="../assets/app-enhancements.css?v=<?= @filemtime(__DIR__ . '/../assets/app-enhancements.css') ?: '4' ?>">
 
 <!-- Asterisko animations & UI polish (Tailwind @apply - processed by the Tailwind CDN above) -->
 <style type="text/tailwindcss">
@@ -172,7 +172,10 @@ $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
         .badge-low::before, .badge-warning::before, .badge-pending::before { @apply animate-ast-pulse-ring-orange; }
 
         /* ===== Forms ===== */
-        input, select, textarea { @apply transition-[border-color,box-shadow,background-color] duration-150; }
+        .grid > * { @apply min-w-0; }
+        input, select, textarea { @apply transition-[border-color,box-shadow,background-color] duration-150 max-w-full min-w-0 box-border; }
+        input[type="date"] { @apply max-w-full !min-w-0 appearance-none box-border; -webkit-appearance: none; }
+        input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
         input:not([type="checkbox"]):not([type="radio"]):not(:focus):hover, select:not(:focus):hover, textarea:not(:focus):hover { @apply border-slate-300 dark:border-[#1C3E69]; }
         input[type="checkbox"], input[type="radio"] { @apply accent-[#F28C28] cursor-pointer; }
 

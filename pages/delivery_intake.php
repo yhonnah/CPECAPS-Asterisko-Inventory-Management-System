@@ -387,7 +387,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                             <input type="hidden" name="items_json" id="form-items-json" value="[]">
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div>
+                                <div class="min-w-0 w-full">
                                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Supplier</label>
                                     <select name="supplier_id" id="form-supplier" class="w-full">
                                         <option value="">Select or Detect</option>
@@ -396,13 +396,16 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                                <div>
+                                <div class="min-w-0 w-full">
                                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Invoice / Ref #</label>
                                     <input type="text" name="invoice_number" id="form-invoice-num" placeholder="e.g. INV-10492" class="w-full">
                                 </div>
-                                <div>
+                                <div class="min-w-0 w-full">
                                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Delivery Date</label>
-                                    <input type="date" name="invoice_date" id="form-date" value="<?= date('Y-m-d') ?>" class="w-full">
+                                    <div class="flex w-full min-w-0">
+                                        <input type="date" name="invoice_date" id="form-date" value="<?= date('Y-m-d') ?>"
+                                               class="flex-1 min-w-0 w-0">
+                                    </div>
                                 </div>
                             </div>
 

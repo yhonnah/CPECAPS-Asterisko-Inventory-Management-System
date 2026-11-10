@@ -341,9 +341,11 @@ $pageTitle = 'Reports & Analytics - Asterisko Inventory';
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                 <input type="hidden" name="action" value="add_sales">
 
-                <div>
+                <div class="min-w-0 w-full">
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Sale Date *</label>
-                    <input type="date" name="sale_date" value="<?= date('Y-m-d') ?>" required class="w-full">
+                    <div class="flex w-full min-w-0">
+                        <input type="date" name="sale_date" value="<?= date('Y-m-d') ?>" required class="flex-1 min-w-0 w-0">
+                    </div>
                 </div>
 
                 <div>

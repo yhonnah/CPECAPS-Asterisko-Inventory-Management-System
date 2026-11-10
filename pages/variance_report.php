@@ -117,7 +117,7 @@ $pageTitle = 'Variance Report - Asterisko Inventory';
             <!-- Filter Card -->
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-5">
                 <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-xs items-end">
-                    <div>
+                    <div class="min-w-0 w-full">
                         <label class="block font-bold mb-1 text-slate-600 dark:text-slate-300">Filter by Item</label>
                         <select name="item_id" class="w-full">
                             <option value="0">All Items</option>
@@ -128,15 +128,21 @@ $pageTitle = 'Variance Report - Asterisko Inventory';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div>
+                    <div class="min-w-0 w-full">
                         <label class="block font-bold mb-1 text-slate-600 dark:text-slate-300">From Date</label>
-                        <input type="date" name="start_date" value="<?= htmlspecialchars($startDate) ?>" class="w-full">
+                        <div class="flex w-full min-w-0">
+                            <input type="date" name="start_date" value="<?= htmlspecialchars($startDate) ?>"
+                                   class="flex-1 min-w-0 w-0">
+                        </div>
                     </div>
-                    <div>
+                    <div class="min-w-0 w-full">
                         <label class="block font-bold mb-1 text-slate-600 dark:text-slate-300">To Date</label>
-                        <input type="date" name="end_date" value="<?= htmlspecialchars($endDate) ?>" class="w-full">
+                        <div class="flex w-full min-w-0">
+                            <input type="date" name="end_date" value="<?= htmlspecialchars($endDate) ?>"
+                                   class="flex-1 min-w-0 w-0">
+                        </div>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 min-w-0 w-full">
                         <button type="submit" class="btn-primary flex-1 h-[46px] !px-4 py-2.5 rounded-xl font-bold text-sm shadow-md inline-flex items-center justify-center whitespace-nowrap">Filter</button>
                         <a href="variance_report.php" class="btn-outline flex-1 h-[46px] !px-4 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap">Reset</a>
                     </div>

@@ -354,6 +354,10 @@ html.dark table tbody tr:hover {
 }
 
 /* Form Inputs & Selects */
+.grid > * {
+    min-width: 0;
+}
+
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -369,7 +373,24 @@ textarea {
     line-height: 1.25rem;
     background-color: #FFFFFF;
     color: #1E293B;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Fix iOS / iPadOS WebKit date input intrinsic width overflow inside CSS Grid & Flex containers */
+input[type="date"] {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    max-width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
 }
 
 /* Ensure inputs with icon containers preserve ample padding without text collisions */
