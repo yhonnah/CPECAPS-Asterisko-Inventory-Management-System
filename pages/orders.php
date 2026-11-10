@@ -750,7 +750,7 @@ $activePage = 'orders';
                     </div>
 
                     <!-- Right: Active Order Ticket Panel (Cart) -->
-                    <div class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20 overflow-hidden">
+                    <div id="current-ticket-panel" class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20 scroll-mt-20 overflow-hidden">
                         <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-[#15345C]">
                             <div class="flex items-center gap-2">
                                 <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">
@@ -1036,8 +1036,76 @@ $activePage = 'orders';
         </main>
     </div>
 
+    <!-- Persistent Floating "Jump to Ticket" Button (Phone / Stacked Viewports) -->
+    <div id="jump-to-ticket-wrapper" class="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] inset-x-4 sm:left-auto sm:right-6 sm:w-auto z-30 lg:hidden transition-all duration-300 ease-out">
+        <button type="button" id="btn-jump-to-ticket" onclick="scrollToTicket()"
+                class="w-full sm:w-auto min-h-[50px] px-5 py-3 rounded-2xl bg-[#0C2340] dark:bg-[#F28C28] text-white font-extrabold text-xs sm:text-sm shadow-[0_10px_28px_rgba(12,35,64,0.35)] dark:shadow-[0_10px_28px_rgba(242,140,40,0.35)] border border-[#F28C28]/40 dark:border-white/20 flex items-center justify-between sm:justify-center gap-3 active:scale-[0.98] transition-all">
+            <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <span class="w-7 h-7 rounded-xl bg-[#F28C28] dark:bg-[#0C2340] text-white flex items-center justify-center text-sm shadow-sm shrink-0">🧾</span>
+                <span>Jump to Ticket</span>
+            </span>
+            <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <span id="jump-ticket-summary" class="px-2.5 py-1 rounded-lg bg-white/15 dark:bg-black/20 font-mono text-xs font-bold text-[#F28C28] dark:text-white">
+                    0 cups · ₱0.00
+                </span>
+                <svg class="w-4 h-4 shrink-0 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+            </span>
+        </button>
+    </div>
+
     <!-- Interactive Ticket Cart & Tab JavaScript -->
     <script>
+        // -------------------------------------------------------------
+        // JUMP TO TICKET FLOATING BUTTON & INTERSECTION OBSERVER
+        // -------------------------------------------------------------
+        let isTicketInView = false;
+
+        function scrollToTicket() {
+            const ticketPanel = document.getElementById('current-ticket-panel');
+            if (ticketPanel) {
+                ticketPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function updateJumpToTicketVisibility() {
+            const wrapper = document.getElementById('jump-to-ticket-wrapper');
+            const secCoffee = document.getElementById('section-coffee-orders');
+            if (!wrapper || !secCoffee) return;
+
+            const isCoffeeTabActive = !secCoffee.classList.contains('hidden');
+            if (!isCoffeeTabActive || isTicketInView) {
+                wrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+            } else {
+                wrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            }
+        }
+
+        (function initTicketVisibilityObserver() {
+            const ticketPanel = document.getElementById('current-ticket-panel');
+            if (!ticketPanel) return;
+
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        isTicketInView = entry.isIntersecting;
+                        updateJumpToTicketVisibility();
+                    });
+                }, {
+                    root: null,
+                    threshold: 0.12
+                });
+                observer.observe(ticketPanel);
+            } else {
+                window.addEventListener('scroll', () => {
+                    const rect = ticketPanel.getBoundingClientRect();
+                    isTicketInView = (rect.top < window.innerHeight - 80 && rect.bottom > 80);
+                    updateJumpToTicketVisibility();
+                }, { passive: true });
+            }
+        })();
+
         // -------------------------------------------------------------
         // MAIN TAB SWITCHER: Coffee Orders vs. Manual Deduction
         // -------------------------------------------------------------
@@ -1058,6 +1126,7 @@ $activePage = 'orders';
                 btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
                 btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             }
+            updateJumpToTicketVisibility();
         }
 
         // -------------------------------------------------------------
@@ -1150,6 +1219,7 @@ $activePage = 'orders';
             const deductionsBox = document.getElementById('ticket-deductions-box');
             const deductionsList = document.getElementById('ticket-deductions-list');
             const ticketDataInput = document.getElementById('ticket-data-input');
+            const jumpSummaryEl = document.getElementById('jump-ticket-summary');
 
             if (ticket.length === 0) {
                 container.innerHTML = `
@@ -1161,6 +1231,7 @@ $activePage = 'orders';
                 `;
                 totalCupsEl.textContent = '0 cups';
                 totalPriceEl.textContent = '₱0.00';
+                if (jumpSummaryEl) jumpSummaryEl.textContent = '0 cups · ₱0.00';
                 btnComplete.disabled = true;
                 deductionsBox.classList.add('hidden');
                 ticketDataInput.value = '[]';
@@ -1212,8 +1283,10 @@ $activePage = 'orders';
             });
 
             container.innerHTML = html;
-            totalCupsEl.textContent = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
+            const cupsLabel = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
+            totalCupsEl.textContent = cupsLabel;
             totalPriceEl.textContent = `₱${totalPrice.toFixed(2)}`;
+            if (jumpSummaryEl) jumpSummaryEl.textContent = `${cupsLabel} · ₱${totalPrice.toFixed(2)}`;
             ticketDataInput.value = JSON.stringify(ticket.map(i => ({ id: i.id, qty: i.qty })));
 
             // Check if any ingredient exceeds live available stock

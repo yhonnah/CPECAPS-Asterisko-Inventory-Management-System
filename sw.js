@@ -1,5 +1,5 @@
 // Asterisko PWA Service Worker (Offline-First Cache Engine)
-const CACHE_NAME = 'asterisko-cache-v5';
+const CACHE_NAME = 'asterisko-cache-v6';
 const PRECACHE_ASSETS = [
     '/manifest.json',
     '/assets/logo.png',
@@ -17,7 +17,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(async cache => {
-            console.log('[SW] Pre-caching core application assets safely (v5)');
+            console.log('[SW] Pre-caching core application assets safely (v6)');
             for (const asset of PRECACHE_ASSETS) {
                 try {
                     const response = await fetch(asset, { cache: 'no-cache' });
