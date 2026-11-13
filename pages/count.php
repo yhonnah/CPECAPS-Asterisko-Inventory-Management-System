@@ -141,6 +141,35 @@ $items = $pdo->query("
 
     </div>
 
+    <!-- Extreme Variance (>100%) Confirmation Modal (TC-47) -->
+    <div id="extreme-variance-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#0D2137] border border-amber-300 dark:border-amber-700 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div class="p-5 bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800 flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 font-bold text-lg">!</div>
+                <div>
+                    <h3 class="text-base font-bold text-amber-950 dark:text-amber-200">Extreme Stock Variance Detected (&gt; 100%)</h3>
+                    <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">One or more items differ by more than 100% from system recorded stock. Please double-check your count before committing.</p>
+                </div>
+            </div>
+            <div class="p-5 space-y-4">
+                <div id="extreme-variance-list" class="max-h-44 overflow-y-auto space-y-2 text-xs"></div>
+                <div>
+                    <label for="extreme-variance-note" class="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Mandatory Explanation / Verification Note</label>
+                    <input type="text" id="extreme-variance-note" placeholder="e.g., Recounted full unopened sack, prior log missed" class="w-full p-2.5 text-sm border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100">
+                </div>
+                <label class="flex items-start gap-2 text-xs text-stone-700 dark:text-stone-300 cursor-pointer">
+                    <input type="checkbox" id="extreme-variance-ack" class="mt-0.5 rounded border-stone-300 text-amber-600 focus:ring-amber-500">
+                    <span>I confirm these extreme variance figures were physically recounted and verified.</span>
+                </label>
+                <p id="extreme-variance-err" class="hidden text-xs text-rose-600 dark:text-rose-400 font-semibold"></p>
+            </div>
+            <div class="px-5 py-3.5 bg-stone-50 dark:bg-stone-900/60 border-t border-stone-200 dark:border-stone-800 flex justify-end gap-2">
+                <button type="button" id="btn-cancel-extreme" class="px-4 py-2 text-xs font-semibold rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800">Review Inputs</button>
+                <button type="button" id="btn-confirm-extreme" class="px-4 py-2 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-700 text-white shadow">Confirm &amp; Submit Count</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Pass server items into JavaScript -->
     <script>
         const SERVER_ITEMS = <?= json_encode($items, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -280,8 +309,8 @@ $items = $pdo->query("
                                 </span>
                             </div>
                             <div class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                                System Recorded: <b class="font-mono text-stone-800 dark:text-stone-200">${systemStock.toFixed(2)} ${escapeHtml(unit)}</b>
-                                (ROP: ${parseFloat(item.reorder_point).toFixed(2)})
+                                System Recorded: <b class="font-mono text-stone-800 dark:text-stone-200">${Number(systemStock.toFixed(4))} ${escapeHtml(unit)}</b>
+                                (ROP: ${Number(parseFloat(item.reorder_point).toFixed(4))})
                             </div>
                         </div>
 
@@ -290,7 +319,7 @@ $items = $pdo->query("
                             <div class="w-full sm:w-36">
                                 <label class="block sm:hidden text-[11px] font-semibold text-stone-500">Physical Count</label>
                                 <div class="relative">
-                                    <input type="number" step="0.01" min="0" 
+                                    <input type="number" step="0.0001" min="0" 
                                            data-item-id="${item.id}"
                                            data-system-stock="${systemStock}"
                                            placeholder="0.00" 
@@ -350,7 +379,7 @@ $items = $pdo->query("
                     return;
                 }
 
-                const variance = parseFloat((physicalCount - systemStock).toFixed(2));
+                const variance = parseFloat((physicalCount - systemStock).toFixed(4));
                 const sign = variance > 0 ? '+' : '';
 
                 if (variance === 0) {
@@ -358,17 +387,17 @@ $items = $pdo->query("
                     badge.textContent = `Match: 0.00`;
                 } else if (variance < 0) {
                     badge.className = "variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800";
-                    badge.textContent = `${variance.toFixed(2)} (Short)`;
+                    badge.textContent = `${Number(variance.toFixed(4))} (Short)`;
                 } else {
                     badge.className = "variance-badge block px-2 py-1.5 rounded-lg text-center font-mono font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800";
-                    badge.textContent = `+${variance.toFixed(2)} (Surplus)`;
+                    badge.textContent = `+${Number(variance.toFixed(4))} (Surplus)`;
                 }
             }
 
             // Autofill helper
             btnFillRecorded.addEventListener('click', () => {
                 document.querySelectorAll('.input-physical').forEach(input => {
-                    input.value = parseFloat(input.dataset.systemStock).toFixed(2);
+                    input.value = Number(parseFloat(input.dataset.systemStock).toFixed(4));
                     calculateRowVariance(input);
                 });
             });
@@ -426,6 +455,91 @@ $items = $pdo->query("
                     timestamp: new Date().toISOString()
                 };
 
+                // Detect Extreme Variance (>100% of system stock) safeguard (TC-47)
+                const extremeItems = [];
+                entries.forEach(entry => {
+                    const catalogItem = catalogItems.find(c => parseInt(c.id, 10) === entry.item_id);
+                    const sysStock = catalogItem ? parseFloat(catalogItem.quantity) : 0;
+                    const diff = Math.abs(entry.physical_count - sysStock);
+                    const pctDiff = sysStock > 0 ? (diff / sysStock) * 100 : (diff > 0 ? 999 : 0);
+                    if (pctDiff > 100) {
+                        extremeItems.push({
+                            name: catalogItem ? (catalogItem.NAME || catalogItem.name) : `Item #${entry.item_id}`,
+                            unit: catalogItem ? catalogItem.unit : '',
+                            sysStock,
+                            physicalCount: entry.physical_count,
+                            pctDiff: Math.round(pctDiff)
+                        });
+                    }
+                });
+
+                if (extremeItems.length > 0) {
+                    const confirmed = await promptExtremeVarianceModal(extremeItems, payload);
+                    if (!confirmed) {
+                        return;
+                    }
+                }
+
+                await dispatchSyncPayload(payload);
+            });
+
+            function promptExtremeVarianceModal(extremeItems, payload) {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('extreme-variance-modal');
+                    const list = document.getElementById('extreme-variance-list');
+                    const noteEl = document.getElementById('extreme-variance-note');
+                    const ackEl = document.getElementById('extreme-variance-ack');
+                    const errEl = document.getElementById('extreme-variance-err');
+                    const btnCancel = document.getElementById('btn-cancel-extreme');
+                    const btnConfirm = document.getElementById('btn-confirm-extreme');
+
+                    list.innerHTML = extremeItems.map(item => `
+                        <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex justify-between items-center gap-2">
+                            <div>
+                                <div class="font-bold text-stone-900 dark:text-stone-100">${escapeHtml(item.name)}</div>
+                                <div class="text-stone-600 dark:text-stone-400">System: ${Number(item.sysStock.toFixed(4))} ${escapeHtml(item.unit)} &rarr; Physical: <b>${Number(item.physicalCount.toFixed(4))} ${escapeHtml(item.unit)}</b></div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200 font-mono font-bold">${item.pctDiff > 900 ? '>100%' : item.pctDiff + '%'}</span>
+                        </div>
+                    `).join('');
+
+                    noteEl.value = '';
+                    ackEl.checked = false;
+                    errEl.classList.add('hidden');
+                    modal.classList.remove('hidden');
+
+                    const cleanup = () => {
+                        modal.classList.add('hidden');
+                        btnCancel.onclick = null;
+                        btnConfirm.onclick = null;
+                    };
+
+                    btnCancel.onclick = () => {
+                        cleanup();
+                        resolve(false);
+                    };
+
+                    btnConfirm.onclick = () => {
+                        const verifyNote = noteEl.value.trim();
+                        if (!ackEl.checked || verifyNote.length < 3) {
+                            errEl.textContent = 'Check the confirmation box and enter a verification reason (min 3 chars).';
+                            errEl.classList.remove('hidden');
+                            return;
+                        }
+                        payload.supervisor_acknowledged = true;
+                        payload.reason = `${payload.reason} [Verified Extreme Variance: ${verifyNote}]`;
+                        payload.items.forEach(it => {
+                            if (!it.notes) {
+                                it.notes = `Extreme variance verified: ${verifyNote}`;
+                            }
+                        });
+                        cleanup();
+                        resolve(true);
+                    };
+                });
+            }
+
+            async function dispatchSyncPayload(payload) {
                 // Check connectivity
                 if (navigator.onLine) {
                     setSubmitting(true);
@@ -448,7 +562,7 @@ $items = $pdo->query("
                     enqueueOffline(payload);
                     showAlert('warning', `You are currently offline. Count safely stored in local queue. It will auto-sync when connection returns.`);
                 }
-            });
+            }
 
             // Send payload to backend sync.php
             async function sendSyncPayload(payload) {

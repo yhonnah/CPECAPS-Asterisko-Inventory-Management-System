@@ -3,35 +3,76 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 
 $error = '';
+$rateLimited = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCsrfToken();
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
     if ($username === '' || $password === '') {
         $error = 'Please enter both username and password.';
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Brute-force protection (TC-33): max 5 failed attempts per 5 minutes by IP or username
+        $maxAttempts = 5;
+        $windowMinutes = 5;
+        $rateStmt = $pdo->prepare("
+            SELECT
+                SUM(CASE WHEN ip_address = ? THEN 1 ELSE 0 END) AS ip_hits,
+                SUM(CASE WHEN username = ? THEN 1 ELSE 0 END) AS user_hits
+            FROM login_attempts
+            WHERE attempted_at >= DATE_SUB(NOW(), INTERVAL {$windowMinutes} MINUTE)
+        ");
+        $rateStmt->execute([$ipAddress, $username]);
+        $rateRow = $rateStmt->fetch(PDO::FETCH_ASSOC);
+        $ipHits = (int)($rateRow['ip_hits'] ?? 0);
+        $userHits = (int)($rateRow['user_hits'] ?? 0);
 
-        if ($user && password_verify($password, $user['password_hash'])) {
-            if (isset($user['is_active']) && (int)$user['is_active'] === 0) {
-                $error = 'Your account has been deactivated. Please contact the Owner.';
-            } else {
-                session_regenerate_id(true);
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['user_role'] = $user['role'];
-                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-                header("Location: dashboard.php");
-                exit();
+        if ($ipHits >= $maxAttempts || $userHits >= $maxAttempts) {
+            http_response_code(429);
+            $rateLimited = true;
+            $error = 'Too many failed login attempts. Please wait 5 minutes before trying again.';
+            try {
+                $auditBlock = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (NULL, NULL, NULL, 'rate_limit_blocked', ?, ?)
+                ");
+                $auditBlock->execute([
+                    "Login brute-force lockout triggered from IP {$ipAddress} for username '{$username}'",
+                    $username !== '' ? $username : 'Unknown'
+                ]);
+            } catch (Exception $e) {
+                error_log("Rate-limit audit log failed: " . $e->getMessage());
             }
         } else {
-            $error = 'Invalid username or password.';
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user && password_verify($password, $user['password_hash'])) {
+                if (isset($user['is_active']) && (int)$user['is_active'] === 0) {
+                    $error = 'Your account has been deactivated. Please contact the Owner.';
+                } else {
+                    // Clear failed login attempts on successful sign-in
+                    $clearStmt = $pdo->prepare("DELETE FROM login_attempts WHERE ip_address = ? OR username = ?");
+                    $clearStmt->execute([$ipAddress, $username]);
+
+                    session_regenerate_id(true);
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['user_role'] = $user['role'];
+                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+                    header("Location: dashboard.php");
+                    exit();
+                }
+            } else {
+                $logFailStmt = $pdo->prepare("INSERT INTO login_attempts (ip_address, username) VALUES (?, ?)");
+                $logFailStmt->execute([$ipAddress, $username]);
+                $error = 'Invalid username or password.';
+            }
         }
     }
 }

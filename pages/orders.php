@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 require_once __DIR__ . '/../includes/cache_helper.php';
+require_once __DIR__ . '/../includes/alerts.php';
 requireLogin();
 
 $username = $_SESSION['username'] ?? 'User';
@@ -64,7 +65,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
 
             // Lock and verify each stock item
+            $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
             $deductionSummaries = [];
+            $touchedItemIds = [];
+            $prevBalances = [];
             foreach ($ingredients as $ing) {
                 $totalNeeded = round((float)$ing['quantity_required'] * $order_qty, 4);
 
@@ -88,7 +92,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $updStock->execute([$newStock, $ing['stock_item_id']]);
 
                 // Record Audit Log
-                $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
                 $auditReason = "Coffee Order {$orderNum}: {$order_qty}x {$drink['name']} (-{$totalNeeded} {$stockItem['unit']})";
                 $stmtAudit = $pdo->prepare("
                     INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
@@ -96,6 +99,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 ");
                 $stmtAudit->execute([$ing['stock_item_id'], $prevStock, $newStock, $auditReason, $username]);
 
+                $touchedItemIds[] = (int)$ing['stock_item_id'];
+                $prevBalances[(int)$ing['stock_item_id']] = $prevStock;
                 $deductionSummaries[] = "-{$totalNeeded} {$stockItem['unit']} {$stockItem['NAME']}";
             }
 
@@ -132,6 +137,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $stmtSales->execute([$orderTotal, "Order #{$orderNum} ({$order_qty}x {$drink['name']})", $username]);
 
             $pdo->commit();
+            if (!empty($touchedItemIds)) {
+                checkAndNotifyLowStock($pdo, $touchedItemIds, $username, $prevBalances);
+            }
             $_SESSION['flash_message'] = "Order #{$orderNum} completed! Brewed {$order_qty}x {$drink['name']}. Deducted: " . implode(', ', $deductionSummaries) . ".";
             $_SESSION['flash_type'] = "success";
             header("Location: orders.php");
@@ -215,6 +223,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
                 // Lock and deduct stock items
                 $deductionSummaries = [];
+                $touchedTicketIds = [];
+                $ticketPrevBalances = [];
                 foreach ($ingredientTotals as $stockId => $data) {
                     $needed = $data['needed'];
 
@@ -243,6 +253,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     ");
                     $stmtAudit->execute([$stockId, $prevStock, $newStock, $auditReason, $username]);
 
+                    $touchedTicketIds[] = (int)$stockId;
+                    $ticketPrevBalances[(int)$stockId] = $prevStock;
                     $deductionSummaries[] = "-{$needed} {$stockItem['unit']} {$stockItem['NAME']}";
                 }
 
@@ -280,6 +292,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $stmtSales->execute([$orderTotal, "Order Ticket #{$orderNum}", $username]);
 
                 $pdo->commit();
+                if (!empty($touchedTicketIds)) {
+                    checkAndNotifyLowStock($pdo, $touchedTicketIds, $username, $ticketPrevBalances);
+                }
                 $_SESSION['flash_message'] = "Order Ticket #{$orderNum} fulfilled! Brewed {$totalCups} total cups. Deducted: " . implode(', ', $deductionSummaries) . ".";
                 $_SESSION['flash_type'] = "success";
                 header("Location: orders.php");
@@ -364,6 +379,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $stmtAudit->execute([$item_id, $prevStock, $newStock, $notes, $username]);
 
                 $pdo->commit();
+                checkAndNotifyLowStock($pdo, [$item_id], $username, [$item_id => $prevStock]);
                 $_SESSION['flash_message'] = "Manual deduction confirmed for '{$item['NAME']}'. Deducted: {$deduct_qty} {$item['unit']}. New balance: {$newStock} {$item['unit']}.";
                 $_SESSION['flash_type'] = "success";
                 header("Location: orders.php");

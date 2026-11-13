@@ -13,14 +13,32 @@ if (isset($_FILES['invoice_image']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCsrfToken();
     header('Content-Type: application/json');
     $file = $_FILES['invoice_image'];
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'error' => 'Upload failed or file exceeded server limit.']);
+        exit;
+    }
 
-    if (!in_array($file['type'], $allowed)) {
+    $mimeToExt = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+    $detectedMime = $file['type'] ?? '';
+    if (function_exists('finfo_open') && is_uploaded_file($file['tmp_name'])) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $detectedMime = finfo_file($finfo, $file['tmp_name']) ?: $detectedMime;
+            finfo_close($finfo);
+        }
+    }
+
+    if (!isset($mimeToExt[$detectedMime])) {
         echo json_encode(['success' => false, 'error' => 'Unsupported image format. Upload JPG, PNG, or WEBP.']);
         exit;
     }
 
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $ext = $mimeToExt[$detectedMime];
     $filename = 'inv_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $targetDir = dirname(__DIR__) . '/uploads/invoices/';
     if (!is_dir($targetDir)) {
@@ -93,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 foreach ($items as $entry) {
                     $internal_id = (int)($entry['internal_item_id'] ?? 0);
-                    $qtyReceived = round((float)($entry['quantity'] ?? 0), 2);
+                    $qtyReceived = round((float)($entry['quantity'] ?? 0), 4);
                     $rawDesc = trim($entry['description'] ?? '');
                     $saveMapping = !empty($entry['save_mapping']) && $supplier_id && $rawDesc !== '';
 
@@ -108,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
 
                     $prevQty = (float)$currItem['quantity'];
-                    $newQty = round($prevQty + $qtyReceived, 2);
+                    $newQty = round($prevQty + $qtyReceived, 4);
 
                     $updateStockStmt->execute([$newQty, $internal_id]);
 
@@ -484,6 +502,46 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             runOcr(file);
         });
 
+        // Downsample and apply contrast preprocessing before Tesseract OCR (TC-30)
+        async function preprocessImageForOcr(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const objUrl = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(objUrl);
+                    const maxDim = 1600;
+                    let width = img.naturalWidth || img.width;
+                    let height = img.naturalHeight || img.height;
+
+                    if (width > maxDim || height > maxDim) {
+                        if (width >= height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.filter = 'grayscale(100%) contrast(135%)';
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        resolve(blob || file);
+                    }, 'image/jpeg', 0.85);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(objUrl);
+                    resolve(file);
+                };
+                img.src = objUrl;
+            });
+        }
+
         async function runOcr(imageSource) {
             const progressBox = document.getElementById('ocr-progress-box');
             const pText = document.getElementById('ocr-status-text');
@@ -491,34 +549,43 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             const pPct = document.getElementById('ocr-pct');
 
             progressBox.classList.remove('hidden');
-            pText.textContent = 'Initializing OCR engine...';
+            pText.textContent = 'Optimizing image resolution...';
 
             try {
+                const optimizedSource = await preprocessImageForOcr(imageSource);
+                pText.textContent = 'Initializing OCR engine...';
                 const worker = await Tesseract.createWorker('eng');
                 pText.textContent = 'Scanning document lines...';
 
-                const ret = await worker.recognize(imageSource);
-                const text = ret.data.text;
+                const ret = await worker.recognize(optimizedSource);
                 await worker.terminate();
 
                 progressBox.classList.add('hidden');
-                parseOcrText(text);
+                parseOcrResult(ret.data);
             } catch (err) {
                 pText.textContent = 'OCR Error: ' + err.message;
             }
         }
 
-        function parseOcrText(text) {
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+        function parseOcrResult(ocrData) {
+            const rawLines = Array.isArray(ocrData?.lines) && ocrData.lines.length > 0
+                ? ocrData.lines.map(l => ({ text: (l.text || '').trim(), confidence: typeof l.confidence === 'number' ? l.confidence : 100 }))
+                : String(ocrData?.text || '').split('\n').map(l => ({ text: l.trim(), confidence: 100 }));
+
             const detected = [];
 
-            lines.forEach(line => {
-                const qtyMatch = line.match(/(\d+(?:\.\d+)?)\s*(kg|g|l|ml|pcs|boxes|packs|unit)?/i);
+            rawLines.forEach(entry => {
+                if (entry.text.length <= 2) return;
+                const qtyMatch = entry.text.match(/(\d+(?:\.\d+)?)\s*(kg|g|l|ml|pcs|boxes|packs|unit)?/i);
                 if (qtyMatch) {
                     const qty = parseFloat(qtyMatch[1]);
-                    const cleanDesc = line.replace(qtyMatch[0], '').replace(/[^\w\s]/gi, ' ').trim();
+                    const cleanDesc = entry.text.replace(qtyMatch[0], '').replace(/[^\w\s]/gi, ' ').trim();
                     if (cleanDesc.length >= 3 && qty > 0) {
-                        detected.push({ desc: cleanDesc, qty: qty });
+                        detected.push({
+                            desc: cleanDesc,
+                            qty: qty,
+                            confidence: Math.round(entry.confidence)
+                        });
                     }
                 }
             });
@@ -537,16 +604,29 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             items.forEach((it, idx) => {
                 const tr = document.createElement('tr');
                 const matchedInternal = findCatalogMatch(it.desc);
+                const conf = typeof it.confidence === 'number' ? it.confidence : 100;
+                const isLowConf = conf > 0 && conf < 70; // TC-40 low-confidence warning threshold
+
+                if (isLowConf) {
+                    tr.className = 'bg-amber-50/90 dark:bg-amber-950/30 border-l-4 border-amber-500';
+                }
+
+                const confBadge = isLowConf
+                    ? `<div class="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-semibold">Low Confidence (${conf}%) - Verify</div>`
+                    : '';
 
                 tr.innerHTML = `
-                    <td><input type="text" class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-desc" value="${escapeHtml(it.desc)}"></td>
+                    <td>
+                        <input type="text" class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-desc ${isLowConf ? 'border border-amber-400' : ''}" value="${escapeHtml(it.desc)}">
+                        ${confBadge}
+                    </td>
                     <td>
                         <select class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-select">
                             <option value="0">-- Select Catalog Item --</option>
                             ${catalogItems.map(c => `<option value="${c.id}" ${matchedInternal === c.id ? 'selected' : ''}>${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
                         </select>
                     </td>
-                    <td><input type="number" step="0.01" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="${it.qty}"></td>
+                    <td><input type="number" step="0.0001" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty ${isLowConf ? 'border border-amber-400' : ''}" value="${it.qty}"></td>
                     <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="text-rose-500 font-bold">&times;</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -584,7 +664,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                         ${catalogItems.map(c => `<option value="${c.id}">${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="1"></td>
+                <td><input type="number" step="0.0001" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="1"></td>
                 <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="text-rose-500 font-bold">&times;</button></td>
             `;
             tbody.appendChild(tr);

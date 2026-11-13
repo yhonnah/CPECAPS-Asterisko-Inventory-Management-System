@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 require_once __DIR__ . '/../includes/cache_helper.php';
+require_once __DIR__ . '/../includes/alerts.php';
 requireLogin();
 
 $role = $_SESSION['role'];
@@ -43,17 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
 
                 bumpCatalogVersion($pdo);
+                checkAndNotifyLowStock($pdo, [$item_id], $username);
                 $message = "Reorder Point (ROP) for '{$name}' successfully updated to {$reorder_point} {$unit}!";
             }
         }
     } else {
         $item_id = (int)($_POST['item_id'] ?? 0);
-        $amount = (float)($_POST['amount'] ?? 0);
+        $amount = round((float)($_POST['amount'] ?? 0), 4);
         $change_type = $action === 'waste' ? 'waste' : 'deduction'; 
         $reason = trim($_POST['reason'] ?? 'Shift quick action');
 
-        if ($amount <= 0 || $item_id <= 0) {
-            $error = "Valid item and quantity greater than zero are required.";
+        if ($item_id <= 0) {
+            $error = "Please select a valid inventory item.";
+        } elseif ($amount <= 0) {
+            $error = "Quantity must be a positive number.";
         } else {
             try {
                 $pdo->beginTransaction();
@@ -67,7 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
 
                 $prev_qty = (float)$item['quantity'];
-                $new_qty = max(0, round($prev_qty - $amount, 2));
+                if ($amount > $prev_qty) {
+                    throw new Exception("Insufficient stock for '{$item['NAME']}'. Requested: {$amount} {$item['unit']}, Available: {$prev_qty} {$item['unit']}.");
+                }
+                $new_qty = max(0, round($prev_qty - $amount, 4));
 
                 // Update quantity
                 $updateStmt = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
@@ -81,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $auditStmt->execute([$item_id, $prev_qty, $new_qty, $change_type, $reason, $username]);
 
                 $pdo->commit();
+                checkAndNotifyLowStock($pdo, [$item_id], $username, [$item_id => $prev_qty]);
                 $itemName = $item['NAME'] ?? $item['name'] ?? 'Item';
                 $message = "Recorded {$change_type} of {$amount} {$item['unit']} for {$itemName}.";
             } catch (Exception $e) {
