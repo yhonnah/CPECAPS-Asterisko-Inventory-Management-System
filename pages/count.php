@@ -458,7 +458,7 @@ $items = $pdo->query("
                 // Detect Extreme Variance (>100% of system stock) safeguard (TC-47)
                 const extremeItems = [];
                 entries.forEach(entry => {
-                    const catalogItem = catalogItems.find(c => parseInt(c.id, 10) === entry.item_id);
+                    const catalogItem = catalog.find(c => parseInt(c.id, 10) === entry.item_id);
                     const sysStock = catalogItem ? parseFloat(catalogItem.quantity) : 0;
                     const diff = Math.abs(entry.physical_count - sysStock);
                     const pctDiff = sysStock > 0 ? (diff / sysStock) * 100 : (diff > 0 ? 999 : 0);
@@ -701,11 +701,14 @@ $items = $pdo->query("
                     .replace(/'/g, '&#039;');
             }
 
-            // Dark Mode toggle
-            document.getElementById('theme-toggle').addEventListener('click', () => {
-                const isDark = document.documentElement.classList.toggle('dark');
-                try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
-            });
+            // Dark Mode toggle (topbar handles toggleTheme() on logged-in pages)
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', () => {
+                    const isDark = document.documentElement.classList.toggle('dark');
+                    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (e) {}
+                });
+            }
 
             // Initial render and status check
             renderItems();
