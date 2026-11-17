@@ -390,11 +390,11 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
                 <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
                     <div>
-                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Live Stock Management & Quick Actions</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Atomic inventory updates across all barista and management terminals.</p>
+                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Live Stock</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Quick stock deductions and waste logging</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <input type="text" id="filter-stock-input" placeholder="Search catalog..."
+                        <input type="text" id="filter-stock-input" placeholder="Search stock..."
                                class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-48 focus:outline-none focus:border-[#F28C28]">
                     </div>
                 </div>
@@ -406,12 +406,11 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                 <th>Item Name</th>
                                 <th>Category</th>
                                 <th>In-Stock</th>
-                                <th>ROP</th>
                                 <th>Status</th>
                                 <?php if ($role !== 'Staff'): ?>
                                     <th>Unit Cost</th>
                                 <?php endif; ?>
-                                <th>Quick Shift Action</th>
+                                <th>Quick Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -429,19 +428,6 @@ $pageTitle = 'Dashboard - Asterisko Inventory';
                                 </td>
                                 <td class="font-mono font-bold text-sm text-slate-800 dark:text-slate-100">
                                     <?= number_format($item['quantity'], 2) ?> <?= htmlspecialchars($item['unit']) ?>
-                                </td>
-                                <td class="font-mono text-slate-500">
-                                    <div class="inline-flex items-center gap-1.5">
-                                        <span class="font-semibold text-slate-700 dark:text-slate-300"><?= number_format($item['reorder_point'], 2) ?></span>
-                                        <span class="text-[11px] text-slate-400"><?= htmlspecialchars($item['unit']) ?></span>
-                                        <?php if ($role !== 'Staff'): ?>
-                                            <button type="button" 
-                                                    onclick='openQuickRopModal(<?= $item['id'] ?>, "<?= addslashes(htmlspecialchars($item['NAME'] ?? $item['name'])) ?>", <?= (float)$item['reorder_point'] ?>, "<?= addslashes(htmlspecialchars($item['unit'])) ?>")'
-                                                    class="p-1 rounded text-slate-400 hover:text-[#F28C28] hover:bg-orange-50 dark:hover:bg-[#132E52] transition-colors" title="Change Reorder Point (ROP)">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
                                 </td>
                                 <td>
                                     <?php if ($isLow): ?>

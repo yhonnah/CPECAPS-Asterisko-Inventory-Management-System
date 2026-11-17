@@ -232,11 +232,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Deliveries</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View deliveries, scan supplier invoices, and confirm received stock.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Log and confirm incoming stock deliveries.</p>
                 </div>
                 <button onclick="scrollToScanner()" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>+ Add Delivery</span>
+                    <span>Add Delivery</span>
                 </button>
             </div>
 
@@ -248,47 +248,37 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                 </div>
             <?php endif; ?>
 
-            <!-- 3 Metric Cards (Exact Canva Slide 5 Spec) -->
+            <!-- 3 Metric Cards (Compact) -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                <!-- Card 1: Total Deliveries -->
                 <div class="stat-card p-5" style="--stat-accent: #0C2340;">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Deliveries</span>
-                    <div class="mt-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confirmed</span>
+                    <div class="mt-2">
                         <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight"><?= sprintf('%02d', $totalDeliveriesCount) ?></span>
-                        <p class="text-xs text-slate-400 mt-1">Confirmed deliveries this month</p>
                     </div>
                 </div>
 
-                <!-- Card 2: Pending Review -->
                 <div class="stat-card p-5" style="--stat-accent: #F28C28;">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Review</span>
-                    <div class="mt-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending</span>
+                    <div class="mt-2">
                         <span class="text-3xl font-extrabold text-[#F28C28] tracking-tight"><?= sprintf('%02d', $pendingReviewCount) ?></span>
-                        <p class="text-xs text-[#F28C28] font-semibold mt-1">Needs confirmation</p>
                     </div>
                 </div>
 
-                <!-- Card 3: Confirmed Today -->
                 <div class="stat-card p-5" style="--stat-accent: #10B981;">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confirmed Today</span>
-                    <div class="mt-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Today</span>
+                    <div class="mt-2">
                         <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight"><?= sprintf('%02d', $confirmedTodayCount) ?></span>
-                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">Stock updated</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Deliveries Directory Table (Canva Slide 5 Spec) -->
+            <!-- Recent Deliveries Directory Table -->
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
                 <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <div>
-                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Recent Deliveries</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">All intake records and invoice scans</p>
-                    </div>
+                    <h2 class="font-bold text-base text-slate-900 dark:text-white">Recent Deliveries</h2>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="delivery-search" placeholder="Search supplier or invoice..." 
                                class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <button class="btn-secondary px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">Filter</button>
                     </div>
                 </div>
 
@@ -359,14 +349,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             <!-- OCR Invoice Intake Scanner Workbench -->
             <div id="scanner-section" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-6">
                 <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            <span>Intake & Invoice Scanner (OCR)</span>
-                        </h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Upload paper invoices or receipts for client-side OCR parsing, supplier matching, and one-click stock verification.</p>
-                    </div>
-                    <span class="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full font-semibold">Tesseract.js Engine Active</span>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>New Delivery &amp; Invoice Scan</span>
+                    </h2>
+                    <span class="text-xs text-slate-400">Upload an invoice photo or add rows manually</span>
                 </div>
 
                 <!-- Upload Drag-Drop Area -->
