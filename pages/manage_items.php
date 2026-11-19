@@ -161,8 +161,8 @@ $pageTitle = 'Manage Items - Asterisko Inventory';
             <!-- Title & Add Item Action (Canva Slide 3 Spec) -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Manage Items</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View, add, edit and manage your inventory items</p>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Inventory</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View, add, edit, and track inventory stock</p>
                 </div>
                 <button onclick="openCreateModal()" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>

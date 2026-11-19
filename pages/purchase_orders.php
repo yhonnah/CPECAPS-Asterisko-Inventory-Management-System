@@ -27,8 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $message = "Please select a supplier and include at least one order line item.";
             $messageType = "error";
         } else {
-            try {
-                $pdo->beginTransaction();
+            // Verify supplier exists and is active before creating PO (TC-41)
+            $supCheck = $pdo->prepare("SELECT id, is_active FROM suppliers WHERE id = ?");
+            $supCheck->execute([$supplier_id]);
+            $supplierRow = $supCheck->fetch(PDO::FETCH_ASSOC);
+
+            if (!$supplierRow || (int)($supplierRow['is_active'] ?? 0) !== 1) {
+                $message = "Selected supplier is inactive or unavailable.";
+                $messageType = "error";
+            } else {
+                try {
+                    $pdo->beginTransaction();
 
                 // Generate unique transaction ID: PO-YYYYMMDD-XXXX
                 $prefix = $order_type === 'pre_order' ? 'PRE' : 'PO';
@@ -88,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
                 $message = "Failed to generate order: " . $e->getMessage();
                 $messageType = "error";
+            }
             }
         }
     } elseif ($action === 'update_status') {

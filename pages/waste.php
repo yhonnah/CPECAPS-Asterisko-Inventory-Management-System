@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
+require_once __DIR__ . '/../includes/alerts.php';
 requireLogin();
 
 $username = $_SESSION['username'];
@@ -12,7 +13,7 @@ $messageType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCsrfToken();
     $item_id = (int)($_POST['item_id'] ?? 0);
-    $waste_qty = round((float)($_POST['quantity'] ?? 0), 2);
+    $waste_qty = round((float)($_POST['quantity'] ?? 0), 4);
     $reason_preset = trim($_POST['reason_preset'] ?? 'Spoilage');
     $reason_custom = trim($_POST['reason_custom'] ?? '');
     $full_reason = $reason_custom !== '' ? "{$reason_preset}: {$reason_custom}" : $reason_preset;
@@ -36,7 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $prevQty = (float)$item['quantity'];
-            $newQty = max(0, round($prevQty - $waste_qty, 2));
+            if ($waste_qty > $prevQty) {
+                throw new Exception("Cannot log waste of {$waste_qty} {$item['unit']}; only {$prevQty} {$item['unit']} available in stock.");
+            }
+            $newQty = max(0, round($prevQty - $waste_qty, 4));
 
             // 1. Deduct stock quantity
             $update = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
@@ -51,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $audit->execute([$item_id, $prevQty, $newQty, $auditReason, $username]);
 
             $pdo->commit();
+            checkAndNotifyLowStock($pdo, [$item_id], $username, [$item_id => $prevQty]);
 
             $itemName = $item['NAME'] ?? $item['name'] ?? 'Item';
             $message = "Logged waste of {$waste_qty} {$item['unit']} for '{$itemName}'. Balance updated to {$newQty} {$item['unit']}.";

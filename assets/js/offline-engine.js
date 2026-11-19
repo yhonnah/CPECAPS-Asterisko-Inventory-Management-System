@@ -182,22 +182,24 @@ async function syncOfflineOutbox() {
 
     for (const entry of pending) {
         if (entry.action === 'coffee_order') {
-            // Aggregate ingredients from order items
-            for (const item of entry.items) {
+            // Aggregate ingredients from order items with unique per-line deterministic UUIDs
+            entry.items.forEach((item, itemIdx) => {
                 if (Array.isArray(item.ingredients)) {
-                    for (const ing of item.ingredients) {
+                    item.ingredients.forEach((ing) => {
                         syncPayloadItems.push({
-                            uuid: entry.uuid,
+                            outbox_id: entry.id,
+                            uuid: `${entry.uuid}_m${itemIdx}_i${ing.stock_item_id}`,
                             item_id: parseInt(ing.stock_item_id),
                             amount: (parseFloat(ing.quantity_required) || 0) * (parseInt(item.qty) || 1),
-                            change_type: 'deduction',
+                            change_type: 'order_sale',
                             reason: `Order ${entry.order_number}: ${item.qty}x ${item.name}`
                         });
-                    }
+                    });
                 }
-            }
+            });
         } else if (entry.action === 'manual_deduction') {
             syncPayloadItems.push({
+                outbox_id: entry.id,
                 uuid: entry.uuid,
                 item_id: entry.item_id,
                 amount: entry.amount,
@@ -218,36 +220,56 @@ async function syncOfflineOutbox() {
 
     try {
         updateOutboxBadge(true); // Flag syncing status
-        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
-        const response = await fetch('/api/sync.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({
-                reason: 'Offline Terminal Outbox Sync (Commutative Delta)',
-                items: syncPayloadItems
-            })
-        });
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+            || document.querySelector('input[name="csrf_token"]')?.value
+            || '';
 
-        if (response.ok) {
-            const result = await response.json();
-            // Mark all sent records as synced
-            for (const entry of pending) {
-                await offlineDb.outbox.update(entry.id, { status: 'synced' });
+        const CHUNK_SIZE = 50;
+        const syncedOutboxIds = new Set();
+        let lastResult = null;
+
+        for (let i = 0; i < syncPayloadItems.length; i += CHUNK_SIZE) {
+            const chunk = syncPayloadItems.slice(i, i + CHUNK_SIZE);
+            const response = await fetch('/api/sync.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    reason: 'Offline Terminal Outbox Sync (Commutative Delta)',
+                    items: chunk
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({ error: 'Sync endpoint error' }));
+                console.warn('[Sync] Server rejected sync chunk:', err);
+                // Mark any prior successful entries before returning partial error
+                for (const oid of syncedOutboxIds) {
+                    const stillInRemaining = syncPayloadItems.slice(i).some(x => x.outbox_id === oid);
+                    if (!stillInRemaining) {
+                        await offlineDb.outbox.update(oid, { status: 'synced' });
+                    }
+                }
+                updateOutboxBadge(false);
+                return { synced: syncedOutboxIds.size, pending: pending.length - syncedOutboxIds.size, error: err };
             }
 
-            console.info(`✓ Successfully synchronized ${pending.length} offline records to cloud.`, result);
-            showOfflineToast(`✓ ${pending.length} offline records synchronized with cloud server!`, 'success');
-            updateOutboxBadge(false);
-            return { synced: pending.length, pending: 0, result: result };
-        } else {
-            const err = await response.json().catch(() => ({ error: 'Sync endpoint error' }));
-            console.warn('[Sync] Server rejected sync batch:', err);
-            updateOutboxBadge(false);
-            return { synced: 0, pending: pending.length, error: err };
+            lastResult = await response.json();
+            chunk.forEach(c => syncedOutboxIds.add(c.outbox_id));
         }
+
+        // Mark all sent records as synced
+        for (const entry of pending) {
+            await offlineDb.outbox.update(entry.id, { status: 'synced' });
+        }
+
+        console.info(`✓ Successfully synchronized ${pending.length} offline records to cloud.`, lastResult);
+        showOfflineToast(`✓ ${pending.length} offline records synchronized with cloud server!`, 'success');
+        updateOutboxBadge(false);
+        return { synced: pending.length, pending: 0, result: lastResult };
     } catch (networkErr) {
         console.warn('[Sync] Network error during outbox sync:', networkErr);
         updateOutboxBadge(false);

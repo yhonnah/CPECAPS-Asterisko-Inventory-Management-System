@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 require_once __DIR__ . '/../includes/cache_helper.php';
+require_once __DIR__ . '/../includes/alerts.php';
 requireLogin();
 
 $username = $_SESSION['username'] ?? 'User';
@@ -64,7 +65,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
 
             // Lock and verify each stock item
+            $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
             $deductionSummaries = [];
+            $touchedItemIds = [];
+            $prevBalances = [];
             foreach ($ingredients as $ing) {
                 $totalNeeded = round((float)$ing['quantity_required'] * $order_qty, 4);
 
@@ -88,7 +92,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $updStock->execute([$newStock, $ing['stock_item_id']]);
 
                 // Record Audit Log
-                $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
                 $auditReason = "Coffee Order {$orderNum}: {$order_qty}x {$drink['name']} (-{$totalNeeded} {$stockItem['unit']})";
                 $stmtAudit = $pdo->prepare("
                     INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
@@ -96,6 +99,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 ");
                 $stmtAudit->execute([$ing['stock_item_id'], $prevStock, $newStock, $auditReason, $username]);
 
+                $touchedItemIds[] = (int)$ing['stock_item_id'];
+                $prevBalances[(int)$ing['stock_item_id']] = $prevStock;
                 $deductionSummaries[] = "-{$totalNeeded} {$stockItem['unit']} {$stockItem['NAME']}";
             }
 
@@ -132,6 +137,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $stmtSales->execute([$orderTotal, "Order #{$orderNum} ({$order_qty}x {$drink['name']})", $username]);
 
             $pdo->commit();
+            if (!empty($touchedItemIds)) {
+                checkAndNotifyLowStock($pdo, $touchedItemIds, $username, $prevBalances);
+            }
             $_SESSION['flash_message'] = "Order #{$orderNum} completed! Brewed {$order_qty}x {$drink['name']}. Deducted: " . implode(', ', $deductionSummaries) . ".";
             $_SESSION['flash_type'] = "success";
             header("Location: orders.php");
@@ -173,6 +181,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 foreach ($ticketItems as $tItem) {
                     $menuId = (int)($tItem['id'] ?? 0);
                     $qty = max(1, (int)($tItem['qty'] ?? 1));
+                    $addonsPrice = max(0, min(500, (float)($tItem['addons_price'] ?? 0)));
+                    $addonsLabel = trim((string)($tItem['addons_label'] ?? ''));
 
                     $stmtDrink = $pdo->prepare("SELECT * FROM menu_items WHERE id = ? AND is_active = 1");
                     $stmtDrink->execute([$menuId]);
@@ -182,7 +192,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                         throw new Exception("Drink item ID #{$menuId} is not available.");
                     }
 
-                    $subtotal = round((float)$drink['price'] * $qty, 2);
+                    $unitPrice = round((float)$drink['price'] + $addonsPrice, 2);
+                    $subtotal = round($unitPrice * $qty, 2);
                     $orderTotal += $subtotal;
                     $totalCups += $qty;
 
@@ -204,17 +215,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                         $ingredientTotals[$sId]['needed'] += $req;
                     }
 
+                    $displayName = $addonsLabel !== '' ? "{$drink['name']} ({$addonsLabel})" : $drink['name'];
                     $orderLines[] = [
                         'menu_item_id' => $menuId,
-                        'name' => $drink['name'],
+                        'name' => $displayName,
                         'quantity' => $qty,
-                        'price' => (float)$drink['price'],
+                        'price' => $unitPrice,
                         'subtotal' => $subtotal
                     ];
                 }
 
                 // Lock and deduct stock items
                 $deductionSummaries = [];
+                $touchedTicketIds = [];
+                $ticketPrevBalances = [];
                 foreach ($ingredientTotals as $stockId => $data) {
                     $needed = $data['needed'];
 
@@ -243,6 +257,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     ");
                     $stmtAudit->execute([$stockId, $prevStock, $newStock, $auditReason, $username]);
 
+                    $touchedTicketIds[] = (int)$stockId;
+                    $ticketPrevBalances[(int)$stockId] = $prevStock;
                     $deductionSummaries[] = "-{$needed} {$stockItem['unit']} {$stockItem['NAME']}";
                 }
 
@@ -280,6 +296,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $stmtSales->execute([$orderTotal, "Order Ticket #{$orderNum}", $username]);
 
                 $pdo->commit();
+                if (!empty($touchedTicketIds)) {
+                    checkAndNotifyLowStock($pdo, $touchedTicketIds, $username, $ticketPrevBalances);
+                }
                 $_SESSION['flash_message'] = "Order Ticket #{$orderNum} fulfilled! Brewed {$totalCups} total cups. Deducted: " . implode(', ', $deductionSummaries) . ".";
                 $_SESSION['flash_type'] = "success";
                 header("Location: orders.php");
@@ -364,6 +383,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $stmtAudit->execute([$item_id, $prevStock, $newStock, $notes, $username]);
 
                 $pdo->commit();
+                checkAndNotifyLowStock($pdo, [$item_id], $username, [$item_id => $prevStock]);
                 $_SESSION['flash_message'] = "Manual deduction confirmed for '{$item['NAME']}'. Deducted: {$deduct_qty} {$item['unit']}. New balance: {$newStock} {$item['unit']}.";
                 $_SESSION['flash_type'] = "success";
                 header("Location: orders.php");
@@ -488,16 +508,31 @@ $todayCupsCount = (int)($metrics['cups_count'] ?? 0);
 $todaySalesTotal = (float)($metrics['sales_total'] ?? 0);
 $todayManualDeductionsCount = (int)($metrics['manual_count'] ?? 0);
 
-// 4. Fetch Recent Orders & Deductions Activity Log
+// 4. Fetch Today's Orders & Inventory Deductions Log
 $recentOrders = $pdo->query("
     SELECT co.*, 
            (SELECT GROUP_CONCAT(CONCAT(quantity, 'x ', item_name) SEPARATOR ', ') FROM coffee_order_items WHERE order_id = co.id) AS items_summary
     FROM coffee_orders co
+    WHERE DATE(co.created_at) = CURDATE()
     ORDER BY co.created_at DESC 
     LIMIT 20
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-$pageTitle = 'Coffee Orders & Stock Deduction - Asterisko Inventory';
+function getDrinkVisual(string $name, string $category): array {
+    $low = strtolower($name . ' ' . $category);
+    if (str_contains($low, 'matcha') || str_contains($low, 'green')) {
+        return ['bg' => 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8h12l-1.5 11a2 2 0 0 1-2 1.7H9.5a2 2 0 0 1-2-1.7L6 8Z"/><path d="M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><path d="M7 12h10"/></svg>'];
+    }
+    if (str_contains($low, 'iced') || str_contains($low, 'cold')) {
+        return ['bg' => 'bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7h10l-1.2 12a2 2 0 0 1-2 1.8H10.2a2 2 0 0 1-2-1.8L7 7Z"/><path d="M5 7h14"/><path d="M12 3v4"/><rect x="9.5" y="10" width="3" height="3" rx="0.5"/><rect x="12.5" y="13.5" width="2.5" height="2.5" rx="0.5"/></svg>'];
+    }
+    if (str_contains($low, 'mocha') || str_contains($low, 'choco') || str_contains($low, 'caramel')) {
+        return ['bg' => 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9Z"/><path d="M16 10h2a2.5 2.5 0 0 1 0 5h-2"/><path d="M7 6c1-1.5 2-1.5 3 0s2 1.5 3 0"/></svg>'];
+    }
+    return ['bg' => 'bg-[#F28C28]/15 text-[#F28C28]', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M16 10h2.2a2.3 2.3 0 0 1 0 4.6H16"/><path d="M8 5c0-1 .8-1.5 1-2"/><path d="M12 5c0-1 .8-1.5 1-2"/></svg>'];
+}
+
+$pageTitle = 'Orders & Stock Deductions - Asterisko Inventory';
 $activePage = 'orders';
 ?>
 <!DOCTYPE html>
@@ -528,10 +563,10 @@ $activePage = 'orders';
                         <span class="w-9 h-9 rounded-xl bg-[#F28C28]/15 border border-[#F28C28]/30 flex items-center justify-center text-[#F28C28]">
                             ☕
                         </span>
-                        Coffee Orders & Stock Deduction
+                        Orders &amp; Stock Deductions
                     </h1>
                     <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        Point-of-sale coffee drink ordering with automatic inventory consumption and manual stock deduction.
+                        Log daily drink orders to automatically deduct ingredients, or record manual stock usage.
                     </p>
                 </div>
 
@@ -589,13 +624,13 @@ $activePage = 'orders';
                     </div>
                 </div>
 
-                <!-- Gross Coffee Sales -->
+                <!-- Today's Sales (Daily Only) -->
                 <div class="stat-card p-4 sm:p-5" style="--stat-accent: #15803D;">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Today's Coffee Sales</span>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Today's Sales</span>
                             <h3 class="text-2xl font-black text-slate-900 dark:text-white mt-1">₱<?= number_format($todaySalesTotal, 2) ?></h3>
-                            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Gross sales generated</span>
+                            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Today only</span>
                         </div>
                         <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-lg">
                             ₱
@@ -662,85 +697,56 @@ $activePage = 'orders';
                             </div>
                         </div>
 
-                        <!-- Beverage Cards Grid -->
-                        <div id="drinks-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <?php foreach ($menuItems as $drink): ?>
-                                <div class="drink-card bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-sm flex flex-col justify-between"
+                        <!-- Beverage Line-by-Line List (Click to customize add-ons & add to ticket) -->
+                        <div id="drinks-grid" class="bg-white dark:bg-[#0C2340] rounded-2xl border border-slate-200/80 dark:border-[#15345C] shadow-sm divide-y divide-slate-200/80 dark:divide-[#15345C] overflow-hidden">
+                            <?php foreach ($menuItems as $drink):
+                                $vis = getDrinkVisual($drink['name'], $drink['category']);
+                                $drinkJson = htmlspecialchars(json_encode($drink), ENT_QUOTES, 'UTF-8');
+                            ?>
+                                <div class="drink-card px-4 py-3.5 flex items-center justify-between gap-3 transition-colors <?= $drink['is_out_of_stock'] ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-[#132E52]/60 cursor-pointer' ?>"
                                      data-category="<?= htmlspecialchars($drink['category']) ?>"
-                                     data-name="<?= htmlspecialchars(strtolower($drink['name'])) ?>">
-                                    
-                                    <div>
-                                        <!-- Header: Name & Price -->
-                                        <div class="flex justify-between items-start gap-2">
-                                            <div>
-                                                <div class="flex items-center gap-1.5">
-                                                    <span class="text-xs px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300">
-                                                        <?= htmlspecialchars($drink['category']) ?>
-                                                    </span>
-                                                </div>
-                                                <h3 class="text-base font-bold text-slate-900 dark:text-white mt-1"><?= htmlspecialchars($drink['name']) ?></h3>
-                                            </div>
-                                            <span class="text-lg font-black text-[#F28C28]">₱<?= number_format($drink['price'], 2) ?></span>
+                                     data-name="<?= htmlspecialchars(strtolower($drink['name'])) ?>"
+                                     <?= $drink['is_out_of_stock'] ? '' : "onclick=\"openDrinkModal({$drinkJson})\"" ?>>
+
+                                    <!-- Left: Picture + Title + Status -->
+                                    <div class="flex items-center gap-3.5 min-w-0 flex-1">
+                                        <div class="w-12 h-12 rounded-xl <?= $vis['bg'] ?> flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10 shadow-sm">
+                                            <?= $vis['svg'] ?>
                                         </div>
-
-                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2"><?= htmlspecialchars($drink['description']) ?></p>
-
-                                        <!-- Recipe Ingredients Breakdown -->
-                                        <div class="mt-3 pt-3 border-t border-slate-100 dark:border-[#15345C]/70">
-                                            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Recipe Auto-Deductions:</span>
-                                            <div class="flex flex-wrap gap-1.5">
-                                                <?php foreach ($drink['ingredients'] as $ing): ?>
-                                                    <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-50 dark:bg-[#07172C] border border-slate-200 dark:border-[#173863] text-slate-600 dark:text-slate-300">
-                                                        <?= ($ing['quantity_required'] * 1000 >= 1000 && $ing['unit'] === 'kg') ? ($ing['quantity_required'] * 1000) . 'g' : ($ing['quantity_required'] . ' ' . $ing['unit']) ?> 
-                                                        <b><?= htmlspecialchars($ing['stock_name']) ?></b>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate"><?= htmlspecialchars($drink['name']) ?></h3>
+                                                <span class="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-slate-100 dark:bg-[#132E52] text-slate-500 dark:text-slate-300">
+                                                    <?= htmlspecialchars($drink['category']) ?>
+                                                </span>
+                                            </div>
+                                            <div class="mt-0.5">
+                                                <?php if ($drink['is_out_of_stock']): ?>
+                                                    <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Out of Stock
                                                     </span>
-                                                <?php endforeach; ?>
+                                                <?php elseif ($drink['is_low_stock']): ?>
+                                                    <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Low (<?= $drink['cups_available'] ?> left)
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <?= $drink['cups_available'] ?> available
+                                                    </span>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Bottom Action Bar & Availability -->
-                                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-[#15345C]/70 flex items-center justify-between gap-2">
-                                        <!-- Stock status pill -->
-                                        <div>
-                                            <?php if ($drink['is_out_of_stock']): ?>
-                                                <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span> Out of Stock
-                                                </span>
-                                            <?php elseif ($drink['is_low_stock']): ?>
-                                                <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Low (<?= $drink['cups_available'] ?> cups)
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> In Stock (<?= $drink['cups_available'] ?> cups)
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-
-                                        <div class="flex items-center gap-1.5">
-                                            <!-- Add to Ticket Cart Button -->
-                                            <button type="button" 
-                                                    onclick="addToTicket(<?= htmlspecialchars(json_encode($drink)) ?>)"
-                                                    <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                    class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title="Add to active order ticket">
-                                                + Ticket
-                                            </button>
-
-                                            <!-- 1-Click Quick Order & Deduct (Offline-Aware) -->
-                                            <form method="POST" onsubmit="return handleQuickBrewSubmit(event, <?= htmlspecialchars(json_encode($drink)) ?>)">
-                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-                                                <input type="hidden" name="action" value="quick_order">
-                                                <input type="hidden" name="menu_item_id" value="<?= $drink['id'] ?>">
-                                                <input type="hidden" name="quantity" value="1">
-                                                <button type="submit" 
-                                                        <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
-                                                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#F28C28] hover:bg-[#E07B18] text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                                                    Brew 1x
-                                                </button>
-                                            </form>
-                                        </div>
+                                    <!-- Right: Price & Add-on Trigger -->
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <span class="text-sm sm:text-base font-black text-[#F28C28] font-mono">₱<?= number_format($drink['price'], 2) ?></span>
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); <?= $drink['is_out_of_stock'] ? '' : "openDrinkModal({$drinkJson})" ?>"
+                                                <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
+                                                class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#F28C28] hover:bg-[#E07B18] text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                                            + Add
+                                        </button>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -766,7 +772,7 @@ $activePage = 'orders';
                             <div id="ticket-empty-msg" class="text-center py-10 text-slate-400">
                                 <span class="text-3xl block mb-2 opacity-50">☕</span>
                                 <p class="text-xs font-medium">Ticket is empty.</p>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Click <b>+ Ticket</b> on any beverage to build an order.</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Click any drink on the left to add to this order.</p>
                             </div>
                         </div>
 
@@ -960,11 +966,11 @@ $activePage = 'orders';
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
                 <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <h3 class="text-base font-bold text-slate-900 dark:text-white">Recent Orders & Inventory Activity</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Live stream of coffee drink orders and manual adjustments</p>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">Today's Orders &amp; Stock Deductions</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Today's drink orders and manual inventory adjustments</p>
                     </div>
                     <span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-[#132E52] font-semibold text-slate-600 dark:text-slate-300">
-                        Last 20 Activities
+                        Today Only
                     </span>
                 </div>
 
@@ -1033,6 +1039,126 @@ $activePage = 'orders';
         </main>
     </div>
 
+    <!-- Drink Customization & Add-Ons Modal -->
+    <div id="drink-addons-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="if (event.target === this) closeDrinkModal()">
+        <div class="bg-white dark:bg-[#0C2340] border border-slate-200 dark:border-[#15345C] rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex items-start justify-between gap-3">
+                <div>
+                    <span id="modal-drink-cat" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300">Category</span>
+                    <h3 id="modal-drink-name" class="text-lg font-extrabold text-slate-900 dark:text-white mt-1">Drink Name</h3>
+                    <p id="modal-drink-avail" class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5"></p>
+                </div>
+                <button type="button" onclick="closeDrinkModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#132E52]">&times;</button>
+            </div>
+
+            <div class="p-5 space-y-4 text-xs max-h-[70vh] overflow-y-auto">
+                <!-- Quantity -->
+                <div class="flex items-center justify-between">
+                    <span class="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Quantity</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adjustModalQty(-1)" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#132E52] font-bold text-sm hover:bg-slate-200 dark:hover:bg-[#1C3E69]">-</button>
+                        <span id="modal-qty-val" class="font-mono font-extrabold text-base px-2 text-slate-900 dark:text-white">1</span>
+                        <button type="button" onclick="adjustModalQty(1)" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#132E52] font-bold text-sm hover:bg-slate-200 dark:hover:bg-[#1C3E69]">+</button>
+                    </div>
+                </div>
+
+                <!-- Temperature -->
+                <div>
+                    <span class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">Temperature</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <input type="radio" name="modal_temp" value="Iced" checked onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                            <span class="font-bold text-slate-800 dark:text-white">Iced</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <input type="radio" name="modal_temp" value="Hot" onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                            <span class="font-bold text-slate-800 dark:text-white">Hot</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Size -->
+                <div>
+                    <span class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">Size</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <span class="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                                <input type="radio" name="modal_size" value="Regular" data-price="0" checked onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                Regular
+                            </span>
+                            <span class="font-mono text-slate-400">+₱0</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <span class="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                                <input type="radio" name="modal_size" value="Large" data-price="20" onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                Large
+                            </span>
+                            <span class="font-mono text-[#F28C28] font-bold">+₱20</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Add-Ons -->
+                <div>
+                    <span class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">Add-Ons</span>
+                    <div class="space-y-2">
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Extra Shot" data-price="35" onchange="updateModalPreview()">
+                                Extra Espresso Shot
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱35</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Oat Milk" data-price="40" onchange="updateModalPreview()">
+                                Oat Milk Swap
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱40</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Vanilla Syrup" data-price="20" onchange="updateModalPreview()">
+                                Vanilla Syrup
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱20</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Caramel Drizzle" data-price="20" onchange="updateModalPreview()">
+                                Caramel Drizzle
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱20</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Whipped Cream" data-price="25" onchange="updateModalPreview()">
+                                Whipped Cream
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱25</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Special Instructions -->
+                <div>
+                    <label for="modal-drink-note" class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Notes (Optional)</label>
+                    <input type="text" id="modal-drink-note" placeholder="e.g., Less ice, 50% sugar" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] text-slate-900 dark:text-white">
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 dark:bg-[#091B33] border-t border-slate-200 dark:border-[#15345C] flex items-center justify-between gap-3">
+                <div>
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Line Subtotal</span>
+                    <span id="modal-line-total" class="text-lg font-black text-[#F28C28] font-mono">₱0.00</span>
+                </div>
+                <button type="button" onclick="addModalToTicket()" class="px-5 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-md transition-colors">
+                    Add to Ticket
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Interactive Ticket Cart & Tab JavaScript -->
     <script>
         // -------------------------------------------------------------
@@ -1098,39 +1224,100 @@ $activePage = 'orders';
         }
 
         // -------------------------------------------------------------
-        // ACTIVE ORDER TICKET (CART) STATE & ACTIONS
+        // ACTIVE ORDER TICKET (CART) & DRINK ADD-ONS MODAL
         // -------------------------------------------------------------
-        let ticket = []; // [{ id, name, price, qty, ingredients }]
+        let ticket = []; // [{ id, lineKey, name, basePrice, addonsPrice, price, addonsLabel, qty, ingredients }]
+        let activeModalDrink = null;
+        let modalQty = 1;
 
-        function addToTicket(drink) {
-            const existing = ticket.find(i => i.id === drink.id);
+        function openDrinkModal(drink) {
+            activeModalDrink = drink;
+            modalQty = 1;
+            document.getElementById('modal-drink-cat').textContent = drink.category || 'Drink';
+            document.getElementById('modal-drink-name').textContent = drink.name;
+            document.getElementById('modal-drink-avail').textContent = `${drink.cups_available} available`;
+            document.getElementById('modal-qty-val').textContent = '1';
+            document.getElementById('modal-drink-note').value = '';
+            document.querySelector('input[name="modal_temp"][value="Iced"]').checked = true;
+            document.querySelector('input[name="modal_size"][value="Regular"]').checked = true;
+            document.querySelectorAll('.modal-addon').forEach(cb => { cb.checked = false; });
+            updateModalPreview();
+            document.getElementById('drink-addons-modal').classList.remove('hidden');
+        }
+
+        function closeDrinkModal() {
+            document.getElementById('drink-addons-modal').classList.add('hidden');
+            activeModalDrink = null;
+        }
+
+        function adjustModalQty(delta) {
+            if (!activeModalDrink) return;
+            const maxAvail = Math.max(1, parseInt(activeModalDrink.cups_available || 1, 10));
+            modalQty = Math.min(maxAvail, Math.max(1, modalQty + delta));
+            document.getElementById('modal-qty-val').textContent = String(modalQty);
+            updateModalPreview();
+        }
+
+        function getModalAddonsState() {
+            const temp = document.querySelector('input[name="modal_temp"]:checked')?.value || 'Iced';
+            const sizeEl = document.querySelector('input[name="modal_size"]:checked');
+            const size = sizeEl?.value || 'Regular';
+            let addonsPrice = parseFloat(sizeEl?.dataset.price || '0');
+            const parts = [temp, size];
+            document.querySelectorAll('.modal-addon:checked').forEach(cb => {
+                parts.push('+' + cb.value);
+                addonsPrice += parseFloat(cb.dataset.price || '0');
+            });
+            const note = (document.getElementById('modal-drink-note')?.value || '').trim();
+            if (note) parts.push(note);
+            return { addonsPrice, addonsLabel: parts.join(' • ') };
+        }
+
+        function updateModalPreview() {
+            if (!activeModalDrink) return;
+            const { addonsPrice } = getModalAddonsState();
+            const unitTotal = parseFloat(activeModalDrink.price) + addonsPrice;
+            document.getElementById('modal-line-total').textContent = `₱${(unitTotal * modalQty).toFixed(2)}`;
+        }
+
+        function addModalToTicket() {
+            if (!activeModalDrink) return;
+            const { addonsPrice, addonsLabel } = getModalAddonsState();
+            const lineKey = `${activeModalDrink.id}|${addonsLabel}`;
+            const basePrice = parseFloat(activeModalDrink.price);
+            const existing = ticket.find(i => i.lineKey === lineKey);
             if (existing) {
-                existing.qty += 1;
+                existing.qty += modalQty;
             } else {
                 ticket.push({
-                    id: drink.id,
-                    name: drink.name,
-                    price: parseFloat(drink.price),
-                    qty: 1,
-                    ingredients: drink.ingredients || []
+                    id: activeModalDrink.id,
+                    lineKey,
+                    name: activeModalDrink.name,
+                    basePrice,
+                    addonsPrice,
+                    price: basePrice + addonsPrice,
+                    addonsLabel,
+                    qty: modalQty,
+                    ingredients: activeModalDrink.ingredients || []
                 });
             }
+            closeDrinkModal();
             renderTicket();
         }
 
-        function updateTicketQty(drinkId, delta) {
-            const item = ticket.find(i => i.id === drinkId);
+        function updateTicketQty(lineIdx, delta) {
+            const item = ticket[lineIdx];
             if (!item) return;
 
             item.qty += delta;
             if (item.qty <= 0) {
-                ticket = ticket.filter(i => i.id !== drinkId);
+                ticket.splice(lineIdx, 1);
             }
             renderTicket();
         }
 
-        function removeTicketItem(drinkId) {
-            ticket = ticket.filter(i => i.id !== drinkId);
+        function removeTicketItem(lineIdx) {
+            ticket.splice(lineIdx, 1);
             renderTicket();
         }
 
@@ -1153,7 +1340,7 @@ $activePage = 'orders';
                     <div id="ticket-empty-msg" class="text-center py-10 text-slate-400">
                         <span class="text-3xl block mb-2 opacity-50">☕</span>
                         <p class="text-xs font-medium">Ticket is empty.</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Click <b>+ Ticket</b> on any beverage to build an order.</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Click any drink on the left to add to this order.</p>
                     </div>
                 `;
                 totalCupsEl.textContent = '0 cups';
@@ -1169,7 +1356,7 @@ $activePage = 'orders';
             let totalPrice = 0;
             let combinedIngredients = {}; // { stock_name: { qty, unit } }
 
-            ticket.forEach(item => {
+            ticket.forEach((item, idx) => {
                 const subtotal = item.price * item.qty;
                 totalCups += item.qty;
                 totalPrice += subtotal;
@@ -1191,16 +1378,17 @@ $activePage = 'orders';
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex items-center justify-between gap-2 text-xs">
                         <div class="flex-1 min-w-0">
                             <h4 class="font-bold text-slate-900 dark:text-white truncate">${item.name}</h4>
+                            ${item.addonsLabel ? `<span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">${item.addonsLabel}</span>` : ''}
                             <span class="text-[11px] text-slate-400">₱${item.price.toFixed(2)} each</span>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="updateTicketQty(${item.id}, -1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">-</button>
+                            <button type="button" onclick="updateTicketQty(${idx}, -1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">-</button>
                             <span class="font-mono font-bold text-slate-900 dark:text-white px-1">${item.qty}</span>
-                            <button type="button" onclick="updateTicketQty(${item.id}, 1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">+</button>
+                            <button type="button" onclick="updateTicketQty(${idx}, 1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">+</button>
                         </div>
                         <div class="text-right pl-2">
                             <span class="font-bold font-mono text-slate-900 dark:text-white block">₱${subtotal.toFixed(2)}</span>
-                            <button type="button" onclick="removeTicketItem(${item.id})" class="text-[10px] text-rose-500 hover:underline">Remove</button>
+                            <button type="button" onclick="removeTicketItem(${idx})" class="text-[10px] text-rose-500 hover:underline">Remove</button>
                         </div>
                     </div>
                 `;
@@ -1209,7 +1397,7 @@ $activePage = 'orders';
             container.innerHTML = html;
             totalCupsEl.textContent = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
             totalPriceEl.textContent = `₱${totalPrice.toFixed(2)}`;
-            ticketDataInput.value = JSON.stringify(ticket.map(i => ({ id: i.id, qty: i.qty })));
+            ticketDataInput.value = JSON.stringify(ticket.map(i => ({ id: i.id, qty: i.qty, addons_price: i.addonsPrice || 0, addons_label: i.addonsLabel || '' })));
 
             // Check if any ingredient exceeds live available stock
             let hasInsufficientStock = false;

@@ -13,14 +13,32 @@ if (isset($_FILES['invoice_image']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCsrfToken();
     header('Content-Type: application/json');
     $file = $_FILES['invoice_image'];
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'error' => 'Upload failed or file exceeded server limit.']);
+        exit;
+    }
 
-    if (!in_array($file['type'], $allowed)) {
+    $mimeToExt = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+    $detectedMime = $file['type'] ?? '';
+    if (function_exists('finfo_open') && is_uploaded_file($file['tmp_name'])) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $detectedMime = finfo_file($finfo, $file['tmp_name']) ?: $detectedMime;
+            finfo_close($finfo);
+        }
+    }
+
+    if (!isset($mimeToExt[$detectedMime])) {
         echo json_encode(['success' => false, 'error' => 'Unsupported image format. Upload JPG, PNG, or WEBP.']);
         exit;
     }
 
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $ext = $mimeToExt[$detectedMime];
     $filename = 'inv_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $targetDir = dirname(__DIR__) . '/uploads/invoices/';
     if (!is_dir($targetDir)) {
@@ -93,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 foreach ($items as $entry) {
                     $internal_id = (int)($entry['internal_item_id'] ?? 0);
-                    $qtyReceived = round((float)($entry['quantity'] ?? 0), 2);
+                    $qtyReceived = round((float)($entry['quantity'] ?? 0), 4);
                     $rawDesc = trim($entry['description'] ?? '');
                     $saveMapping = !empty($entry['save_mapping']) && $supplier_id && $rawDesc !== '';
 
@@ -108,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
 
                     $prevQty = (float)$currItem['quantity'];
-                    $newQty = round($prevQty + $qtyReceived, 2);
+                    $newQty = round($prevQty + $qtyReceived, 4);
 
                     $updateStockStmt->execute([$newQty, $internal_id]);
 
@@ -214,11 +232,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Deliveries</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">View deliveries, scan supplier invoices, and confirm received stock.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Log and confirm incoming stock deliveries.</p>
                 </div>
                 <button onclick="scrollToScanner()" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>+ Add Delivery</span>
+                    <span>Add Delivery</span>
                 </button>
             </div>
 
@@ -230,47 +248,37 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                 </div>
             <?php endif; ?>
 
-            <!-- 3 Metric Cards (Exact Canva Slide 5 Spec) -->
+            <!-- 3 Metric Cards (Compact) -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                <!-- Card 1: Total Deliveries -->
                 <div class="stat-card p-5" style="--stat-accent: #0C2340;">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Deliveries</span>
-                    <div class="mt-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confirmed</span>
+                    <div class="mt-2">
                         <span class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight"><?= sprintf('%02d', $totalDeliveriesCount) ?></span>
-                        <p class="text-xs text-slate-400 mt-1">Confirmed deliveries this month</p>
                     </div>
                 </div>
 
-                <!-- Card 2: Pending Review -->
                 <div class="stat-card p-5" style="--stat-accent: #F28C28;">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Review</span>
-                    <div class="mt-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending</span>
+                    <div class="mt-2">
                         <span class="text-3xl font-extrabold text-[#F28C28] tracking-tight"><?= sprintf('%02d', $pendingReviewCount) ?></span>
-                        <p class="text-xs text-[#F28C28] font-semibold mt-1">Needs confirmation</p>
                     </div>
                 </div>
 
-                <!-- Card 3: Confirmed Today -->
                 <div class="stat-card p-5" style="--stat-accent: #10B981;">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confirmed Today</span>
-                    <div class="mt-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Today</span>
+                    <div class="mt-2">
                         <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight"><?= sprintf('%02d', $confirmedTodayCount) ?></span>
-                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">Stock updated</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Deliveries Directory Table (Canva Slide 5 Spec) -->
+            <!-- Recent Deliveries Directory Table -->
             <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
                 <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <div>
-                        <h2 class="font-bold text-base text-slate-900 dark:text-white">Recent Deliveries</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">All intake records and invoice scans</p>
-                    </div>
+                    <h2 class="font-bold text-base text-slate-900 dark:text-white">Recent Deliveries</h2>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="text" id="delivery-search" placeholder="Search supplier or invoice..." 
                                class="text-xs p-2 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] w-full sm:w-56 focus:outline-none focus:border-[#F28C28]">
-                        <button class="btn-secondary px-4 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">Filter</button>
                     </div>
                 </div>
 
@@ -341,14 +349,11 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             <!-- OCR Invoice Intake Scanner Workbench -->
             <div id="scanner-section" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-6">
                 <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            <span>Intake & Invoice Scanner (OCR)</span>
-                        </h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Upload paper invoices or receipts for client-side OCR parsing, supplier matching, and one-click stock verification.</p>
-                    </div>
-                    <span class="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full font-semibold">Tesseract.js Engine Active</span>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>New Delivery &amp; Invoice Scan</span>
+                    </h2>
+                    <span class="text-xs text-slate-400">Upload an invoice photo or add rows manually</span>
                 </div>
 
                 <!-- Upload Drag-Drop Area -->
@@ -484,6 +489,46 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             runOcr(file);
         });
 
+        // Downsample and apply contrast preprocessing before Tesseract OCR (TC-30)
+        async function preprocessImageForOcr(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const objUrl = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(objUrl);
+                    const maxDim = 1600;
+                    let width = img.naturalWidth || img.width;
+                    let height = img.naturalHeight || img.height;
+
+                    if (width > maxDim || height > maxDim) {
+                        if (width >= height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.filter = 'grayscale(100%) contrast(135%)';
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        resolve(blob || file);
+                    }, 'image/jpeg', 0.85);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(objUrl);
+                    resolve(file);
+                };
+                img.src = objUrl;
+            });
+        }
+
         async function runOcr(imageSource) {
             const progressBox = document.getElementById('ocr-progress-box');
             const pText = document.getElementById('ocr-status-text');
@@ -491,34 +536,43 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             const pPct = document.getElementById('ocr-pct');
 
             progressBox.classList.remove('hidden');
-            pText.textContent = 'Initializing OCR engine...';
+            pText.textContent = 'Optimizing image resolution...';
 
             try {
+                const optimizedSource = await preprocessImageForOcr(imageSource);
+                pText.textContent = 'Initializing OCR engine...';
                 const worker = await Tesseract.createWorker('eng');
                 pText.textContent = 'Scanning document lines...';
 
-                const ret = await worker.recognize(imageSource);
-                const text = ret.data.text;
+                const ret = await worker.recognize(optimizedSource);
                 await worker.terminate();
 
                 progressBox.classList.add('hidden');
-                parseOcrText(text);
+                parseOcrResult(ret.data);
             } catch (err) {
                 pText.textContent = 'OCR Error: ' + err.message;
             }
         }
 
-        function parseOcrText(text) {
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+        function parseOcrResult(ocrData) {
+            const rawLines = Array.isArray(ocrData?.lines) && ocrData.lines.length > 0
+                ? ocrData.lines.map(l => ({ text: (l.text || '').trim(), confidence: typeof l.confidence === 'number' ? l.confidence : 100 }))
+                : String(ocrData?.text || '').split('\n').map(l => ({ text: l.trim(), confidence: 100 }));
+
             const detected = [];
 
-            lines.forEach(line => {
-                const qtyMatch = line.match(/(\d+(?:\.\d+)?)\s*(kg|g|l|ml|pcs|boxes|packs|unit)?/i);
+            rawLines.forEach(entry => {
+                if (entry.text.length <= 2) return;
+                const qtyMatch = entry.text.match(/(\d+(?:\.\d+)?)\s*(kg|g|l|ml|pcs|boxes|packs|unit)?/i);
                 if (qtyMatch) {
                     const qty = parseFloat(qtyMatch[1]);
-                    const cleanDesc = line.replace(qtyMatch[0], '').replace(/[^\w\s]/gi, ' ').trim();
+                    const cleanDesc = entry.text.replace(qtyMatch[0], '').replace(/[^\w\s]/gi, ' ').trim();
                     if (cleanDesc.length >= 3 && qty > 0) {
-                        detected.push({ desc: cleanDesc, qty: qty });
+                        detected.push({
+                            desc: cleanDesc,
+                            qty: qty,
+                            confidence: Math.round(entry.confidence)
+                        });
                     }
                 }
             });
@@ -537,16 +591,29 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
             items.forEach((it, idx) => {
                 const tr = document.createElement('tr');
                 const matchedInternal = findCatalogMatch(it.desc);
+                const conf = typeof it.confidence === 'number' ? it.confidence : 100;
+                const isLowConf = conf > 0 && conf < 70; // TC-40 low-confidence warning threshold
+
+                if (isLowConf) {
+                    tr.className = 'bg-amber-50/90 dark:bg-amber-950/30 border-l-4 border-amber-500';
+                }
+
+                const confBadge = isLowConf
+                    ? `<div class="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-semibold">Low Confidence (${conf}%) - Verify</div>`
+                    : '';
 
                 tr.innerHTML = `
-                    <td><input type="text" class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-desc" value="${escapeHtml(it.desc)}"></td>
+                    <td>
+                        <input type="text" class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-desc ${isLowConf ? 'border border-amber-400' : ''}" value="${escapeHtml(it.desc)}">
+                        ${confBadge}
+                    </td>
                     <td>
                         <select class="w-full text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-select">
                             <option value="0">-- Select Catalog Item --</option>
                             ${catalogItems.map(c => `<option value="${c.id}" ${matchedInternal === c.id ? 'selected' : ''}>${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
                         </select>
                     </td>
-                    <td><input type="number" step="0.01" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="${it.qty}"></td>
+                    <td><input type="number" step="0.0001" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty ${isLowConf ? 'border border-amber-400' : ''}" value="${it.qty}"></td>
                     <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="text-rose-500 font-bold">&times;</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -584,7 +651,7 @@ $pageTitle = 'Deliveries & Intake - Asterisko Inventory';
                         ${catalogItems.map(c => `<option value="${c.id}">${escapeHtml(c.NAME || c.name)} (${c.unit})</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="1"></td>
+                <td><input type="number" step="0.0001" class="w-20 text-xs p-1 rounded bg-slate-50 dark:bg-[#07172C] item-qty" value="1"></td>
                 <td><button type="button" onclick="this.closest('tr').remove(); syncJson();" class="text-rose-500 font-bold">&times;</button></td>
             `;
             tbody.appendChild(tr);

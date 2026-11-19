@@ -60,7 +60,8 @@ $consumptionStmt = $pdo->prepare("
         si.unit,
         si.unit_cost,
         si.quantity AS current_stock,
-        COALESCE(SUM(CASE WHEN al.change_type = 'deduction' THEN (al.previous_value - al.new_value) ELSE 0 END), 0) AS total_deducted,
+        si.reorder_point,
+        COALESCE(SUM(CASE WHEN al.change_type IN ('deduction', 'order_sale', 'manual_deduction') THEN (al.previous_value - al.new_value) ELSE 0 END), 0) AS total_deducted,
         COALESCE(SUM(CASE WHEN al.change_type = 'waste' THEN (al.previous_value - al.new_value) ELSE 0 END), 0) AS total_wasted,
         COALESCE(SUM(CASE WHEN al.change_type = 'delivery' THEN (al.new_value - al.previous_value) ELSE 0 END), 0) AS total_received
     FROM stock_items si
@@ -93,7 +94,7 @@ $profitMargin = $totalSales > 0 ? ($grossProfit / $totalSales) * 100 : 0;
 
 // Canva Slide 8 Metrics
 $totalTrackedItems = count($itemsBreakdown);
-$totalLowStock = count(array_filter($itemsBreakdown, fn($i) => (float)$i['current_stock'] <= 5));
+$totalLowStock = count(array_filter($itemsBreakdown, fn($i) => (float)$i['current_stock'] <= (float)($i['reorder_point'] ?? 5)));
 
 // Consolidated Counts for Cards (Single Aggregated SELECT over cloud SSL)
 $finAgg = $pdo->query("

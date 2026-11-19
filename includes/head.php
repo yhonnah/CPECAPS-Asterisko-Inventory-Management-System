@@ -1,10 +1,12 @@
 <?php
 // includes/head.php
 // Global head tags, fonts, Tailwind config, and theme initialization
+require_once __DIR__ . '/authguard.php';
 $pageTitle = $pageTitle ?? 'Asterisko - Inventory Management System';
 ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="csrf-token" content="<?= htmlspecialchars(getCsrfToken()) ?>">
 <meta name="theme-color" content="#0C2340">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
