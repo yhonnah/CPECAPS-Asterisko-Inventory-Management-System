@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
+require_once __DIR__ . '/../includes/diagnostics.php';
 
 $error = '';
 $rateLimited = false;
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             http_response_code(429);
             $rateLimited = true;
             $error = 'Too many failed login attempts. Please wait 5 minutes before trying again.';
+            logDiagnosticEvent('ERR-AUTH-429', 'Auth/RateLimit', "Brute-force lockout triggered for '{$username}'", ['ip' => $ipAddress]);
             try {
                 $auditBlock = $pdo->prepare("
                     INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)

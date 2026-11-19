@@ -33,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $supplierRow = $supCheck->fetch(PDO::FETCH_ASSOC);
 
             if (!$supplierRow || (int)($supplierRow['is_active'] ?? 0) !== 1) {
+                require_once __DIR__ . '/../includes/diagnostics.php';
+                logDiagnosticEvent('ERR-PO-400', 'PurchaseOrders', "Blocked PO creation for inactive/missing supplier #{$supplier_id}");
                 $message = "Selected supplier is inactive or unavailable.";
                 $messageType = "error";
             } else {

@@ -34,6 +34,8 @@ if (isset($_FILES['invoice_image']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!isset($mimeToExt[$detectedMime])) {
+        require_once __DIR__ . '/../includes/diagnostics.php';
+        logDiagnosticEvent('ERR-OCR-415', 'Delivery/Upload', 'Rejected invalid upload MIME type: ' . $detectedMime);
         echo json_encode(['success' => false, 'error' => 'Unsupported image format. Upload JPG, PNG, or WEBP.']);
         exit;
     }

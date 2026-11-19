@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/authguard.php';
 require_once __DIR__ . '/../includes/alerts.php';
+require_once __DIR__ . '/../includes/diagnostics.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -284,6 +285,7 @@ try {
             $isExtremeVariance = ($prev_qty > 0 && (abs($variance) / $prev_qty) > 1.0);
             if ($isExtremeVariance && (!$supervisorAck || ($item_note === '' && $batch_reason === ''))) {
                 $itemName = $item['NAME'] ?? $item['name'] ?? "Item #{$item_id}";
+                logDiagnosticEvent('ERR-SYNC-422', 'Sync/Variance', "Blocked >100% variance for '{$itemName}'", ['item_id' => $item_id, 'prev' => $prev_qty, 'new' => $new_qty]);
                 throw new Exception("Extreme variance (>100%) detected for '{$itemName}'. Supervisor acknowledgment and reason note are required.", 422);
             }
 
