@@ -178,16 +178,36 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $ingredientTotals = []; // [stock_item_id => ['name' => ..., 'needed' => ..., 'unit' => ...]]
                 $orderLines = [];
 
+                // 1. Batch Fetch all distinct drinks in ticket (Eliminates N+1 queries)
+                $menuIds = array_values(array_unique(array_filter(array_map(fn($i) => (int)($i['id'] ?? 0), $ticketItems))));
+                if (empty($menuIds)) {
+                    throw new Exception("Invalid order ticket data.");
+                }
+
+                $placeholders = implode(',', array_fill(0, count($menuIds), '?'));
+                $stmtDrinks = $pdo->prepare("SELECT * FROM menu_items WHERE id IN ($placeholders) AND is_active = 1");
+                $stmtDrinks->execute($menuIds);
+                $drinksMap = [];
+                foreach ($stmtDrinks->fetchAll(PDO::FETCH_ASSOC) as $d) {
+                    $drinksMap[$d['id']] = $d;
+                }
+
+                // 2. Batch Fetch all ingredients in one single query
+                $stmtIngs = $pdo->prepare("SELECT * FROM menu_item_ingredients WHERE menu_item_id IN ($placeholders)");
+                $stmtIngs->execute($menuIds);
+                $ingredientsByMenu = [];
+                foreach ($stmtIngs->fetchAll(PDO::FETCH_ASSOC) as $ing) {
+                    $ingredientsByMenu[$ing['menu_item_id']][] = $ing;
+                }
+
+                // Process ticket items
                 foreach ($ticketItems as $tItem) {
                     $menuId = (int)($tItem['id'] ?? 0);
                     $qty = max(1, (int)($tItem['qty'] ?? 1));
                     $addonsPrice = max(0, min(500, (float)($tItem['addons_price'] ?? 0)));
                     $addonsLabel = trim((string)($tItem['addons_label'] ?? ''));
 
-                    $stmtDrink = $pdo->prepare("SELECT * FROM menu_items WHERE id = ? AND is_active = 1");
-                    $stmtDrink->execute([$menuId]);
-                    $drink = $stmtDrink->fetch(PDO::FETCH_ASSOC);
-
+                    $drink = $drinksMap[$menuId] ?? null;
                     if (!$drink) {
                         throw new Exception("Drink item ID #{$menuId} is not available.");
                     }
@@ -197,11 +217,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $orderTotal += $subtotal;
                     $totalCups += $qty;
 
-                    // Ingredients
-                    $stmtIng = $pdo->prepare("SELECT * FROM menu_item_ingredients WHERE menu_item_id = ?");
-                    $stmtIng->execute([$menuId]);
-                    $ings = $stmtIng->fetchAll(PDO::FETCH_ASSOC);
-
+                    $ings = $ingredientsByMenu[$menuId] ?? [];
                     foreach ($ings as $ing) {
                         $sId = (int)$ing['stock_item_id'];
                         $req = round((float)$ing['quantity_required'] * $qty, 4);
@@ -225,16 +241,31 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     ];
                 }
 
-                // Lock and deduct stock items
+                // 3. Batch Lock and deduct stock items in one query
+                $stockIds = array_keys($ingredientTotals);
+                if (!empty($stockIds)) {
+                    $stockPlaceholders = implode(',', array_fill(0, count($stockIds), '?'));
+                    $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id IN ($stockPlaceholders) FOR UPDATE");
+                    $stmtLock->execute($stockIds);
+                    $stockMap = [];
+                    foreach ($stmtLock->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                        $stockMap[$s['id']] = $s;
+                    }
+                } else {
+                    $stockMap = [];
+                }
+
                 $deductionSummaries = [];
                 $touchedTicketIds = [];
                 $ticketPrevBalances = [];
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
+                $stmtAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'order_sale', ?, ?)
+                ");
                 foreach ($ingredientTotals as $stockId => $data) {
                     $needed = $data['needed'];
-
-                    $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id = ? FOR UPDATE");
-                    $stmtLock->execute([$stockId]);
-                    $stockItem = $stmtLock->fetch(PDO::FETCH_ASSOC);
+                    $stockItem = $stockMap[$stockId] ?? null;
 
                     if (!$stockItem) {
                         throw new Exception("Stock item #{$stockId} not found.");
@@ -246,15 +277,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     }
 
                     $newStock = max(0, round($prevStock - $needed, 4));
-
-                    $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
                     $updStock->execute([$newStock, $stockId]);
 
                     $auditReason = "Order Ticket {$orderNum}: {$totalCups} cups (-{$needed} {$stockItem['unit']})";
-                    $stmtAudit = $pdo->prepare("
-                        INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
-                        VALUES (?, ?, ?, 'order_sale', ?, ?)
-                    ");
                     $stmtAudit->execute([$stockId, $prevStock, $newStock, $auditReason, $username]);
 
                     $touchedTicketIds[] = (int)$stockId;
@@ -427,8 +452,8 @@ if ($isCacheValid) {
     $baseMenuItems = $_SESSION['cached_base_menu'];
     $baseIngredients = $_SESSION['cached_base_ingredients'];
 } else {
-    // Cache miss or invalidated by recent catalog edit: Query database once and cache
-    $baseMenuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY category ASC, price ASC")->fetchAll(PDO::FETCH_ASSOC);
+    // Cache miss or invalidated by recent catalog edit: Query database once and cache in logical drink sequence
+    $baseMenuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
     $stmtAllIng = $pdo->query("
         SELECT id, menu_item_id, stock_item_id, quantity_required, unit
         FROM menu_item_ingredients
@@ -571,13 +596,13 @@ $activePage = 'orders';
                 </div>
 
                 <!-- Navigation Tabs Switcher -->
-                <div class="inline-flex p-1 bg-slate-200/80 dark:bg-[#0C2340] rounded-xl border border-slate-300/70 dark:border-[#173863] text-xs font-bold">
+                <div class="w-full sm:w-auto flex p-1.5 bg-slate-200/80 dark:bg-[#0C2340] rounded-2xl border border-slate-300/70 dark:border-[#173863] text-xs sm:text-sm font-bold shrink-0">
                     <button id="btn-tab-coffee" onclick="switchMainTab('coffee')" 
-                            class="px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all flex items-center gap-2">
+                            class="flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span>☕ Coffee Drink Orders</span>
                     </button>
                     <button id="btn-tab-manual" onclick="switchMainTab('manual')" 
-                            class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2">
+                            class="flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
                         <span>⚖️ Manual Stock Deduction</span>
                     </button>
                 </div>
@@ -590,7 +615,7 @@ $activePage = 'orders';
                         <span class="text-base"><?= $messageType === 'success' ? '✓' : '⚠️' ?></span>
                         <span class="font-medium"><?= htmlspecialchars($message) ?></span>
                     </div>
-                    <button onclick="this.parentElement.remove()" class="opacity-60 hover:opacity-100 font-bold ml-4">✕</button>
+                    <button onclick="this.parentElement.remove()" class="w-9 h-9 inline-flex items-center justify-center rounded-lg opacity-60 hover:opacity-100 font-bold ml-4">✕</button>
                 </div>
             <?php endif; ?>
 
@@ -663,42 +688,61 @@ $activePage = 'orders';
                     <div class="lg:col-span-2 space-y-4">
                         
                         <!-- Search & Filter Controls -->
-                        <div class="bg-white dark:bg-[#0C2340] p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <div class="bg-white dark:bg-[#0C2340] p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] flex flex-col gap-3 overflow-hidden">
                             <!-- Category Filter Chips -->
-                            <div class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
+                            <div class="flex items-center gap-2 overflow-x-auto w-full custom-scrollbar pb-1">
                                 <button onclick="filterCategory('All')" 
-                                        class="cat-chip active px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white">
+                                        class="cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                     All Drinks
                                 </button>
                                 <?php foreach ($categoriesList as $cat): ?>
                                     <button onclick="filterCategory('<?= htmlspecialchars($cat) ?>')" 
-                                            class="cat-chip px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                                            class="cat-chip min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                         <?= htmlspecialchars($cat) ?>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
 
-                            <!-- Right Controls: Offline Sync Badge & Search Input -->
-                            <div class="flex items-center gap-2 w-full sm:w-auto">
-                                <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shrink-0">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    <span>Online (Synced)</span>
-                                </span>
-                                <button type="button" onclick="syncOfflineOutbox()" class="p-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors" title="Sync local offline outbox now">
-                                    ↻ Sync
-                                </button>
-                                <div class="relative w-full sm:w-56">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <!-- Bottom Controls: Search Input, Offline Sync Badge & Sync Button -->
+                            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 w-full">
+                                <div class="relative flex-1 min-w-[180px]">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     </div>
-                                    <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search coffee menu..." 
-                                           class="w-full !pl-10 !pr-4 py-1.5 bg-slate-50 dark:bg-[#07172C] text-xs rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                    <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search drinks (e.g. Spanish, Matcha, Chong)..." 
+                                           class="w-full h-11 !min-h-[44px] !pl-10 !pr-10 !py-2 bg-slate-50 dark:bg-[#07172C] !text-xs sm:!text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                    <button type="button" id="clear-menu-search" onclick="clearMenuSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold">
+                                        ✕
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                                        <span>Online (Synced)</span>
+                                    </span>
+                                    <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
+                                        ↻ Sync
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Beverage Line-by-Line List (Click to customize add-ons & add to ticket) -->
                         <div id="drinks-grid" class="bg-white dark:bg-[#0C2340] rounded-2xl border border-slate-200/80 dark:border-[#15345C] shadow-sm divide-y divide-slate-200/80 dark:divide-[#15345C] overflow-hidden">
+                            <!-- No Matches Empty State -->
+                            <div id="no-drinks-match" class="hidden p-8 text-center space-y-3">
+                                <div class="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto text-xl font-bold">
+                                    🔍
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">No matching drinks found</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                    No beverages match your search term in this category. Try clearing your search or selecting "All Drinks".
+                                </p>
+                                <button type="button" onclick="clearMenuSearch(); filterCategory('All');" class="btn-secondary !min-h-[38px] h-9 px-4 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
+                                    Reset Filters
+                                </button>
+                            </div>
+
                             <?php foreach ($menuItems as $drink):
                                 $vis = getDrinkVisual($drink['name'], $drink['category']);
                                 $drinkJson = htmlspecialchars(json_encode($drink), ENT_QUOTES, 'UTF-8');
@@ -754,7 +798,7 @@ $activePage = 'orders';
                     </div>
 
                     <!-- Right: Active Order Ticket Panel (Cart) -->
-                    <div class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20">
+                    <div id="current-ticket-panel" class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20 scroll-mt-20 overflow-hidden">
                         <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-[#15345C]">
                             <div class="flex items-center gap-2">
                                 <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">
@@ -762,7 +806,7 @@ $activePage = 'orders';
                                 </span>
                                 <h3 class="font-extrabold text-slate-900 dark:text-white text-base">Current Ticket</h3>
                             </div>
-                            <button type="button" onclick="clearTicket()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold">
+                            <button type="button" onclick="clearTicket()" class="min-h-[36px] px-3 py-1.5 rounded-lg text-xs sm:text-sm text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold transition-colors">
                                 Clear
                             </button>
                         </div>
@@ -799,7 +843,8 @@ $activePage = 'orders';
                                 <input type="hidden" name="ticket_data" id="ticket-data-input" value="[]">
 
                                 <button type="submit" id="btn-complete-ticket" disabled
-                                        class="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
+                                        style="white-space: normal; padding: 0.75rem 0.875rem; line-height: 1.25;"
+                                        class="btn-wrap w-full min-h-[48px] rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-xs xl:text-sm text-center shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
                                     <span>Complete Order & Deduct Stock</span>
                                 </button>
                             </form>
@@ -858,19 +903,19 @@ $activePage = 'orders';
                                     <input type="number" step="0.001" min="0.001" name="quantity" id="manual-qty-input" required 
                                            oninput="updateManualStockPreview()" placeholder="0.00"
                                            class="w-full py-3 px-4 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm font-semibold focus:outline-none focus:border-[#F28C28]">
-                                    <span id="manual-unit-label" class="inline-flex items-center px-4 py-3 bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold min-w-[70px] justify-center">
+                                    <span id="manual-unit-label" class="inline-flex items-center px-4 py-3 bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold min-w-[70px] justify-center whitespace-nowrap shrink-0">
                                         Unit
                                     </span>
                                 </div>
 
                                 <!-- Quick Chips for fast barista entry -->
-                                <div class="flex items-center gap-2 mt-2">
-                                    <span class="text-[11px] text-slate-400 font-medium">Quick values:</span>
-                                    <button type="button" onclick="setQuickQty(0.018)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">18g (0.018)</button>
-                                    <button type="button" onclick="setQuickQty(0.05)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">50g (0.05)</button>
-                                    <button type="button" onclick="setQuickQty(0.20)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">200mL (0.20)</button>
-                                    <button type="button" onclick="setQuickQty(0.50)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">0.50</button>
-                                    <button type="button" onclick="setQuickQty(1.00)" class="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-medium">1.00</button>
+                                <div class="flex flex-wrap items-center gap-2 mt-2.5">
+                                    <span class="text-xs text-slate-400 font-medium whitespace-nowrap">Quick values:</span>
+                                    <button type="button" onclick="setQuickQty(0.018)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">18g (0.018)</button>
+                                    <button type="button" onclick="setQuickQty(0.05)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">50g (0.05)</button>
+                                    <button type="button" onclick="setQuickQty(0.20)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">200mL (0.20)</button>
+                                    <button type="button" onclick="setQuickQty(0.50)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">0.50</button>
+                                    <button type="button" onclick="setQuickQty(1.00)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">1.00</button>
                                 </div>
                             </div>
 
@@ -917,7 +962,7 @@ $activePage = 'orders';
                             </div>
 
                             <button type="submit"
-                                    class="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all">
+                                    class="w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all">
                                 Confirm Manual Stock Deduction
                             </button>
                         </form>
@@ -1159,8 +1204,76 @@ $activePage = 'orders';
         </div>
     </div>
 
+    <!-- Persistent Floating "Jump to Ticket" Button (Phone / Stacked Viewports) -->
+    <div id="jump-to-ticket-wrapper" class="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] inset-x-4 sm:left-auto sm:right-6 sm:w-auto z-30 lg:hidden transition-all duration-300 ease-out">
+        <button type="button" id="btn-jump-to-ticket" onclick="scrollToTicket()"
+                class="w-full sm:w-auto min-h-[50px] px-5 py-3 rounded-2xl bg-[#0C2340] dark:bg-[#F28C28] text-white font-extrabold text-xs sm:text-sm shadow-[0_10px_28px_rgba(12,35,64,0.35)] dark:shadow-[0_10px_28px_rgba(242,140,40,0.35)] border border-[#F28C28]/40 dark:border-white/20 flex items-center justify-between sm:justify-center gap-3 active:scale-[0.98] transition-all">
+            <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <span class="w-7 h-7 rounded-xl bg-[#F28C28] dark:bg-[#0C2340] text-white flex items-center justify-center text-sm shadow-sm shrink-0">🧾</span>
+                <span>Jump to Ticket</span>
+            </span>
+            <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <span id="jump-ticket-summary" class="px-2.5 py-1 rounded-lg bg-white/15 dark:bg-black/20 font-mono text-xs font-bold text-[#F28C28] dark:text-white">
+                    0 cups · ₱0.00
+                </span>
+                <svg class="w-4 h-4 shrink-0 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+            </span>
+        </button>
+    </div>
+
     <!-- Interactive Ticket Cart & Tab JavaScript -->
     <script>
+        // -------------------------------------------------------------
+        // JUMP TO TICKET FLOATING BUTTON & INTERSECTION OBSERVER
+        // -------------------------------------------------------------
+        let isTicketInView = false;
+
+        function scrollToTicket() {
+            const ticketPanel = document.getElementById('current-ticket-panel');
+            if (ticketPanel) {
+                ticketPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function updateJumpToTicketVisibility() {
+            const wrapper = document.getElementById('jump-to-ticket-wrapper');
+            const secCoffee = document.getElementById('section-coffee-orders');
+            if (!wrapper || !secCoffee) return;
+
+            const isCoffeeTabActive = !secCoffee.classList.contains('hidden');
+            if (!isCoffeeTabActive || isTicketInView) {
+                wrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+            } else {
+                wrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            }
+        }
+
+        (function initTicketVisibilityObserver() {
+            const ticketPanel = document.getElementById('current-ticket-panel');
+            if (!ticketPanel) return;
+
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        isTicketInView = entry.isIntersecting;
+                        updateJumpToTicketVisibility();
+                    });
+                }, {
+                    root: null,
+                    threshold: 0.12
+                });
+                observer.observe(ticketPanel);
+            } else {
+                window.addEventListener('scroll', () => {
+                    const rect = ticketPanel.getBoundingClientRect();
+                    isTicketInView = (rect.top < window.innerHeight - 80 && rect.bottom > 80);
+                    updateJumpToTicketVisibility();
+                }, { passive: true });
+            }
+        })();
+
         // -------------------------------------------------------------
         // MAIN TAB SWITCHER: Coffee Orders vs. Manual Deduction
         // -------------------------------------------------------------
@@ -1173,14 +1286,15 @@ $activePage = 'orders';
             if (tab === 'coffee') {
                 secCoffee.classList.remove('hidden');
                 secManual.classList.add('hidden');
-                btnCoffee.className = "px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all flex items-center gap-2";
-                btnManual.className = "px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2";
+                btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             } else {
                 secCoffee.classList.add('hidden');
                 secManual.classList.remove('hidden');
-                btnManual.className = "px-4 py-2 rounded-lg bg-[#F28C28] text-white shadow-sm transition-all flex items-center gap-2";
-                btnCoffee.className = "px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2";
+                btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
             }
+            updateJumpToTicketVisibility();
         }
 
         // -------------------------------------------------------------
@@ -1192,21 +1306,42 @@ $activePage = 'orders';
             currentCategory = cat;
             document.querySelectorAll('.cat-chip').forEach(btn => {
                 if (btn.textContent.trim().toLowerCase() === cat.toLowerCase() || (cat === 'All' && btn.textContent.trim() === 'All Drinks')) {
-                    btn.className = "cat-chip active px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#F28C28] text-white";
+                    btn.className = "cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
                 } else {
-                    btn.className = "cat-chip px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white";
+                    btn.className = "cat-chip min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
                 }
             });
             applyMenuFilters();
         }
 
         function filterMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('clear-menu-search');
+            if (clearBtn) {
+                if (input && input.value.trim().length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            applyMenuFilters();
+        }
+
+        function clearMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('clear-menu-search');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            if (clearBtn) clearBtn.classList.add('hidden');
             applyMenuFilters();
         }
 
         function applyMenuFilters() {
             const query = (document.getElementById('menu-search-input').value || '').trim().toLowerCase();
             const cards = document.querySelectorAll('.drink-card');
+            let visibleCount = 0;
 
             cards.forEach(card => {
                 const cat = card.getAttribute('data-category') || '';
@@ -1217,10 +1352,20 @@ $activePage = 'orders';
 
                 if (matchesCat && matchesQuery) {
                     card.style.display = 'flex';
+                    visibleCount++;
                 } else {
                     card.style.display = 'none';
                 }
             });
+
+            const noMatchBox = document.getElementById('no-drinks-match');
+            if (noMatchBox) {
+                if (visibleCount === 0) {
+                    noMatchBox.classList.remove('hidden');
+                } else {
+                    noMatchBox.classList.add('hidden');
+                }
+            }
         }
 
         // -------------------------------------------------------------
@@ -1334,6 +1479,7 @@ $activePage = 'orders';
             const deductionsBox = document.getElementById('ticket-deductions-box');
             const deductionsList = document.getElementById('ticket-deductions-list');
             const ticketDataInput = document.getElementById('ticket-data-input');
+            const jumpSummaryEl = document.getElementById('jump-ticket-summary');
 
             if (ticket.length === 0) {
                 container.innerHTML = `
@@ -1345,6 +1491,7 @@ $activePage = 'orders';
                 `;
                 totalCupsEl.textContent = '0 cups';
                 totalPriceEl.textContent = '₱0.00';
+                if (jumpSummaryEl) jumpSummaryEl.textContent = '0 cups · ₱0.00';
                 btnComplete.disabled = true;
                 deductionsBox.classList.add('hidden');
                 ticketDataInput.value = '[]';
@@ -1375,28 +1522,32 @@ $activePage = 'orders';
                 });
 
                 html += `
-                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex items-center justify-between gap-2 text-xs">
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${item.name}</h4>
-                            ${item.addonsLabel ? `<span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">${item.addonsLabel}</span>` : ''}
-                            <span class="text-[11px] text-slate-400">₱${item.price.toFixed(2)} each</span>
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex flex-col gap-2.5 text-xs">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <h4 class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-snug break-words">${item.name}</h4>
+                                ${item.addonsLabel ? `<span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">${item.addonsLabel}</span>` : ''}
+                                <span class="text-[11px] text-slate-400 block mt-0.5">₱${item.price.toFixed(2)} each</span>
+                            </div>
+                            <span class="font-extrabold font-mono text-sm text-slate-900 dark:text-white whitespace-nowrap shrink-0">₱${subtotal.toFixed(2)}</span>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="updateTicketQty(${idx}, -1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">-</button>
-                            <span class="font-mono font-bold text-slate-900 dark:text-white px-1">${item.qty}</span>
-                            <button type="button" onclick="updateTicketQty(${idx}, 1)" class="w-6 h-6 rounded-md bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300">+</button>
-                        </div>
-                        <div class="text-right pl-2">
-                            <span class="font-bold font-mono text-slate-900 dark:text-white block">₱${subtotal.toFixed(2)}</span>
-                            <button type="button" onclick="removeTicketItem(${idx})" class="text-[10px] text-rose-500 hover:underline">Remove</button>
+                        <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-[#173863]/60">
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button type="button" onclick="updateTicketQty(${idx}, -1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">-</button>
+                                <span class="font-mono font-bold text-sm text-slate-900 dark:text-white min-w-[1.5rem] text-center">${item.qty}</span>
+                                <button type="button" onclick="updateTicketQty(${idx}, 1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">+</button>
+                            </div>
+                            <button type="button" onclick="removeTicketItem(${idx})" class="min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-bold text-rose-500 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 transition-colors whitespace-nowrap shrink-0">Remove</button>
                         </div>
                     </div>
                 `;
             });
 
             container.innerHTML = html;
-            totalCupsEl.textContent = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
+            const cupsLabel = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
+            totalCupsEl.textContent = cupsLabel;
             totalPriceEl.textContent = `₱${totalPrice.toFixed(2)}`;
+            if (jumpSummaryEl) jumpSummaryEl.textContent = `${cupsLabel} · ₱${totalPrice.toFixed(2)}`;
             ticketDataInput.value = JSON.stringify(ticket.map(i => ({ id: i.id, qty: i.qty, addons_price: i.addonsPrice || 0, addons_label: i.addonsLabel || '' })));
 
             // Check if any ingredient exceeds live available stock
@@ -1412,16 +1563,16 @@ $activePage = 'orders';
                     hasInsufficientStock = true;
                     insufficientDetails.push({ name: name, needed: roundedQty, available: data.current.toFixed(2), unit: data.unit });
                     dedHtml += `
-                        <div class="flex justify-between items-center text-[11px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/40">
-                            <span>⚠️ ${name} (Shortage):</span>
-                            <span class="font-mono">-${roundedQty} / ${data.current.toFixed(2)} ${data.unit}</span>
+                        <div class="flex items-start justify-between gap-2 text-[11px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg border border-rose-200 dark:border-rose-900/40">
+                            <span class="min-w-0 flex-1 break-words leading-snug">⚠️ ${name} (Shortage):</span>
+                            <span class="font-mono whitespace-nowrap shrink-0">-${roundedQty} / ${data.current.toFixed(2)} ${data.unit}</span>
                         </div>
                     `;
                 } else {
                     dedHtml += `
-                        <div class="flex justify-between items-center text-[11px]">
-                            <span>• ${name}:</span>
-                            <b class="font-mono text-amber-600 dark:text-amber-400">-${roundedQty} ${data.unit}</b>
+                        <div class="flex items-start justify-between gap-2 text-[11px] py-0.5">
+                            <span class="min-w-0 flex-1 break-words leading-snug">• ${name}:</span>
+                            <b class="font-mono text-amber-600 dark:text-amber-400 whitespace-nowrap shrink-0">-${roundedQty} ${data.unit}</b>
                         </div>
                     `;
                 }
@@ -1435,11 +1586,11 @@ $activePage = 'orders';
                 `;
                 btnComplete.disabled = true;
                 btnComplete.innerHTML = '<span>⚠️ Insufficient Stock to Order</span>';
-                btnComplete.className = "w-full py-3.5 rounded-xl bg-rose-600 text-white font-extrabold text-sm shadow-md opacity-70 cursor-not-allowed flex items-center justify-center gap-2";
+                btnComplete.className = "w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-rose-600 text-white font-extrabold text-sm sm:text-base shadow-md opacity-70 cursor-not-allowed flex items-center justify-center gap-2";
             } else {
                 btnComplete.disabled = false;
                 btnComplete.innerHTML = '<span>Complete Order & Deduct Stock</span>';
-                btnComplete.className = "w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
+                btnComplete.className = "w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
             }
 
             deductionsList.innerHTML = dedHtml;

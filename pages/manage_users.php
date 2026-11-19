@@ -148,29 +148,29 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 <!-- Left Column: Settings Navigation Tabs Card -->
-                <div class="lg:col-span-4 bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-3 space-y-1">
-                    <button type="button" onclick="switchTab('profile')" id="tab-btn-profile" class="w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between bg-[#F28C28]/15 border border-[#F28C28]/30 text-[#F28C28]">
+                <div class="lg:col-span-4 bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-3 space-y-1.5">
+                    <button type="button" onclick="switchTab('profile')" id="tab-btn-profile" class="w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between bg-[#F28C28]/15 border border-[#F28C28]/30 text-[#F28C28]">
                         <div>
                             <span class="font-bold text-sm block">Profile</span>
                             <span class="text-xs text-slate-400">Account details</span>
                         </div>
-                        <svg class="w-4 h-4 text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        <svg class="w-5 h-5 text-[#F28C28]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
 
-                    <button type="button" onclick="switchTab('users')" id="tab-btn-users" class="w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                    <button type="button" onclick="switchTab('users')" id="tab-btn-users" class="w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                         <div>
                             <span class="font-bold text-sm block">User Management</span>
                             <span class="text-xs text-slate-400">Roles and access</span>
                         </div>
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
 
-                    <a href="backup.php" class="w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                    <a href="backup.php" class="w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]">
                         <div>
                             <span class="font-bold text-sm block">Data & Backup</span>
                             <span class="text-xs text-slate-400">Database snapshots</span>
                         </div>
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                     </a>
                 </div>
 
@@ -206,9 +206,9 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                 <input type="hidden" name="action" value="reset_password">
                                 <input type="hidden" name="user_id" value="<?= $userId ?>">
-                                <div class="flex flex-col sm:flex-row gap-3">
+                                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                                     <input type="password" name="new_password" required placeholder="Enter new password..." class="flex-1">
-                                    <button type="submit" class="btn-secondary px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap">
+                                    <button type="submit" class="btn-secondary h-[46px] px-6 py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center whitespace-nowrap shrink-0">
                                         Change Password
                                     </button>
                                 </div>
@@ -216,12 +216,12 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                         </div>
 
                         <!-- Session Preferences -->
-                        <div class="pt-4 border-t border-slate-200 dark:border-[#15345C] flex items-center justify-between">
+                        <div class="pt-4 border-t border-slate-200 dark:border-[#15345C] flex items-center justify-between gap-3">
                             <div>
                                 <span class="font-bold text-sm block text-slate-800 dark:text-white">Session Security</span>
                                 <span class="text-xs text-slate-400">Strict CSRF token validation and HTTP session regeneration are active.</span>
                             </div>
-                            <span class="badge-good">Enabled</span>
+                            <span class="badge-good shrink-0">Enabled</span>
                         </div>
                     </div>
 
@@ -231,7 +231,7 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                         <!-- Provision User Form Card -->
                         <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-4">
                             <h2 class="text-base font-bold text-slate-900 dark:text-white">Provision New User Account</h2>
-                            <form method="POST" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+                            <form method="POST" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-xs items-end">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                 <input type="hidden" name="action" value="create_user">
 
@@ -251,7 +251,7 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                     <input type="password" name="password" required placeholder="••••••••" class="w-full">
                                 </div>
                                 <div>
-                                    <button type="submit" class="btn-primary w-full py-2.5 rounded-xl font-bold shadow-md">
+                                    <button type="submit" class="btn-primary w-full h-[46px] !px-4 py-2.5 rounded-xl text-sm font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap">
                                         Create User
                                     </button>
                                 </div>
@@ -300,13 +300,13 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
                                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                                                             <input type="hidden" name="action" value="toggle_active">
                                                             <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
-                                                            <button type="submit" class="text-xs font-bold <?= $u['is_active'] ? 'text-rose-500 hover:underline' : 'text-emerald-500 hover:underline' ?>">
+                                                            <button type="submit" class="btn-link text-xs sm:text-sm font-bold whitespace-nowrap <?= $u['is_active'] ? 'text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30' : 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30' ?>">
                                                                 <?= $u['is_active'] ? 'Deactivate' : 'Activate' ?>
                                                             </button>
                                                         </form>
                                                     </div>
                                                 <?php else: ?>
-                                                    <span class="text-[11px] text-slate-400 italic">Current User</span>
+                                                    <span class="text-[11px] text-slate-400 italic whitespace-nowrap">Current User</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
@@ -334,13 +334,13 @@ $pageTitle = 'Settings & User Management - Asterisko Inventory';
             if (tab === 'profile') {
                 panelProfile.classList.remove('hidden');
                 panelUsers.classList.add('hidden');
-                btnProfile.className = 'w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between bg-[#F28C28]/15 border border-[#F28C28]/30 text-[#F28C28]';
-                btnUsers.className = 'w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]';
+                btnProfile.className = 'w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between bg-[#F28C28]/15 border border-[#F28C28]/30 text-[#F28C28]';
+                btnUsers.className = 'w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]';
             } else {
                 panelProfile.classList.add('hidden');
                 panelUsers.classList.remove('hidden');
-                btnUsers.className = 'w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between bg-[#F28C28]/15 border border-[#F28C28]/30 text-[#F28C28]';
-                btnProfile.className = 'w-full text-left p-3.5 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]';
+                btnUsers.className = 'w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between bg-[#F28C28]/15 border border-[#F28C28]/30 text-[#F28C28]';
+                btnProfile.className = 'w-full min-h-[56px] text-left p-4 rounded-xl transition-all flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132E52]';
             }
         }
     </script>

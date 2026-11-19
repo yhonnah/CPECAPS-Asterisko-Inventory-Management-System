@@ -1,5 +1,5 @@
 // Asterisko PWA Service Worker (Offline-First Cache Engine)
-const CACHE_NAME = 'asterisko-cache-v3';
+const CACHE_NAME = 'asterisko-cache-v7';
 const PRECACHE_ASSETS = [
     '/manifest.json',
     '/assets/logo.png',
@@ -10,6 +10,7 @@ const PRECACHE_ASSETS = [
     '/pages/count.php',
     '/pages/waste.php',
     '/pages/delivery_intake.php',
+    '/pages/manage_menu.php',
     'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'
 ];
 
@@ -17,7 +18,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(async cache => {
-            console.log('[SW] Pre-caching core application assets safely (v3)');
+            console.log('[SW] Pre-caching core application assets safely (v6)');
             for (const asset of PRECACHE_ASSETS) {
                 try {
                     const response = await fetch(asset, { cache: 'no-cache' });

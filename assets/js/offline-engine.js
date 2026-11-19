@@ -177,7 +177,8 @@ async function syncOfflineOutbox() {
 
     console.log(`[Sync] Attempting to synchronize ${pending.length} outbox items to cloud...`);
 
-    // Prepare sync payload items for api/sync.php with Delta Commutative metadata
+    // Prepare sync payload with coffee orders and manual stock items
+    const syncOrders = [];
     const syncPayloadItems = [];
 
     for (const entry of pending) {
@@ -209,7 +210,7 @@ async function syncOfflineOutbox() {
         }
     }
 
-    if (syncPayloadItems.length === 0) {
+    if (syncOrders.length === 0 && syncPayloadItems.length === 0) {
         // Mark all as synced if empty payload
         for (const entry of pending) {
             await offlineDb.outbox.update(entry.id, { status: 'synced' });

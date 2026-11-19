@@ -100,13 +100,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             }
         }
+    } elseif ($action === 'receive_restock' || ($action === 'update_status' && ($_POST['status'] ?? '') === 'received')) {
+        $poId = (int)($_POST['po_id'] ?? 0);
+        if ($poId > 0) {
+            try {
+                $pdo->beginTransaction();
+                $chkPo = $pdo->prepare("SELECT * FROM purchase_orders WHERE id = ? FOR UPDATE");
+                $chkPo->execute([$poId]);
+                $po = $chkPo->fetch(PDO::FETCH_ASSOC);
+
+                if (!$po) {
+                    throw new Exception("Purchase Order not found.");
+                }
+                if ($po['status'] === 'received') {
+                    throw new Exception("This Purchase Order has already been received.");
+                }
+
+                $fetchPoi = $pdo->prepare("
+                    SELECT poi.*, si.name AS item_name, si.quantity AS current_stock, si.unit AS stock_unit
+                    FROM purchase_order_items poi
+                    JOIN stock_items si ON si.id = poi.item_id
+                    WHERE poi.po_id = ?
+                    FOR UPDATE
+                ");
+                $fetchPoi->execute([$poId]);
+                $poiList = $fetchPoi->fetchAll(PDO::FETCH_ASSOC);
+
+                if (empty($poiList)) {
+                    throw new Exception("No items found in this purchase order.");
+                }
+
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = quantity + ? WHERE id = ?");
+                $insAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'delivery', ?, ?)
+                ");
+
+                $itemsReceived = 0;
+                foreach ($poiList as $poi) {
+                    $qtyReceived = (float)$poi['quantity'];
+                    $prevStock = (float)$poi['current_stock'];
+                    $newStock = round($prevStock + $qtyReceived, 4);
+
+                    $updStock->execute([$qtyReceived, $poi['item_id']]);
+                    $auditReason = "PO {$po['po_number']} Received (+{$qtyReceived} {$poi['unit']})";
+                    $insAudit->execute([$poi['item_id'], $prevStock, $newStock, $auditReason, $username]);
+                    $itemsReceived++;
+                }
+
+                $updPo = $pdo->prepare("UPDATE purchase_orders SET status = 'received' WHERE id = ?");
+                $updPo->execute([$poId]);
+
+                $pdo->commit();
+                $message = "PO {$po['po_number']} marked as received! Restocked {$itemsReceived} inventory items.";
+                $messageType = "success";
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $message = "Failed to receive order: " . $e->getMessage();
+                $messageType = "error";
+            }
+        }
     } elseif ($action === 'update_status') {
         $poId = (int)($_POST['po_id'] ?? 0);
         $newStatus = $_POST['status'] ?? 'ordered';
-        if ($poId > 0 && in_array($newStatus, ['ordered', 'received', 'cancelled'])) {
+        if ($poId > 0 && in_array($newStatus, ['ordered', 'cancelled'])) {
             $stmt = $pdo->prepare("UPDATE purchase_orders SET status = ? WHERE id = ?");
             $stmt->execute([$newStatus, $poId]);
-            $message = "Order status updated.";
+            $message = "Order status updated to " . ucfirst($newStatus) . ".";
             $messageType = "success";
         }
     }
@@ -194,8 +256,8 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Purchase Orders & Pre-Orders</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate formal purchase orders, track vendor lead times, and export printable documents.</p>
                 </div>
-                <button onclick="document.getElementById('create-po-section').scrollIntoView({behavior: 'smooth'})" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <button onclick="document.getElementById('create-po-section').scrollIntoView({behavior: 'smooth'})" class="btn-primary inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ New Order</span>
                 </button>
             </div>
@@ -275,24 +337,36 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                     </table>
                 </div>
 
-                <div class="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-[#15345C] no-print">
-                    <div class="flex items-center gap-2">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-[#15345C] no-print">
+                    <div class="flex flex-wrap items-center gap-2">
                         <form method="POST" class="inline">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
                             <input type="hidden" name="action" value="update_status">
                             <input type="hidden" name="po_id" value="<?= $poData['id'] ?>">
-                            <select name="status" onchange="this.form.submit()" class="text-xs p-1.5 rounded-lg border border-slate-300 dark:border-[#173863] bg-white dark:bg-[#07172C]">
+                            <select name="status" onchange="this.form.submit()" class="text-xs sm:text-sm p-2.5 rounded-xl border border-slate-300 dark:border-[#173863] bg-white dark:bg-[#07172C]">
                                 <option value="ordered" <?= $poData['status'] === 'ordered' ? 'selected' : '' ?>>Status: Ordered (Pending)</option>
                                 <option value="received" <?= $poData['status'] === 'received' ? 'selected' : '' ?>>Status: Received</option>
                                 <option value="cancelled" <?= $poData['status'] === 'cancelled' ? 'selected' : '' ?>>Status: Cancelled</option>
                             </select>
                         </form>
+
+                        <?php if ($poData['status'] === 'ordered'): ?>
+                            <form method="POST" class="inline" onsubmit="return confirm('Confirm receiving PO #<?= htmlspecialchars($poData['po_number']) ?> and restock all items in inventory?');">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                                <input type="hidden" name="action" value="receive_restock">
+                                <input type="hidden" name="po_id" value="<?= $poData['id'] ?>">
+                                <button type="submit" class="min-h-[42px] h-10 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm inline-flex items-center gap-1.5 whitespace-nowrap">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Receive & Restock Inventory</span>
+                                </button>
+                            </form>
+                        <?php endif; ?>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="window.print()" class="btn-primary px-5 py-2 rounded-xl text-xs font-bold shadow-md">
+                    <div class="flex items-center gap-2.5 shrink-0">
+                        <button onclick="window.print()" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md inline-flex items-center justify-center whitespace-nowrap shrink-0">
                             Print / Save PDF
                         </button>
-                        <a href="purchase_orders.php" class="px-4 py-2 border border-slate-300 dark:border-[#173863] rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#132E52]">
+                        <a href="purchase_orders.php" class="btn-outline min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap shrink-0">
                             Close
                         </a>
                     </div>
@@ -327,12 +401,12 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
 
             <!-- Create Purchase Order Section -->
             <div id="create-po-section" class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] p-6 space-y-6 no-print">
-                <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex justify-between items-center">
+                <div class="border-b border-slate-200 dark:border-[#15345C] pb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-slate-900 dark:text-white">Create Purchase Order or Pre-Order</h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400">Select preferred vendor, add line items or auto-fill items below reorder point.</p>
                     </div>
-                    <button type="button" onclick="autoFillLowStock()" class="btn-secondary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm">
+                    <button type="button" onclick="autoFillLowStock()" class="btn-secondary min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap shrink-0">
                         Auto-Fill Low Stock Items
                     </button>
                 </div>
@@ -367,9 +441,9 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
 
                     <!-- Line Items Table -->
                     <div class="rounded-xl border border-slate-200 dark:border-[#15345C] overflow-hidden">
-                        <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#15345C] flex justify-between items-center">
+                        <div class="p-3 bg-slate-50 dark:bg-[#07172C] border-b border-slate-200 dark:border-[#15345C] flex justify-between items-center gap-2">
                             <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Order Line Items</span>
-                            <button type="button" onclick="addPoRow()" class="text-xs font-bold text-[#F28C28] hover:text-[#E07B18]">+ Add Line</button>
+                            <button type="button" onclick="addPoRow()" class="btn-link min-h-[38px] px-3 py-1.5 rounded-lg bg-[#F28C28]/10 text-[#F28C28] hover:bg-[#F28C28]/20 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0">+ Add Line</button>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs text-left" id="po-lines-table">
@@ -399,7 +473,7 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                     </div>
 
                     <div class="flex justify-end pt-2">
-                        <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md">
+                        <button type="submit" class="btn-primary min-h-[46px] h-11 px-6 py-3 rounded-xl text-sm font-bold shadow-md whitespace-nowrap shrink-0">
                             Generate Purchase Order
                         </button>
                     </div>
@@ -457,7 +531,7 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-right">
-                                        <a href="purchase_orders.php?view_po=<?= $ro['id'] ?>" class="text-[#F28C28] hover:text-[#E07B18] font-bold text-xs inline-flex items-center gap-1">
+                                        <a href="purchase_orders.php?view_po=<?= $ro['id'] ?>" class="btn-link text-[#F28C28] hover:text-[#E07B18] hover:bg-orange-50 dark:hover:bg-[#132E52] font-bold text-xs sm:text-sm inline-flex items-center gap-1 whitespace-nowrap shrink-0">
                                             View / Print &rarr;
                                         </a>
                                     </td>
@@ -483,15 +557,15 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
-                    <select class="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-item-select" onchange="onPoItemChange(this)">
+                    <select class="w-full text-xs p-2 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-item-select" onchange="onPoItemChange(this)">
                         <option value="0">-- Select Catalog Item --</option>
                         ${stockCatalog.map(s => `<option value="${s.id}" data-cost="${s.unit_cost}" data-unit="${s.unit}" ${selectedItemId == s.id ? 'selected' : ''}>${s.NAME || s.name} (${s.unit})</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" min="0.1" value="${defaultQty}" class="w-24 text-xs p-1.5 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-qty" oninput="calcPoTotals()"></td>
-                <td><input type="number" step="0.01" min="0" value="0.00" class="w-28 text-xs p-1.5 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-cost" oninput="calcPoTotals()"></td>
+                <td><input type="number" step="0.01" min="0.1" value="${defaultQty}" class="w-24 text-xs p-2 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-qty" oninput="calcPoTotals()"></td>
+                <td><input type="number" step="0.01" min="0" value="0.00" class="w-28 text-xs p-2 rounded-lg border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] po-cost" oninput="calcPoTotals()"></td>
                 <td class="font-mono font-bold text-right po-subtotal">₱0.00</td>
-                <td class="text-center"><button type="button" onclick="this.closest('tr').remove(); calcPoTotals();" class="text-rose-500 font-bold">&times;</button></td>
+                <td class="text-center"><button type="button" onclick="this.closest('tr').remove(); calcPoTotals();" class="btn-icon w-9 h-9 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-base inline-flex items-center justify-center">&times;</button></td>
             `;
             tbody.appendChild(tr);
 
@@ -557,6 +631,18 @@ $pageTitle = 'Purchase Orders - Asterisko Inventory';
         function round2(num) {
             return Math.round((num + Number.EPSILON) * 100) / 100;
         }
+
+        // Auto-fill low stock if arrived with ?auto_rop=1
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('auto_rop')) {
+                const sec = document.getElementById('create-po-section');
+                if (sec) {
+                    sec.scrollIntoView({ behavior: 'smooth' });
+                    autoFillLowStock();
+                }
+            }
+        });
     </script>
 </body>
 </html>

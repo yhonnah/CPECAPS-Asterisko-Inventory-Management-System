@@ -129,18 +129,41 @@ html.dark .stat-card {
     background: var(--stat-accent, #F28C28);
 }
 
+/* Global Button Normalization, No-Wrap & Mobile/Tablet Touch Sizing */
+button {
+    white-space: nowrap;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
 /* Primary Action Buttons */
 .btn-primary,
-button[type="submit"]:not(.btn-secondary):not(.btn-danger) {
+button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.btn-link) {
     background-color: #F28C28 !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
     border-radius: 12px !important;
+    border: 1px solid transparent !important;
     box-shadow: 0 4px 14px rgba(242, 140, 40, 0.25) !important;
     transition: all 0.2s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: 1.25rem;
+}
+.btn-wrap {
+    white-space: normal !important;
+    text-align: center !important;
 }
 .btn-primary:hover,
-button[type="submit"]:not(.btn-secondary):not(.btn-danger):hover {
+button[type="submit"]:not(.btn-secondary):not(.btn-danger):not(.btn-icon):not(.btn-link):hover {
     background-color: #E07B18 !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 6px 18px rgba(242, 140, 40, 0.35) !important;
@@ -150,11 +173,91 @@ button[type="submit"]:not(.btn-secondary):not(.btn-danger):hover {
 .btn-secondary {
     background-color: #0C2340 !important;
     color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
     border-radius: 12px !important;
+    border: 1px solid transparent !important;
     transition: all 0.2s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: 1.25rem;
 }
 .btn-secondary:hover {
     background-color: #132E52 !important;
+}
+
+/* Danger Buttons */
+.btn-danger {
+    background-color: #E11D48 !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
+    border-radius: 12px !important;
+    border: 1px solid transparent !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: 1.25rem;
+}
+.btn-danger:hover {
+    background-color: #BE123C !important;
+}
+
+/* Outline / Neutral Action Buttons */
+.btn-outline {
+    border-radius: 12px !important;
+    border: 1px solid #CBD5E1 !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
+    transition: all 0.2s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: 1.25rem;
+}
+html.dark .btn-outline {
+    border-color: #173863 !important;
+}
+
+/* Icon & Table Action Touch Targets */
+.btn-icon {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-link {
+    min-height: 38px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Status Badges */
@@ -255,6 +358,10 @@ html.dark table tbody tr:hover {
 }
 
 /* Form Inputs & Selects */
+.grid > * {
+    min-width: 0;
+}
+
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -264,11 +371,30 @@ select,
 textarea {
     border-radius: 12px;
     border: 1px solid #E2E8F0;
-    padding: 0.625rem 1rem;
+    min-height: 46px;
+    padding: 0.6875rem 1rem;
     font-size: 0.875rem;
+    line-height: 1.25rem;
     background-color: #FFFFFF;
     color: #1E293B;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Fix iOS / iPadOS WebKit date input intrinsic width overflow inside CSS Grid & Flex containers */
+input[type="date"] {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    max-width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
 }
 
 /* Ensure inputs with icon containers preserve ample padding without text collisions */
