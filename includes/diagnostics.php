@@ -92,7 +92,18 @@ function asteriskoErrorRegistry(): array
 
 function getDiagnosticsLogPath(): string
 {
-    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'app_diagnostics.log';
+    $repoLogsDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs';
+    if (!is_dir($repoLogsDir)) {
+        @mkdir($repoLogsDir, 0755, true);
+    }
+    if (is_dir($repoLogsDir) && is_writable($repoLogsDir)) {
+        return $repoLogsDir . DIRECTORY_SEPARATOR . 'app_diagnostics.log';
+    }
+    $tmpLogsDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'asterisko_logs';
+    if (!is_dir($tmpLogsDir)) {
+        @mkdir($tmpLogsDir, 0755, true);
+    }
+    return $tmpLogsDir . DIRECTORY_SEPARATOR . 'app_diagnostics.log';
 }
 
 function logDiagnosticEvent(string $code, string $component, string $message, array $context = []): void
@@ -179,20 +190,27 @@ function runSystemHealthChecks(?PDO $pdo = null): array
         $overallCode = 'WARN-EXT-MISSING';
     }
 
-    // 3. Writable Operational Directories
+    // 3. Writable Operational Directories (with serverless /tmp fallback on Vercel)
     $baseDir = dirname(__DIR__);
+    $tmpBase = sys_get_temp_dir();
     $dirs = [
-        'logs' => $baseDir . DIRECTORY_SEPARATOR . 'logs',
-        'uploads/invoices' => $baseDir . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'invoices',
-        'backups' => $baseDir . DIRECTORY_SEPARATOR . 'backups',
+        'logs' => [$baseDir . DIRECTORY_SEPARATOR . 'logs', $tmpBase . DIRECTORY_SEPARATOR . 'asterisko_logs'],
+        'uploads/invoices' => [$baseDir . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'invoices', $tmpBase . DIRECTORY_SEPARATOR . 'asterisko_uploads'],
+        'backups' => [$baseDir . DIRECTORY_SEPARATOR . 'backups', $tmpBase . DIRECTORY_SEPARATOR . 'asterisko_backups'],
     ];
     $dirResults = [];
     $dirsOk = true;
-    foreach ($dirs as $label => $path) {
-        if (!is_dir($path)) {
-            @mkdir($path, 0755, true);
+    foreach ($dirs as $label => [$primaryPath, $fallbackPath]) {
+        if (!is_dir($primaryPath)) {
+            @mkdir($primaryPath, 0755, true);
         }
-        $writable = is_dir($path) && is_writable($path);
+        $writable = is_dir($primaryPath) && is_writable($primaryPath);
+        if (!$writable) {
+            if (!is_dir($fallbackPath)) {
+                @mkdir($fallbackPath, 0755, true);
+            }
+            $writable = is_dir($fallbackPath) && is_writable($fallbackPath);
+        }
         $dirResults[$label] = $writable;
         if (!$writable) {
             $dirsOk = false;

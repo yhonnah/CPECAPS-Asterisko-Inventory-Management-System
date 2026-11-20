@@ -12,7 +12,13 @@ $messageType = '';
 $backupDir = dirname(__DIR__) . '/backups/';
 
 if (!is_dir($backupDir)) {
-    mkdir($backupDir, 0755, true);
+    @mkdir($backupDir, 0755, true);
+}
+if (!is_dir($backupDir) || !is_writable($backupDir)) {
+    $backupDir = sys_get_temp_dir() . '/asterisko_backups/';
+    if (!is_dir($backupDir)) {
+        @mkdir($backupDir, 0755, true);
+    }
 }
 
 // Handle Direct Download Request

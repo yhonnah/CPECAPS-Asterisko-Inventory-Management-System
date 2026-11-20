@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "api/*.php": {
+      "runtime": "vercel-php@0.7.3"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/vercel_router.php?__route=index.php"
+    },
+    {
+      "source": "/index.php",
+      "destination": "/api/vercel_router.php?__route=index.php"
+    },
+    {
+      "source": "/pages/(.*\\.php)",
+      "destination": "/api/vercel_router.php?__route=pages/$1"
+    }
+  ]
+}

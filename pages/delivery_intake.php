@@ -44,7 +44,13 @@ if (isset($_FILES['invoice_image']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $filename = 'inv_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $targetDir = dirname(__DIR__) . '/uploads/invoices/';
     if (!is_dir($targetDir)) {
-        mkdir($targetDir, 0755, true);
+        @mkdir($targetDir, 0755, true);
+    }
+    if (!is_dir($targetDir) || !is_writable($targetDir)) {
+        $targetDir = sys_get_temp_dir() . '/asterisko_uploads/';
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+        }
     }
     $targetPath = $targetDir . $filename;
 
