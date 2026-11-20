@@ -4,11 +4,18 @@
  * Routes /, /index.php, and /pages/*.php while preserving relative working directories.
  */
 
-$route = $_GET['__route'] ?? 'index.php';
+header('Content-Type: text/html; charset=UTF-8');
+
+$uriPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$route = $_GET['__route'] ?? ltrim($uriPath, '/');
 unset($_GET['__route']);
 
-// Normalize and strictly allow only index.php or pages/<name>.php
-$route = ltrim(str_replace('\\', '/', $route), '/');
+$route = ltrim(str_replace('\\', '/', (string)$route), '/');
+if ($route === '' || $route === 'api/vercel_router.php') {
+    $route = 'index.php';
+}
+
+// Strictly allow only index.php or pages/<name>.php
 if ($route !== 'index.php' && !preg_match('#^pages/[a-zA-Z0-9_-]+\.php$#', $route)) {
     http_response_code(404);
     echo "404 Not Found";

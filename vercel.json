@@ -1,21 +1,40 @@
 {
+  "buildCommand": "mkdir -p public && cp -r assets sw.js manifest.json public/",
+  "outputDirectory": "public",
   "functions": {
     "api/*.php": {
-      "runtime": "vercel-php@0.7.3"
+      "runtime": "vercel-php@0.7.3",
+      "includeFiles": "{index.php,config/**,includes/**,pages/**,database/**}"
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/api/vercel_router.php?__route=index.php"
+      "src": "^/assets/(.*)$",
+      "dest": "/assets/$1"
     },
     {
-      "source": "/index.php",
-      "destination": "/api/vercel_router.php?__route=index.php"
+      "src": "^/sw\\.js$",
+      "dest": "/sw.js"
     },
     {
-      "source": "/pages/(.*\\.php)",
-      "destination": "/api/vercel_router.php?__route=pages/$1"
+      "src": "^/manifest\\.json$",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "^/api/ping\\.php(.*)$",
+      "dest": "/api/ping.php$1"
+    },
+    {
+      "src": "^/api/sync\\.php(.*)$",
+      "dest": "/api/sync.php$1"
+    },
+    {
+      "src": "^/pages/([a-zA-Z0-9_-]+\\.php)(.*)$",
+      "dest": "/api/vercel_router.php?__route=pages/$1"
+    },
+    {
+      "src": "^/(index\\.php)?$",
+      "dest": "/api/vercel_router.php?__route=index.php"
     }
   ]
 }
