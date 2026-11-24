@@ -11,7 +11,7 @@ $currentPage = $activePage ?? '';
 // Role capabilities matching system permissions:
 // - Owner: Full access across all modules including Settings & Backups
 // - Admin/Manager: Inventory Management, Purchasing, Suppliers, and Financial/Variance Reports
-// - Staff/Barista: Front-of-house & inventory intake (Dashboard, Orders, Stock Count, Deliveries, Waste)
+// - Staff/Barista: Front-of-house & inventory intake (Dashboard, Sales, Stock Count, Deliveries, Waste)
 $isOwner = in_array(strtolower($currentUserRole), ['owner']);
 $isManagerOrOwner = in_array(strtolower($currentUserRole), ['admin', 'manager', 'owner']);
 ?>
@@ -52,12 +52,12 @@ $isManagerOrOwner = in_array(strtolower($currentUserRole), ['admin', 'manager', 
                 <span>Dashboard</span>
             </a>
 
-            <!-- Coffee Orders & Stock Deduction -->
-            <a href="orders.php" class="group/link relative flex items-center gap-3.5 min-h-[48px] px-4 py-3.5 rounded-xl text-sm font-semibold transition-all animate-ast-slide-right [animation-delay:50ms] <?= ($currentPage === 'orders') ? 'bg-[#F28C28] text-white shadow-[0_6px_18px_rgba(242,140,40,0.32)] before:content-[\'\'] before:absolute before:-left-4 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-[60%] before:rounded-r before:bg-[#F28C28]' : 'text-slate-300 hover:text-white hover:bg-[#132E52] hover:translate-x-[3px]' ?>">
-                <svg class="w-5 h-5 transition-transform duration-150 <?= ($currentPage === 'orders') ? 'text-white' : 'text-slate-400 group-hover/link:text-[#F28C28] group-hover/link:scale-110' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Coffee Sales & Stock Deduction -->
+            <a href="sales.php" class="group/link relative flex items-center gap-3.5 min-h-[48px] px-4 py-3.5 rounded-xl text-sm font-semibold transition-all animate-ast-slide-right [animation-delay:50ms] <?= ($currentPage === 'sales' || $currentPage === 'orders') ? 'bg-[#F28C28] text-white shadow-[0_6px_18px_rgba(242,140,40,0.32)] before:content-[\'\'] before:absolute before:-left-4 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-[60%] before:rounded-r before:bg-[#F28C28]' : 'text-slate-300 hover:text-white hover:bg-[#132E52] hover:translate-x-[3px]' ?>">
+                <svg class="w-5 h-5 transition-transform duration-150 <?= ($currentPage === 'sales' || $currentPage === 'orders') ? 'text-white' : 'text-slate-400 group-hover/link:text-[#F28C28] group-hover/link:scale-110' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                 </svg>
-                <span>Orders</span>
+                <span>Sales</span>
             </a>
 
             <!-- Inventory (Admin & Owner) -->
@@ -183,9 +183,9 @@ $isManagerOrOwner = in_array(strtolower($currentUserRole), ['admin', 'manager', 
     </a>
     <?php endif; ?>
 
-    <a href="orders.php" class="group/tab flex flex-col items-center justify-center gap-1 h-full text-xs font-semibold transition-colors <?= ($currentPage === 'orders') ? 'text-[#F28C28] after:content-[\'\'] after:w-[5px] after:h-[5px] after:rounded-full after:bg-[#F28C28]' : 'text-slate-400 hover:text-white' ?>">
-        <svg class="w-6 h-6 transition-transform duration-300 group-active/tab:scale-90 <?= ($currentPage === 'orders') ? '-translate-y-0.5' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-        <span>Orders</span>
+    <a href="sales.php" class="group/tab flex flex-col items-center justify-center gap-1 h-full text-xs font-semibold transition-colors <?= ($currentPage === 'sales' || $currentPage === 'orders') ? 'text-[#F28C28] after:content-[\'\'] after:w-[5px] after:h-[5px] after:rounded-full after:bg-[#F28C28]' : 'text-slate-400 hover:text-white' ?>">
+        <svg class="w-6 h-6 transition-transform duration-300 group-active/tab:scale-90 <?= ($currentPage === 'sales' || $currentPage === 'orders') ? '-translate-y-0.5' : '' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <span>Sales</span>
     </a>
 
     <button type="button" onclick="toggleSidebar(true)" aria-label="Open full menu" class="group/tab flex flex-col items-center justify-center gap-1 h-full text-xs font-semibold text-slate-400 hover:text-white transition-colors">

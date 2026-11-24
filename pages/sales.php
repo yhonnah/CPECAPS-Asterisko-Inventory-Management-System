@@ -1,0 +1,2043 @@
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/authguard.php';
+require_once __DIR__ . '/../includes/cache_helper.php';
+require_once __DIR__ . '/../includes/alerts.php';
+requireLogin();
+
+$username = $_SESSION['username'] ?? 'User';
+$role = $_SESSION['role'] ?? 'Staff';
+$message = '';
+$messageType = '';
+
+// Handle manual cache flush request
+if (isset($_GET['flush_cache'])) {
+    $pdo = ensureDbConnection();
+    bumpCatalogVersion($pdo);
+    $_SESSION['flash_message'] = "Catalog and recipes cache refreshed successfully!";
+    $_SESSION['flash_type'] = "success";
+    header("Location: sales.php");
+    exit;
+}
+
+if (isset($_SESSION['flash_message'])) {
+    $message = $_SESSION['flash_message'];
+    $messageType = $_SESSION['flash_type'] ?? 'info';
+    unset($_SESSION['flash_message'], $_SESSION['flash_type']);
+}
+
+// Handle POST actions: Quick Order, Batch Order Ticket, or Manual Deduction
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    validateCsrfToken();
+    $action = $_POST['action'] ?? '';
+
+    // ---------------------------------------------------------
+    // 1. QUICK 1-CLICK COFFEE ORDER (SINGLE DRINK)
+    // ---------------------------------------------------------
+    if ($action === 'quick_order') {
+        $menu_item_id = (int)($_POST['menu_item_id'] ?? 0);
+        $order_qty = max(1, (int)($_POST['quantity'] ?? 1));
+
+        try {
+            $pdo = ensureDbConnection();
+            $pdo->beginTransaction();
+
+            $stmtDrink = $pdo->prepare("SELECT * FROM menu_items WHERE id = ? AND is_active = 1");
+            $stmtDrink->execute([$menu_item_id]);
+            $drink = $stmtDrink->fetch(PDO::FETCH_ASSOC);
+
+            if (!$drink) {
+                throw new Exception("Selected beverage is not available or inactive.");
+            }
+
+            // Fetch recipe ingredients
+            $stmtIng = $pdo->prepare("
+                SELECT mii.*, si.NAME AS stock_item_name, si.quantity AS current_stock, si.unit AS stock_unit
+                FROM menu_item_ingredients mii
+                JOIN stock_items si ON si.id = mii.stock_item_id
+                WHERE mii.menu_item_id = ?
+            ");
+            $stmtIng->execute([$menu_item_id]);
+            $ingredients = $stmtIng->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($ingredients)) {
+                throw new Exception("No recipe ingredients defined for this drink.");
+            }
+
+            // Lock and verify each stock item
+            $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
+            $deductionSummaries = [];
+            $touchedItemIds = [];
+            $prevBalances = [];
+            foreach ($ingredients as $ing) {
+                $totalNeeded = round((float)$ing['quantity_required'] * $order_qty, 4);
+
+                $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id = ? FOR UPDATE");
+                $stmtLock->execute([$ing['stock_item_id']]);
+                $stockItem = $stmtLock->fetch(PDO::FETCH_ASSOC);
+
+                if (!$stockItem) {
+                    throw new Exception("Stock item #{$ing['stock_item_id']} not found.");
+                }
+
+                $prevStock = (float)$stockItem['quantity'];
+                if ($prevStock < $totalNeeded) {
+                    throw new Exception("Insufficient stock for '{$stockItem['NAME']}'. Needed: {$totalNeeded} {$stockItem['unit']}, Available: {$prevStock} {$stockItem['unit']}.");
+                }
+
+                $newStock = max(0, round($prevStock - $totalNeeded, 4));
+
+                // Deduct stock
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
+                $updStock->execute([$newStock, $ing['stock_item_id']]);
+
+                // Record Audit Log
+                $auditReason = "Coffee Order {$orderNum}: {$order_qty}x {$drink['name']} (-{$totalNeeded} {$stockItem['unit']})";
+                $stmtAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'order_sale', ?, ?)
+                ");
+                $stmtAudit->execute([$ing['stock_item_id'], $prevStock, $newStock, $auditReason, $username]);
+
+                $touchedItemIds[] = (int)$ing['stock_item_id'];
+                $prevBalances[(int)$ing['stock_item_id']] = $prevStock;
+                $deductionSummaries[] = "-{$totalNeeded} {$stockItem['unit']} {$stockItem['NAME']}";
+            }
+
+            // Create Coffee Order Header
+            $orderTotal = round((float)$drink['price'] * $order_qty, 2);
+            $stmtOrder = $pdo->prepare("
+                INSERT INTO coffee_orders (order_number, order_type, total_amount, items_count, notes, served_by)
+                VALUES (?, 'coffee_drink', ?, ?, ?, ?)
+            ");
+            $orderNotes = "Quick Order: {$order_qty}x {$drink['name']}";
+            $stmtOrder->execute([$orderNum, $orderTotal, $order_qty, $orderNotes, $username]);
+            $orderId = (int)$pdo->lastInsertId();
+
+            // Create Order Item
+            $stmtOrderItem = $pdo->prepare("
+                INSERT INTO coffee_order_items (order_id, menu_item_id, item_name, quantity, price, subtotal, deductions_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmtOrderItem->execute([
+                $orderId,
+                $menu_item_id,
+                $drink['name'],
+                $order_qty,
+                $drink['price'],
+                $orderTotal,
+                json_encode($deductionSummaries)
+            ]);
+
+            // Sync with sales_records for financial reporting
+            $stmtSales = $pdo->prepare("
+                INSERT INTO sales_records (sale_date, gross_sales, source, notes, recorded_by)
+                VALUES (CURDATE(), ?, 'Coffee Sales POS', ?, ?)
+            ");
+            $stmtSales->execute([$orderTotal, "Sale #{$orderNum} ({$order_qty}x {$drink['name']})", $username]);
+
+            $pdo->commit();
+            if (!empty($touchedItemIds)) {
+                checkAndNotifyLowStock($pdo, $touchedItemIds, $username, $prevBalances);
+            }
+            $_SESSION['flash_message'] = "Sale #{$orderNum} completed! Brewed {$order_qty}x {$drink['name']}. Deducted: " . implode(', ', $deductionSummaries) . ".";
+            $_SESSION['flash_type'] = "success";
+            header("Location: sales.php");
+            exit;
+        } catch (Exception $e) {
+            if ($pdo instanceof PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $_SESSION['flash_message'] = "Sale failed: " . $e->getMessage();
+            $_SESSION['flash_type'] = "error";
+            header("Location: sales.php");
+            exit;
+        }
+    }
+
+    // ---------------------------------------------------------
+    // 2. COMPLETE MULTI-ITEM SALES TICKET
+    // ---------------------------------------------------------
+    elseif ($action === 'complete_ticket') {
+        $ticketJson = $_POST['ticket_data'] ?? '[]';
+        $ticketItems = json_decode($ticketJson, true);
+
+        if (!is_array($ticketItems) || empty($ticketItems)) {
+            $_SESSION['flash_message'] = "Your sales ticket is empty. Please add at least one coffee beverage.";
+            $_SESSION['flash_type'] = "error";
+            header("Location: sales.php");
+            exit;
+        } else {
+            try {
+                $pdo = ensureDbConnection();
+                $pdo->beginTransaction();
+
+                $orderNum = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
+                $orderTotal = 0;
+                $totalCups = 0;
+                $ingredientTotals = []; // [stock_item_id => ['name' => ..., 'needed' => ..., 'unit' => ...]]
+                $orderLines = [];
+
+                // 1. Batch Fetch all distinct drinks in ticket (Eliminates N+1 queries)
+                $menuIds = array_values(array_unique(array_filter(array_map(fn($i) => (int)($i['id'] ?? 0), $ticketItems))));
+                if (empty($menuIds)) {
+                    throw new Exception("Invalid order ticket data.");
+                }
+
+                $placeholders = implode(',', array_fill(0, count($menuIds), '?'));
+                $stmtDrinks = $pdo->prepare("SELECT * FROM menu_items WHERE id IN ($placeholders) AND is_active = 1");
+                $stmtDrinks->execute($menuIds);
+                $drinksMap = [];
+                foreach ($stmtDrinks->fetchAll(PDO::FETCH_ASSOC) as $d) {
+                    $drinksMap[$d['id']] = $d;
+                }
+
+                // 2. Batch Fetch all ingredients in one single query
+                $stmtIngs = $pdo->prepare("SELECT * FROM menu_item_ingredients WHERE menu_item_id IN ($placeholders)");
+                $stmtIngs->execute($menuIds);
+                $ingredientsByMenu = [];
+                foreach ($stmtIngs->fetchAll(PDO::FETCH_ASSOC) as $ing) {
+                    $ingredientsByMenu[$ing['menu_item_id']][] = $ing;
+                }
+
+                // Process ticket items
+                foreach ($ticketItems as $tItem) {
+                    $menuId = (int)($tItem['id'] ?? 0);
+                    $qty = max(1, (int)($tItem['qty'] ?? 1));
+                    $addonsPrice = max(0, min(500, (float)($tItem['addons_price'] ?? 0)));
+                    $addonsLabel = trim((string)($tItem['addons_label'] ?? ''));
+
+                    $drink = $drinksMap[$menuId] ?? null;
+                    if (!$drink) {
+                        throw new Exception("Drink item ID #{$menuId} is not available.");
+                    }
+
+                    $unitPrice = round((float)$drink['price'] + $addonsPrice, 2);
+                    $subtotal = round($unitPrice * $qty, 2);
+                    $orderTotal += $subtotal;
+                    $totalCups += $qty;
+
+                    $ings = $ingredientsByMenu[$menuId] ?? [];
+                    foreach ($ings as $ing) {
+                        $sId = (int)$ing['stock_item_id'];
+                        $req = round((float)$ing['quantity_required'] * $qty, 4);
+
+                        if (!isset($ingredientTotals[$sId])) {
+                            $ingredientTotals[$sId] = [
+                                'needed' => 0,
+                                'unit' => $ing['unit']
+                            ];
+                        }
+                        $ingredientTotals[$sId]['needed'] += $req;
+                    }
+
+                    $displayName = $addonsLabel !== '' ? "{$drink['name']} ({$addonsLabel})" : $drink['name'];
+                    $orderLines[] = [
+                        'menu_item_id' => $menuId,
+                        'name' => $displayName,
+                        'quantity' => $qty,
+                        'price' => $unitPrice,
+                        'subtotal' => $subtotal
+                    ];
+                }
+
+                // 3. Batch Lock and deduct stock items in one query
+                $stockIds = array_keys($ingredientTotals);
+                if (!empty($stockIds)) {
+                    $stockPlaceholders = implode(',', array_fill(0, count($stockIds), '?'));
+                    $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id IN ($stockPlaceholders) FOR UPDATE");
+                    $stmtLock->execute($stockIds);
+                    $stockMap = [];
+                    foreach ($stmtLock->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                        $stockMap[$s['id']] = $s;
+                    }
+                } else {
+                    $stockMap = [];
+                }
+
+                $deductionSummaries = [];
+                $touchedTicketIds = [];
+                $ticketPrevBalances = [];
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
+                $stmtAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'order_sale', ?, ?)
+                ");
+                foreach ($ingredientTotals as $stockId => $data) {
+                    $needed = $data['needed'];
+                    $stockItem = $stockMap[$stockId] ?? null;
+
+                    if (!$stockItem) {
+                        throw new Exception("Stock item #{$stockId} not found.");
+                    }
+
+                    $prevStock = (float)$stockItem['quantity'];
+                    if ($prevStock < $needed) {
+                        throw new Exception("Insufficient stock for '{$stockItem['NAME']}'. Needed: {$needed} {$stockItem['unit']}, Available: {$prevStock} {$stockItem['unit']}.");
+                    }
+
+                    $newStock = max(0, round($prevStock - $needed, 4));
+                    $updStock->execute([$newStock, $stockId]);
+
+                    $auditReason = "Order Ticket {$orderNum}: {$totalCups} cups (-{$needed} {$stockItem['unit']})";
+                    $stmtAudit->execute([$stockId, $prevStock, $newStock, $auditReason, $username]);
+
+                    $touchedTicketIds[] = (int)$stockId;
+                    $ticketPrevBalances[(int)$stockId] = $prevStock;
+                    $deductionSummaries[] = "-{$needed} {$stockItem['unit']} {$stockItem['NAME']}";
+                }
+
+                // Insert Coffee Order
+                $stmtOrder = $pdo->prepare("
+                    INSERT INTO coffee_orders (order_number, order_type, total_amount, items_count, notes, served_by)
+                    VALUES (?, 'coffee_drink', ?, ?, ?, ?)
+                ");
+                $ticketNotes = count($orderLines) . " items ticket (" . $totalCups . " cups)";
+                $stmtOrder->execute([$orderNum, $orderTotal, $totalCups, $ticketNotes, $username]);
+                $orderId = (int)$pdo->lastInsertId();
+
+                // Insert items
+                $stmtOrderItem = $pdo->prepare("
+                    INSERT INTO coffee_order_items (order_id, menu_item_id, item_name, quantity, price, subtotal, deductions_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                foreach ($orderLines as $line) {
+                    $stmtOrderItem->execute([
+                        $orderId,
+                        $line['menu_item_id'],
+                        $line['name'],
+                        $line['quantity'],
+                        $line['price'],
+                        $line['subtotal'],
+                        json_encode($deductionSummaries)
+                    ]);
+                }
+
+                // Insert sales record
+                $stmtSales = $pdo->prepare("
+                    INSERT INTO sales_records (sale_date, gross_sales, source, notes, recorded_by)
+                    VALUES (CURDATE(), ?, 'Coffee Sales POS Ticket', ?, ?)
+                ");
+                $stmtSales->execute([$orderTotal, "Sales Ticket #{$orderNum}", $username]);
+
+                $pdo->commit();
+                if (!empty($touchedTicketIds)) {
+                    checkAndNotifyLowStock($pdo, $touchedTicketIds, $username, $ticketPrevBalances);
+                }
+                $_SESSION['flash_message'] = "Sales Ticket #{$orderNum} fulfilled! Brewed {$totalCups} total cups. Deducted: " . implode(', ', $deductionSummaries) . ".";
+                $_SESSION['flash_type'] = "success";
+                header("Location: sales.php");
+                exit;
+            } catch (Exception $e) {
+                if ($pdo instanceof PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $_SESSION['flash_message'] = "Sales ticket failed: " . $e->getMessage();
+                $_SESSION['flash_type'] = "error";
+                header("Location: sales.php");
+                exit;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // 3. MANUAL STOCK DEDUCTION (IN THE SAME TAB)
+    // ---------------------------------------------------------
+    elseif ($action === 'manual_deduction') {
+        $item_id = (int)($_POST['stock_item_id'] ?? 0);
+        $deduct_qty = round((float)($_POST['quantity'] ?? 0), 4);
+        $reason_preset = trim($_POST['reason_preset'] ?? 'Barista Shift Consumption');
+        $reason_custom = trim($_POST['reason_custom'] ?? '');
+        $full_reason = $reason_custom !== '' ? "{$reason_preset}: {$reason_custom}" : $reason_preset;
+
+        if ($item_id <= 0 || $deduct_qty <= 0) {
+            $_SESSION['flash_message'] = "Please select a valid inventory item and enter a quantity greater than 0.";
+            $_SESSION['flash_type'] = "error";
+            header("Location: sales.php");
+            exit;
+        } else {
+            try {
+                $pdo = ensureDbConnection();
+                $pdo->beginTransaction();
+
+                $stmtLock = $pdo->prepare("SELECT id, NAME, quantity, unit FROM stock_items WHERE id = ? FOR UPDATE");
+                $stmtLock->execute([$item_id]);
+                $item = $stmtLock->fetch(PDO::FETCH_ASSOC);
+
+                if (!$item) {
+                    throw new Exception("Inventory item not found.");
+                }
+
+                $prevStock = (float)$item['quantity'];
+                if ($prevStock < $deduct_qty) {
+                    throw new Exception("Cannot deduct {$deduct_qty} {$item['unit']} from '{$item['NAME']}'. Available stock is only {$prevStock} {$item['unit']}.");
+                }
+
+                $newStock = max(0, round($prevStock - $deduct_qty, 4));
+
+                // Deduct stock
+                $updStock = $pdo->prepare("UPDATE stock_items SET quantity = ? WHERE id = ?");
+                $updStock->execute([$newStock, $item_id]);
+
+                // Create Order record for tracking
+                $dedNum = 'MAN-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
+                $stmtOrder = $pdo->prepare("
+                    INSERT INTO coffee_orders (order_number, order_type, total_amount, items_count, notes, served_by)
+                    VALUES (?, 'manual_deduction', 0.00, 1, ?, ?)
+                ");
+                $notes = "Manual Deduction: {$full_reason} (-{$deduct_qty} {$item['unit']})";
+                $stmtOrder->execute([$dedNum, $notes, $username]);
+                $orderId = (int)$pdo->lastInsertId();
+
+                // Order Item record
+                $stmtOrderItem = $pdo->prepare("
+                    INSERT INTO coffee_order_items (order_id, item_name, quantity, price, subtotal, deductions_json)
+                    VALUES (?, ?, 1, 0.00, 0.00, ?)
+                ");
+                $stmtOrderItem->execute([
+                    $orderId,
+                    $item['NAME'],
+                    json_encode(["-{$deduct_qty} {$item['unit']} {$item['NAME']}"])
+                ]);
+
+                // Audit log entry
+                $stmtAudit = $pdo->prepare("
+                    INSERT INTO audit_logs (item_id, previous_value, new_value, change_type, reason, acting_user)
+                    VALUES (?, ?, ?, 'manual_deduction', ?, ?)
+                ");
+                $stmtAudit->execute([$item_id, $prevStock, $newStock, $notes, $username]);
+
+                $pdo->commit();
+                checkAndNotifyLowStock($pdo, [$item_id], $username, [$item_id => $prevStock]);
+                $_SESSION['flash_message'] = "Manual deduction confirmed for '{$item['NAME']}'. Deducted: {$deduct_qty} {$item['unit']}. New balance: {$newStock} {$item['unit']}.";
+                $_SESSION['flash_type'] = "success";
+                header("Location: sales.php");
+                exit;
+            } catch (Exception $e) {
+                if ($pdo instanceof PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $_SESSION['flash_message'] = "Manual deduction failed: " . $e->getMessage();
+                $_SESSION['flash_type'] = "error";
+                header("Location: sales.php");
+                exit;
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// FETCH DATA FOR DISPLAY (WITH SESSION & MEMORY CACHING)
+// -------------------------------------------------------------
+$pdo = ensureDbConnection();
+$catalogVersion = getCatalogCacheVersion($pdo);
+
+// 1. Fetch live stock items (always fresh to reflect accurate inventory)
+$stockItems = $pdo->query("SELECT id, NAME, category, quantity, unit, reorder_point FROM stock_items WHERE is_active = 1 ORDER BY category, NAME")->fetchAll(PDO::FETCH_ASSOC);
+$stockMap = [];
+foreach ($stockItems as $si) {
+    $stockMap[$si['id']] = $si;
+}
+
+// 2. Check if static menu item templates & recipe formulas are cached in memory/session
+$isCacheValid = (
+    isset($_SESSION['cached_catalog_version']) &&
+    $_SESSION['cached_catalog_version'] === $catalogVersion &&
+    isset($_SESSION['cached_base_menu']) &&
+    isset($_SESSION['cached_base_ingredients'])
+);
+
+if ($isCacheValid) {
+    // Zero database queries needed for menu formulas during peak barista operations!
+    $baseMenuItems = $_SESSION['cached_base_menu'];
+    $baseIngredients = $_SESSION['cached_base_ingredients'];
+} else {
+    // Cache miss or invalidated by recent catalog edit: Query database once and cache in logical drink sequence
+    $baseMenuItems = $pdo->query("SELECT * FROM menu_items WHERE is_active = 1 ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $stmtAllIng = $pdo->query("
+        SELECT id, menu_item_id, stock_item_id, quantity_required, unit
+        FROM menu_item_ingredients
+    ");
+    $baseIngredients = [];
+    foreach ($stmtAllIng->fetchAll(PDO::FETCH_ASSOC) as $ing) {
+        $baseIngredients[$ing['menu_item_id']][] = $ing;
+    }
+
+    // Persist into session memory
+    $_SESSION['cached_catalog_version'] = $catalogVersion;
+    $_SESSION['cached_base_menu'] = $baseMenuItems;
+    $_SESSION['cached_base_ingredients'] = $baseIngredients;
+}
+
+// 3. Merge cached drink recipes with current live stock levels
+$menuItems = $baseMenuItems;
+$menuCategories = [];
+foreach ($menuItems as &$drink) {
+    $rawIngs = $baseIngredients[$drink['id']] ?? [];
+    $drink['ingredients'] = [];
+    $canMake = 999999;
+    $isLow = false;
+
+    foreach ($rawIngs as $ing) {
+        $stockItem = $stockMap[$ing['stock_item_id']] ?? null;
+        $stockName = $stockItem ? ($stockItem['NAME'] ?? $stockItem['name']) : 'Item #' . $ing['stock_item_id'];
+        $currStock = $stockItem ? (float)$stockItem['quantity'] : 0.0;
+        $unit = $stockItem ? $stockItem['unit'] : $ing['unit'];
+        $reorder = $stockItem ? (float)$stockItem['reorder_point'] : 0.0;
+        $req = (float)$ing['quantity_required'];
+
+        $drink['ingredients'][] = [
+            'id' => $ing['id'],
+            'menu_item_id' => $ing['menu_item_id'],
+            'stock_item_id' => $ing['stock_item_id'],
+            'quantity_required' => $req,
+            'unit' => $ing['unit'],
+            'stock_name' => $stockName,
+            'current_stock' => $currStock,
+            'stock_unit' => $unit,
+            'reorder_point' => $reorder
+        ];
+
+        if ($req > 0) {
+            $possible = floor($currStock / $req);
+            if ($possible < $canMake) {
+                $canMake = $possible;
+            }
+        }
+        if ($currStock <= $reorder) {
+            $isLow = true;
+        }
+    }
+
+    $drink['cups_available'] = max(0, $canMake);
+    $drink['is_low_stock'] = $isLow;
+    $drink['is_out_of_stock'] = ($canMake <= 0);
+    $menuCategories[$drink['category']] = true;
+}
+unset($drink);
+$categoriesList = array_keys($menuCategories);
+
+// 3. Compute Metrics for Today in a Single Fast Query
+$metricsStmt = $pdo->query("
+    SELECT 
+        COUNT(CASE WHEN order_type = 'coffee_drink' THEN 1 END) AS orders_count,
+        COALESCE(SUM(CASE WHEN order_type = 'coffee_drink' THEN items_count ELSE 0 END), 0) AS cups_count,
+        COALESCE(SUM(CASE WHEN order_type = 'coffee_drink' THEN total_amount ELSE 0 END), 0) AS sales_total,
+        COUNT(CASE WHEN order_type = 'manual_deduction' THEN 1 END) AS manual_count
+    FROM coffee_orders 
+    WHERE DATE(created_at) = CURDATE()
+");
+$metrics = $metricsStmt ? $metricsStmt->fetch(PDO::FETCH_ASSOC) : [];
+$todayOrdersCount = (int)($metrics['orders_count'] ?? 0);
+$todayCupsCount = (int)($metrics['cups_count'] ?? 0);
+$todaySalesTotal = (float)($metrics['sales_total'] ?? 0);
+$todayManualDeductionsCount = (int)($metrics['manual_count'] ?? 0);
+
+// 4. Fetch Today's Orders & Inventory Deductions Log
+$recentOrders = $pdo->query("
+    SELECT co.*, 
+           (SELECT GROUP_CONCAT(CONCAT(quantity, 'x ', item_name) SEPARATOR ', ') FROM coffee_order_items WHERE order_id = co.id) AS items_summary
+    FROM coffee_orders co
+    WHERE DATE(co.created_at) = CURDATE()
+    ORDER BY co.created_at DESC 
+    LIMIT 20
+")->fetchAll(PDO::FETCH_ASSOC);
+
+function getDrinkVisual(string $name, string $category): array {
+    $low = strtolower($name . ' ' . $category);
+    if (str_contains($low, 'matcha') || str_contains($low, 'green')) {
+        return ['bg' => 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8h12l-1.5 11a2 2 0 0 1-2 1.7H9.5a2 2 0 0 1-2-1.7L6 8Z"/><path d="M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><path d="M7 12h10"/></svg>'];
+    }
+    if (str_contains($low, 'iced') || str_contains($low, 'cold')) {
+        return ['bg' => 'bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7h10l-1.2 12a2 2 0 0 1-2 1.8H10.2a2 2 0 0 1-2-1.8L7 7Z"/><path d="M5 7h14"/><path d="M12 3v4"/><rect x="9.5" y="10" width="3" height="3" rx="0.5"/><rect x="12.5" y="13.5" width="2.5" height="2.5" rx="0.5"/></svg>'];
+    }
+    if (str_contains($low, 'mocha') || str_contains($low, 'choco') || str_contains($low, 'caramel')) {
+        return ['bg' => 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9Z"/><path d="M16 10h2a2.5 2.5 0 0 1 0 5h-2"/><path d="M7 6c1-1.5 2-1.5 3 0s2 1.5 3 0"/></svg>'];
+    }
+    return ['bg' => 'bg-[#F28C28]/15 text-[#F28C28]', 'svg' => '<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M16 10h2.2a2.3 2.3 0 0 1 0 4.6H16"/><path d="M8 5c0-1 .8-1.5 1-2"/><path d="M12 5c0-1 .8-1.5 1-2"/></svg>'];
+}
+
+$pageTitle = 'Sales & Stock Deductions - Asterisko Inventory';
+$activePage = 'sales';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <?php include __DIR__ . '/../includes/head.php'; ?>
+    <style>
+        .drink-card {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .drink-card:hover {
+            transform: translateY(-3px);
+        }
+        .qty-counter-input {
+            min-height: 36px !important;
+            height: 36px !important;
+            padding: 0.25rem 0.25rem !important;
+            text-align: center;
+            -moz-appearance: textfield;
+        }
+        .qty-counter-input::-webkit-outer-spin-button,
+        .qty-counter-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-[#F4F7FB] dark:bg-[#071526] text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen">
+    <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+
+    <div class="lg:pl-64 flex flex-col min-h-screen">
+        <?php include __DIR__ . '/../includes/topbar.php'; ?>
+
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+            
+            <!-- Header Section -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-[#0C2340] dark:text-white tracking-tight flex items-center gap-2.5">
+                        <span class="w-9 h-9 rounded-xl bg-[#F28C28]/15 border border-[#F28C28]/30 flex items-center justify-center text-[#F28C28]">
+                            ☕
+                        </span>
+                        Sales &amp; Stock Deductions
+                    </h1>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Count and log daily drink sales to automatically deduct ingredients, or record manual stock usage.
+                    </p>
+                </div>
+
+                <!-- Navigation Tabs Switcher -->
+                <div class="w-full sm:w-auto flex p-1.5 bg-slate-200/80 dark:bg-[#0C2340] rounded-2xl border border-slate-300/70 dark:border-[#173863] text-xs sm:text-sm font-bold shrink-0">
+                    <button id="btn-tab-coffee" onclick="switchMainTab('coffee')" 
+                            class="flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                        <span>☕ Coffee Drink Sales</span>
+                    </button>
+                    <button id="btn-tab-manual" onclick="switchMainTab('manual')" 
+                            class="flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0">
+                        <span>⚖️ Manual Stock Deduction</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Toast / Alerts -->
+            <?php if ($message): ?>
+                <div class="p-4 rounded-xl text-sm flex items-center justify-between shadow-sm <?= $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800' ?>">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-base"><?= $messageType === 'success' ? '✓' : '⚠️' ?></span>
+                        <span class="font-medium"><?= htmlspecialchars($message) ?></span>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="w-9 h-9 inline-flex items-center justify-center rounded-lg opacity-60 hover:opacity-100 font-bold ml-4">✕</button>
+                </div>
+            <?php endif; ?>
+
+            <!-- Metric Cards (4 Stats) -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                <!-- Today's Sales Tickets -->
+                <div class="stat-card p-4 sm:p-5">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Today's Sales Tickets</span>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white mt-1"><?= number_format($todayOrdersCount) ?></h3>
+                            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Live POS tickets</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-lg">
+                            🧾
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cups Brewed -->
+                <div class="stat-card p-4 sm:p-5" style="--stat-accent: #0C2340;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cups Brewed Today</span>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white mt-1"><?= number_format($todayCupsCount) ?></h3>
+                            <span class="text-[11px] text-slate-500 font-semibold">Drinks fulfilled</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-lg">
+                            ☕
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Sales (Daily Only) -->
+                <div class="stat-card p-4 sm:p-5" style="--stat-accent: #15803D;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Today's Sales</span>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white mt-1">₱<?= number_format($todaySalesTotal, 2) ?></h3>
+                            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Today only</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-lg">
+                            ₱
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Deductions Today -->
+                <div class="stat-card p-4 sm:p-5" style="--stat-accent: #C26100;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Manual Deductions</span>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white mt-1"><?= number_format($todayManualDeductionsCount) ?></h3>
+                            <span class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">Shift & calibration entries</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-lg">
+                            ⚖️
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- TAB 1: COFFEE DRINK ORDERS & AUTO-DEDUCTION -->
+            <!-- ======================================================== -->
+            <div id="section-coffee-orders" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    
+                    <!-- Left: Coffee Menu Catalog (2 cols on large) -->
+                    <div class="lg:col-span-2 space-y-4">
+                        
+                        <!-- Search & Filter Controls -->
+                        <div class="bg-white dark:bg-[#0C2340] p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] flex flex-col gap-3 overflow-hidden">
+                            <!-- Category Filter Chips -->
+                            <div class="flex items-center gap-2 overflow-x-auto w-full custom-scrollbar pb-1">
+                                <button onclick="filterCategory('All')" 
+                                        class="cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                    All Drinks
+                                </button>
+                                <?php foreach ($categoriesList as $cat): ?>
+                                    <button onclick="filterCategory('<?= htmlspecialchars($cat) ?>')" 
+                                            class="cat-chip min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0">
+                                        <?= htmlspecialchars($cat) ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <!-- Bottom Controls: Search Input, Offline Sync Badge & Sync Button -->
+                            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 w-full">
+                                <div class="relative flex-1 min-w-[180px]">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                    </div>
+                                    <input type="text" id="menu-search-input" onkeyup="filterMenuSearch()" placeholder="Search drinks (e.g. Spanish, Matcha, Chong)..." 
+                                           class="w-full h-11 !min-h-[44px] !pl-10 !pr-10 !py-2 bg-slate-50 dark:bg-[#07172C] !text-xs sm:!text-sm rounded-xl border border-slate-200 dark:border-[#173863] focus:outline-none focus:border-[#F28C28] has-icon-left">
+                                    <button type="button" id="clear-menu-search" onclick="clearMenuSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold">
+                                        ✕
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span id="offline-sync-badge" class="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 whitespace-nowrap shrink-0">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                                        <span>Online (Synced)</span>
+                                    </span>
+                                    <button type="button" onclick="syncOfflineOutbox()" class="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap shrink-0" title="Sync local offline outbox now">
+                                        ↻ Sync
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Beverage Line-by-Line List (Click to customize add-ons & add to ticket) -->
+                        <div id="drinks-grid" class="bg-white dark:bg-[#0C2340] rounded-2xl border border-slate-200/80 dark:border-[#15345C] shadow-sm divide-y divide-slate-200/80 dark:divide-[#15345C] overflow-hidden">
+                            <!-- No Matches Empty State -->
+                            <div id="no-drinks-match" class="hidden p-8 text-center space-y-3">
+                                <div class="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto text-xl font-bold">
+                                    🔍
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">No matching drinks found</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                    No beverages match your search term in this category. Try clearing your search or selecting "All Drinks".
+                                </p>
+                                <button type="button" onclick="clearMenuSearch(); filterCategory('All');" class="btn-secondary !min-h-[38px] h-9 px-4 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
+                                    Reset Filters
+                                </button>
+                            </div>
+
+                            <?php foreach ($menuItems as $drink):
+                                $vis = getDrinkVisual($drink['name'], $drink['category']);
+                                $drinkId = (int)$drink['id'];
+                                $maxAvail = (int)$drink['cups_available'];
+                            ?>
+                                <div id="drink-row-<?= $drinkId ?>"
+                                     class="drink-card px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors <?= $drink['is_out_of_stock'] ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-[#132E52]/60 cursor-pointer' ?>"
+                                     data-category="<?= htmlspecialchars($drink['category']) ?>"
+                                     data-name="<?= htmlspecialchars(strtolower($drink['name'])) ?>"
+                                     <?= $drink['is_out_of_stock'] ? '' : "onclick=\"openDrinkModalById({$drinkId})\"" ?>>
+
+                                    <!-- Left: Picture + Title + Status -->
+                                    <div class="flex items-center gap-3.5 min-w-0 flex-1">
+                                        <div class="w-12 h-12 rounded-xl <?= $vis['bg'] ?> flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10 shadow-sm">
+                                            <?= $vis['svg'] ?>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate"><?= htmlspecialchars($drink['name']) ?></h3>
+                                                <span class="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-slate-100 dark:bg-[#132E52] text-slate-500 dark:text-slate-300">
+                                                    <?= htmlspecialchars($drink['category']) ?>
+                                                </span>
+                                                <span id="menu-custom-badge-<?= $drinkId ?>" class="hidden text-[10px] px-2 py-0.5 rounded-md font-bold bg-[#F28C28]/15 text-[#F28C28] border border-[#F28C28]/30"></span>
+                                            </div>
+                                            <div class="mt-0.5">
+                                                <?php if ($drink['is_out_of_stock']): ?>
+                                                    <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Out of Stock
+                                                    </span>
+                                                <?php elseif ($drink['is_low_stock']): ?>
+                                                    <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Low (<?= $drink['cups_available'] ?> left)
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <?= $drink['cups_available'] ?> available
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right: Price, Sales Counter Input & Options Trigger -->
+                                    <div class="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 shrink-0" onclick="event.stopPropagation()">
+                                        <span class="text-sm sm:text-base font-black text-[#F28C28] font-mono">₱<?= number_format($drink['price'], 2) ?></span>
+
+                                        <div class="flex items-center gap-1 bg-slate-100 dark:bg-[#07172C] p-1 rounded-xl border border-slate-200 dark:border-[#173863]">
+                                            <button type="button"
+                                                    onclick="adjustMenuDrinkQty(<?= $drinkId ?>, -1)"
+                                                    <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
+                                                    aria-label="Decrease <?= htmlspecialchars($drink['name']) ?> count"
+                                                    class="w-9 h-9 rounded-lg bg-white dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-extrabold flex items-center justify-center hover:bg-slate-200 dark:hover:bg-[#1C3E69] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm">
+                                                −
+                                            </button>
+                                            <input type="number"
+                                                   id="menu-qty-<?= $drinkId ?>"
+                                                   data-menu-counter="<?= $drinkId ?>"
+                                                   value="0"
+                                                   min="0"
+                                                   max="<?= $maxAvail ?>"
+                                                   step="1"
+                                                   inputmode="numeric"
+                                                   aria-label="<?= htmlspecialchars($drink['name']) ?> sales count"
+                                                   <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
+                                                   oninput="handleMenuQtyInput(<?= $drinkId ?>, this)"
+                                                   onblur="normalizeMenuQtyInput(<?= $drinkId ?>, this)"
+                                                   onfocus="this.select()"
+                                                   class="qty-counter-input w-14 font-mono font-extrabold text-sm text-slate-900 dark:text-white bg-white dark:bg-[#0C2340] border border-slate-200 dark:border-[#173863] rounded-lg focus:outline-none focus:border-[#F28C28] disabled:opacity-40 disabled:cursor-not-allowed">
+                                            <button type="button"
+                                                    onclick="adjustMenuDrinkQty(<?= $drinkId ?>, 1)"
+                                                    <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
+                                                    aria-label="Increase <?= htmlspecialchars($drink['name']) ?> count"
+                                                    class="w-9 h-9 rounded-lg bg-[#F28C28] hover:bg-[#E07B18] text-white text-sm font-extrabold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm">
+                                                +
+                                            </button>
+                                        </div>
+
+                                        <button type="button"
+                                                onclick="<?= $drink['is_out_of_stock'] ? '' : "openDrinkModalById({$drinkId})" ?>"
+                                                <?= $drink['is_out_of_stock'] ? 'disabled' : '' ?>
+                                                title="Customize temperature, size, or add-ons"
+                                                class="h-9 px-2.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#132E52] dark:hover:bg-[#1C3E69] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#173863] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap">
+                                            Options
+                                        </button>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <!-- Right: Active Sales Ticket Panel (Cart) -->
+                    <div id="current-ticket-panel" class="bg-white dark:bg-[#0C2340] rounded-2xl p-5 border border-slate-200/80 dark:border-[#15345C] shadow-lg sticky top-20 scroll-mt-20 overflow-hidden">
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-[#15345C]">
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-[#F28C28]/15 text-[#F28C28] flex items-center justify-center font-bold text-sm">
+                                    🧾
+                                </span>
+                                <h3 class="font-extrabold text-slate-900 dark:text-white text-base">Current Sales Ticket</h3>
+                            </div>
+                            <button type="button" onclick="clearTicket()" class="min-h-[36px] px-3 py-1.5 rounded-lg text-xs sm:text-sm text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold transition-colors">
+                                Clear
+                            </button>
+                        </div>
+
+                        <!-- Ticket Items List -->
+                        <div id="ticket-items-container" class="py-4 space-y-3 min-h-[160px] max-h-[320px] overflow-y-auto custom-scrollbar">
+                            <div id="ticket-empty-msg" class="text-center py-10 text-slate-400">
+                                <span class="text-3xl block mb-2 opacity-50">☕</span>
+                                <p class="text-xs font-medium">Sales ticket is empty.</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Use the item counters on the left or click Options to add drinks.</p>
+                            </div>
+                        </div>
+
+                        <!-- Projected Stock Deductions Preview -->
+                        <div id="ticket-deductions-box" class="hidden p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200 dark:border-[#173863] text-xs space-y-1 mb-4">
+                            <span class="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1">Stock Items to Deduct:</span>
+                            <div id="ticket-deductions-list" class="space-y-1 text-slate-600 dark:text-slate-300"></div>
+                        </div>
+
+                        <!-- Ticket Total & Checkout -->
+                        <div class="pt-4 border-t border-slate-200 dark:border-[#15345C] space-y-3">
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-slate-500 dark:text-slate-400 font-medium">Total Items:</span>
+                                <span id="ticket-total-cups" class="font-bold text-slate-900 dark:text-white">0 cups</span>
+                            </div>
+                            <div class="flex justify-between items-center text-base">
+                                <span class="text-slate-900 dark:text-white font-extrabold">Total Amount:</span>
+                                <span id="ticket-total-price" class="font-black text-xl text-[#F28C28]">₱0.00</span>
+                            </div>
+
+                            <form method="POST" id="ticket-submit-form" onsubmit="return validateTicketSubmit(event)">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                                <input type="hidden" name="action" value="complete_ticket">
+                                <input type="hidden" name="ticket_data" id="ticket-data-input" value="[]">
+
+                                <button type="submit" id="btn-complete-ticket" disabled
+                                        style="white-space: normal; padding: 0.75rem 0.875rem; line-height: 1.25;"
+                                        class="btn-wrap w-full min-h-[48px] rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-xs xl:text-sm text-center shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2">
+                                    <span>Complete Sale &amp; Deduct Stock</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- TAB 2: MANUAL STOCK DEDUCTION (IN THE SAME TAB) -->
+            <!-- ======================================================== -->
+            <div id="section-manual-deduction" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    
+                    <!-- Left: Manual Deduction Form Card (2 cols) -->
+                    <div class="lg:col-span-2 bg-white dark:bg-[#0C2340] rounded-2xl p-6 sm:p-8 border border-slate-200/80 dark:border-[#15345C] shadow-sm">
+                        <div class="flex items-center gap-3 pb-5 border-b border-slate-200 dark:border-[#15345C]">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-lg">
+                                ⚖️
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-extrabold text-slate-900 dark:text-white">Manual Stock Deduction</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Directly deduct raw ingredients for grinder dial-in, shift consumption, training, or counter spills.</p>
+                            </div>
+                        </div>
+
+                        <form method="POST" class="mt-6 space-y-5" onsubmit="return confirmManualDeduction(event)">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+                            <input type="hidden" name="action" value="manual_deduction">
+
+                            <!-- Item Selector -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
+                                    Select Inventory Item <span class="text-rose-500">*</span>
+                                </label>
+                                <select name="stock_item_id" id="manual-item-select" required onchange="updateManualStockPreview()"
+                                        class="w-full py-3 px-4 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm focus:outline-none focus:border-[#F28C28]">
+                                    <option value="" disabled selected>-- Select an item from stock --</option>
+                                    <?php foreach ($stockItems as $sItem): ?>
+                                        <option value="<?= $sItem['id'] ?>" 
+                                                data-qty="<?= $sItem['quantity'] ?>" 
+                                                data-unit="<?= htmlspecialchars($sItem['unit']) ?>"
+                                                data-name="<?= htmlspecialchars($sItem['NAME']) ?>">
+                                            <?= htmlspecialchars($sItem['NAME']) ?> (Current: <?= $sItem['quantity'] ?> <?= $sItem['unit'] ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Deduction Quantity & Quick Chips -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
+                                    Deduction Quantity <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="flex gap-3">
+                                    <input type="number" step="0.001" min="0.001" name="quantity" id="manual-qty-input" required 
+                                           oninput="updateManualStockPreview()" placeholder="0.00"
+                                           class="w-full py-3 px-4 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-sm font-semibold focus:outline-none focus:border-[#F28C28]">
+                                    <span id="manual-unit-label" class="inline-flex items-center px-4 py-3 bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold min-w-[70px] justify-center whitespace-nowrap shrink-0">
+                                        Unit
+                                    </span>
+                                </div>
+
+                                <!-- Quick Chips for fast barista entry -->
+                                <div class="flex flex-wrap items-center gap-2 mt-2.5">
+                                    <span class="text-xs text-slate-400 font-medium whitespace-nowrap">Quick values:</span>
+                                    <button type="button" onclick="setQuickQty(0.018)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">18g (0.018)</button>
+                                    <button type="button" onclick="setQuickQty(0.05)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">50g (0.05)</button>
+                                    <button type="button" onclick="setQuickQty(0.20)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">200mL (0.20)</button>
+                                    <button type="button" onclick="setQuickQty(0.50)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">0.50</button>
+                                    <button type="button" onclick="setQuickQty(1.00)" class="inline-flex items-center justify-center min-h-[40px] h-10 px-3.5 py-2 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-[#132E52] text-slate-700 dark:text-slate-300 hover:bg-[#F28C28] hover:text-white transition-colors font-semibold whitespace-nowrap shrink-0">1.00</button>
+                                </div>
+                            </div>
+
+                            <!-- Reason Presets -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
+                                    Deduction Reason <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28] transition-colors">
+                                        <input type="radio" name="reason_preset" value="Grinder Dial-in & Calibration" checked class="text-[#F28C28] focus:ring-[#F28C28]">
+                                        <span class="font-medium text-slate-700 dark:text-slate-300">Dial-in & Calibration</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28] transition-colors">
+                                        <input type="radio" name="reason_preset" value="Barista Shift Consumption" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                        <span class="font-medium text-slate-700 dark:text-slate-300">Barista Shift Drink</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28] transition-colors">
+                                        <input type="radio" name="reason_preset" value="Counter Prep & Steaming Loss" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                        <span class="font-medium text-slate-700 dark:text-slate-300">Steaming & Prep Loss</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28] transition-colors">
+                                        <input type="radio" name="reason_preset" value="Accidental Counter Spill" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                        <span class="font-medium text-slate-700 dark:text-slate-300">Counter Spill</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28] transition-colors">
+                                        <input type="radio" name="reason_preset" value="Quality Tasting & Training" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                        <span class="font-medium text-slate-700 dark:text-slate-300">Tasting & Training</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28] transition-colors">
+                                        <input type="radio" name="reason_preset" value="Other / Custom" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                        <span class="font-medium text-slate-700 dark:text-slate-300">Other / Custom</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Optional Custom Notes -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
+                                    Notes / Additional Details (Optional)
+                                </label>
+                                <textarea name="reason_custom" rows="2" placeholder="e.g. Purged 2 shots to calibrate grinder setting #4..."
+                                          class="w-full py-2.5 px-4 bg-slate-50 dark:bg-[#07172C] text-slate-800 dark:text-white border border-slate-200 dark:border-[#173863] rounded-xl text-xs focus:outline-none focus:border-[#F28C28]"></textarea>
+                            </div>
+
+                            <button type="submit"
+                                    class="w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all">
+                                Confirm Manual Stock Deduction
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Right: Live Deduction Preview Box -->
+                    <div class="bg-white dark:bg-[#0C2340] rounded-2xl p-6 border border-slate-200/80 dark:border-[#15345C] shadow-sm space-y-4">
+                        <h3 class="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-[#15345C]">
+                            <span>📊 Stock Impact Preview</span>
+                        </h3>
+
+                        <div class="space-y-3 text-xs">
+                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200 dark:border-[#173863]">
+                                <span class="text-slate-400 block mb-1">Selected Item:</span>
+                                <b id="preview-item-name" class="text-sm text-slate-800 dark:text-white block">None selected</b>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200 dark:border-[#173863]">
+                                    <span class="text-slate-400 block text-[11px]">Current Stock:</span>
+                                    <b id="preview-current-stock" class="text-sm text-slate-800 dark:text-white font-mono">0.00</b>
+                                </div>
+                                <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40">
+                                    <span class="text-amber-600 dark:text-amber-400 block text-[11px]">Deducting:</span>
+                                    <b id="preview-deduct-qty" class="text-sm text-amber-700 dark:text-amber-300 font-mono">-0.00</b>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40">
+                                <span class="text-emerald-700 dark:text-emerald-400 block text-xs font-bold uppercase tracking-wider">Projected New Balance:</span>
+                                <b id="preview-new-stock" class="text-xl text-emerald-800 dark:text-emerald-300 font-black font-mono block mt-0.5">0.00</b>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] text-[11px] text-slate-500 space-y-1">
+                                <span class="font-bold text-slate-700 dark:text-slate-300 block">🔒 Integrity Guarantee:</span>
+                                <p>Every manual deduction creates an audit entry in the inventory ledger with barista timestamp and reason.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- SECTION 3: RECENT SALES & DEDUCTIONS ACTIVITY LOG -->
+            <!-- ======================================================== -->
+            <div class="bg-white dark:bg-[#0C2340] rounded-2xl shadow-sm border border-slate-200/80 dark:border-[#15345C] overflow-hidden">
+                <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-[#15345C] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">Today's Sales &amp; Stock Deductions</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Today's drink sales and manual inventory adjustments</p>
+                    </div>
+                    <span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-[#132E52] font-semibold text-slate-600 dark:text-slate-300">
+                        Today Only
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead>
+                            <tr>
+                                <th>Sale Ref #</th>
+                                <th>Activity Type</th>
+                                <th>Items / Details</th>
+                                <th>Served By</th>
+                                <th>Amount</th>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($recentOrders)): ?>
+                                <tr>
+                                    <td colspan="7" class="text-center py-8 text-slate-400">
+                                        No coffee sales or stock deductions recorded yet today.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($recentOrders as $ro): ?>
+                                    <tr class="border-b border-slate-100 dark:border-[#15345C]/50 hover:bg-slate-50/50 dark:hover:bg-[#0C2340]/80">
+                                        <td class="font-mono font-bold text-slate-800 dark:text-white">
+                                            <?= htmlspecialchars($ro['order_number']) ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($ro['order_type'] === 'coffee_drink'): ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F28C28]/15 text-[#F28C28] border border-[#F28C28]/30">
+                                                    ☕ Coffee Sale
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                                    ⚖️ Manual Deduction
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="max-w-xs truncate text-slate-700 dark:text-slate-300">
+                                            <?= htmlspecialchars($ro['items_summary'] ?: $ro['notes']) ?>
+                                        </td>
+                                        <td class="font-semibold text-slate-800 dark:text-slate-200">
+                                            <?= htmlspecialchars($ro['served_by']) ?>
+                                        </td>
+                                        <td class="font-mono font-bold text-slate-900 dark:text-white">
+                                            <?= (float)$ro['total_amount'] > 0 ? '₱' . number_format($ro['total_amount'], 2) : '—' ?>
+                                        </td>
+                                        <td class="text-slate-400 whitespace-nowrap">
+                                            <?= date('M j, Y h:i A', strtotime($ro['created_at'])) ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge-good">
+                                                Deducted
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Drink Customization & Add-Ons Modal -->
+    <div id="drink-addons-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="if (event.target === this) closeDrinkModal()">
+        <div class="bg-white dark:bg-[#0C2340] border border-slate-200 dark:border-[#15345C] rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-[#15345C] flex items-start justify-between gap-3">
+                <div>
+                    <span id="modal-drink-cat" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300">Category</span>
+                    <h3 id="modal-drink-name" class="text-lg font-extrabold text-slate-900 dark:text-white mt-1">Drink Name</h3>
+                    <p id="modal-drink-avail" class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5"></p>
+                </div>
+                <button type="button" onclick="closeDrinkModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#132E52]">&times;</button>
+            </div>
+
+            <div class="p-5 space-y-4 text-xs max-h-[70vh] overflow-y-auto">
+                <!-- Quantity -->
+                <div class="flex items-center justify-between">
+                    <span class="font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Quantity</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-[#132E52] font-bold text-sm hover:bg-slate-200 dark:hover:bg-[#1C3E69]">−</button>
+                        <input type="number" id="modal-qty-val" min="1" step="1" inputmode="numeric" value="1" oninput="handleModalQtyInput(this)" onblur="normalizeModalQtyInput(this)" onfocus="this.select()" aria-label="Modal drink quantity" class="qty-counter-input w-16 font-mono font-extrabold text-base text-slate-900 dark:text-white bg-slate-50 dark:bg-[#07172C] border border-slate-200 dark:border-[#173863] rounded-lg">
+                        <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-[#132E52] font-bold text-sm hover:bg-slate-200 dark:hover:bg-[#1C3E69]">+</button>
+                    </div>
+                </div>
+
+                <!-- Temperature -->
+                <div>
+                    <span class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">Temperature</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <input type="radio" name="modal_temp" value="Iced" checked onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                            <span class="font-bold text-slate-800 dark:text-white">Iced</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <input type="radio" name="modal_temp" value="Hot" onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                            <span class="font-bold text-slate-800 dark:text-white">Hot</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Size -->
+                <div>
+                    <span class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">Size</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <span class="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                                <input type="radio" name="modal_size" value="Regular" data-price="0" checked onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                Regular
+                            </span>
+                            <span class="font-mono text-slate-400">+₱0</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer has-[:checked]:border-[#F28C28] has-[:checked]:bg-[#F28C28]/10">
+                            <span class="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                                <input type="radio" name="modal_size" value="Large" data-price="20" onchange="updateModalPreview()" class="text-[#F28C28] focus:ring-[#F28C28]">
+                                Large
+                            </span>
+                            <span class="font-mono text-[#F28C28] font-bold">+₱20</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Add-Ons -->
+                <div>
+                    <span class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">Add-Ons</span>
+                    <div class="space-y-2">
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Extra Shot" data-price="35" onchange="updateModalPreview()">
+                                Extra Espresso Shot
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱35</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Oat Milk" data-price="40" onchange="updateModalPreview()">
+                                Oat Milk Swap
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱40</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Vanilla Syrup" data-price="20" onchange="updateModalPreview()">
+                                Vanilla Syrup
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱20</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Caramel Drizzle" data-price="20" onchange="updateModalPreview()">
+                                Caramel Drizzle
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱20</span>
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] cursor-pointer hover:border-[#F28C28]">
+                            <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white">
+                                <input type="checkbox" class="modal-addon rounded text-[#F28C28] focus:ring-[#F28C28]" value="Whipped Cream" data-price="25" onchange="updateModalPreview()">
+                                Whipped Cream
+                            </span>
+                            <span class="font-mono font-bold text-[#F28C28]">+₱25</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Special Instructions -->
+                <div>
+                    <label for="modal-drink-note" class="block font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">Notes (Optional)</label>
+                    <input type="text" id="modal-drink-note" placeholder="e.g., Less ice, 50% sugar" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-[#173863] bg-slate-50 dark:bg-[#07172C] text-slate-900 dark:text-white">
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 dark:bg-[#091B33] border-t border-slate-200 dark:border-[#15345C] flex items-center justify-between gap-3">
+                <div>
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Line Subtotal</span>
+                    <span id="modal-line-total" class="text-lg font-black text-[#F28C28] font-mono">₱0.00</span>
+                </div>
+                <button type="button" onclick="addModalToTicket()" class="px-5 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm shadow-md transition-colors">
+                    Add to Ticket
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Persistent Floating "Jump to Ticket" Button (Phone / Stacked Viewports) -->
+    <div id="jump-to-ticket-wrapper" class="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] inset-x-4 sm:left-auto sm:right-6 sm:w-auto z-30 lg:hidden transition-all duration-300 ease-out">
+        <button type="button" id="btn-jump-to-ticket" onclick="scrollToTicket()"
+                class="w-full sm:w-auto min-h-[50px] px-5 py-3 rounded-2xl bg-[#0C2340] dark:bg-[#F28C28] text-white font-extrabold text-xs sm:text-sm shadow-[0_10px_28px_rgba(12,35,64,0.35)] dark:shadow-[0_10px_28px_rgba(242,140,40,0.35)] border border-[#F28C28]/40 dark:border-white/20 flex items-center justify-between sm:justify-center gap-3 active:scale-[0.98] transition-all">
+            <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <span class="w-7 h-7 rounded-xl bg-[#F28C28] dark:bg-[#0C2340] text-white flex items-center justify-center text-sm shadow-sm shrink-0">🧾</span>
+                <span>Jump to Ticket</span>
+            </span>
+            <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <span id="jump-ticket-summary" class="px-2.5 py-1 rounded-lg bg-white/15 dark:bg-black/20 font-mono text-xs font-bold text-[#F28C28] dark:text-white">
+                    0 cups · ₱0.00
+                </span>
+                <svg class="w-4 h-4 shrink-0 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+            </span>
+        </button>
+    </div>
+
+    <!-- Interactive Ticket Cart & Tab JavaScript -->
+    <script>
+        // -------------------------------------------------------------
+        // JUMP TO TICKET FLOATING BUTTON & INTERSECTION OBSERVER
+        // -------------------------------------------------------------
+        let isTicketInView = false;
+
+        function scrollToTicket() {
+            const ticketPanel = document.getElementById('current-ticket-panel');
+            if (ticketPanel) {
+                ticketPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function updateJumpToTicketVisibility() {
+            const wrapper = document.getElementById('jump-to-ticket-wrapper');
+            const secCoffee = document.getElementById('section-coffee-orders');
+            if (!wrapper || !secCoffee) return;
+
+            const isCoffeeTabActive = !secCoffee.classList.contains('hidden');
+            if (!isCoffeeTabActive || isTicketInView) {
+                wrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+            } else {
+                wrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            }
+        }
+
+        (function initTicketVisibilityObserver() {
+            const ticketPanel = document.getElementById('current-ticket-panel');
+            if (!ticketPanel) return;
+
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        isTicketInView = entry.isIntersecting;
+                        updateJumpToTicketVisibility();
+                    });
+                }, {
+                    root: null,
+                    threshold: 0.12
+                });
+                observer.observe(ticketPanel);
+            } else {
+                window.addEventListener('scroll', () => {
+                    const rect = ticketPanel.getBoundingClientRect();
+                    isTicketInView = (rect.top < window.innerHeight - 80 && rect.bottom > 80);
+                    updateJumpToTicketVisibility();
+                }, { passive: true });
+            }
+        })();
+
+        // -------------------------------------------------------------
+        // MAIN TAB SWITCHER: Coffee Orders vs. Manual Deduction
+        // -------------------------------------------------------------
+        function switchMainTab(tab) {
+            const secCoffee = document.getElementById('section-coffee-orders');
+            const secManual = document.getElementById('section-manual-deduction');
+            const btnCoffee = document.getElementById('btn-tab-coffee');
+            const btnManual = document.getElementById('btn-tab-manual');
+
+            if (tab === 'coffee') {
+                secCoffee.classList.remove('hidden');
+                secManual.classList.add('hidden');
+                btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+            } else {
+                secCoffee.classList.add('hidden');
+                secManual.classList.remove('hidden');
+                btnManual.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl bg-[#F28C28] text-white shadow-sm transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+                btnCoffee.className = "flex-1 sm:flex-initial min-h-[44px] h-11 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0";
+            }
+            updateJumpToTicketVisibility();
+        }
+
+        // -------------------------------------------------------------
+        // CATEGORY & SEARCH FILTERING
+        // -------------------------------------------------------------
+        let currentCategory = 'All';
+
+        function filterCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-chip').forEach(btn => {
+                if (btn.textContent.trim().toLowerCase() === cat.toLowerCase() || (cat === 'All' && btn.textContent.trim() === 'All Drinks')) {
+                    btn.className = "cat-chip active min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#F28C28] text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
+                } else {
+                    btn.className = "cat-chip min-h-[42px] h-10 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 dark:bg-[#132E52] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center whitespace-nowrap shrink-0";
+                }
+            });
+            applyMenuFilters();
+        }
+
+        function filterMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('clear-menu-search');
+            if (clearBtn) {
+                if (input && input.value.trim().length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            applyMenuFilters();
+        }
+
+        function clearMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('clear-menu-search');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            if (clearBtn) clearBtn.classList.add('hidden');
+            applyMenuFilters();
+        }
+
+        function applyMenuFilters() {
+            const query = (document.getElementById('menu-search-input').value || '').trim().toLowerCase();
+            const cards = document.querySelectorAll('.drink-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const cat = card.getAttribute('data-category') || '';
+                const name = card.getAttribute('data-name') || '';
+
+                const matchesCat = (currentCategory === 'All' || cat.toLowerCase() === currentCategory.toLowerCase());
+                const matchesQuery = (!query || name.includes(query) || cat.toLowerCase().includes(query));
+
+                if (matchesCat && matchesQuery) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            const noMatchBox = document.getElementById('no-drinks-match');
+            if (noMatchBox) {
+                if (visibleCount === 0) {
+                    noMatchBox.classList.remove('hidden');
+                } else {
+                    noMatchBox.classList.add('hidden');
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // ACTIVE SALES TICKET (CART), ITEM COUNTERS & ADD-ONS MODAL
+        // -------------------------------------------------------------
+        let ticket = []; // [{ id, lineKey, name, basePrice, addonsPrice, price, addonsLabel, qty, ingredients }]
+        let activeModalDrink = null;
+        let modalQty = 1;
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getDrinkById(drinkId) {
+            return (typeof MENU_DRINKS_BY_ID !== 'undefined') ? MENU_DRINKS_BY_ID[String(drinkId)] || null : null;
+        }
+
+        function openDrinkModalById(drinkId) {
+            const drink = getDrinkById(drinkId);
+            if (drink && !drink.is_out_of_stock) {
+                openDrinkModal(drink);
+            }
+        }
+
+        function setMenuDrinkBaseQty(drinkId, rawQty) {
+            const drink = getDrinkById(drinkId);
+            if (!drink || drink.is_out_of_stock) return;
+
+            const qty = Math.max(0, parseInt(rawQty, 10) || 0);
+            const lineKey = `${drink.id}|Standard`;
+            const idx = ticket.findIndex(i => i.lineKey === lineKey);
+
+            if (qty <= 0) {
+                if (idx !== -1) {
+                    ticket.splice(idx, 1);
+                }
+            } else if (idx !== -1) {
+                ticket[idx].qty = qty;
+            } else {
+                const basePrice = parseFloat(drink.price);
+                ticket.push({
+                    id: drink.id,
+                    lineKey,
+                    name: drink.name,
+                    basePrice,
+                    addonsPrice: 0,
+                    price: basePrice,
+                    addonsLabel: '',
+                    qty,
+                    ingredients: drink.ingredients || []
+                });
+            }
+            renderTicket();
+        }
+
+        function adjustMenuDrinkQty(drinkId, delta) {
+            const lineKey = `${drinkId}|Standard`;
+            const existing = ticket.find(i => i.lineKey === lineKey);
+            const currentQty = existing ? existing.qty : 0;
+            const nextQty = Math.max(0, currentQty + delta);
+            setMenuDrinkBaseQty(drinkId, nextQty);
+        }
+
+        function handleMenuQtyInput(drinkId, inputEl) {
+            const raw = inputEl.value.trim();
+            if (raw === '') {
+                setMenuDrinkBaseQty(drinkId, 0);
+                return;
+            }
+            const parsed = Math.max(0, parseInt(raw, 10) || 0);
+            setMenuDrinkBaseQty(drinkId, parsed);
+        }
+
+        function normalizeMenuQtyInput(drinkId, inputEl) {
+            const lineKey = `${drinkId}|Standard`;
+            const existing = ticket.find(i => i.lineKey === lineKey);
+            inputEl.value = String(existing ? existing.qty : 0);
+        }
+
+        function syncMenuCounters() {
+            const standardByDrink = {};
+            const customByDrink = {};
+            ticket.forEach(item => {
+                const key = String(item.id);
+                if (item.lineKey === `${item.id}|Standard`) {
+                    standardByDrink[key] = (standardByDrink[key] || 0) + item.qty;
+                } else {
+                    customByDrink[key] = (customByDrink[key] || 0) + item.qty;
+                }
+            });
+
+            document.querySelectorAll('input[data-menu-counter]').forEach(input => {
+                const drinkId = input.getAttribute('data-menu-counter');
+                const stdQty = standardByDrink[drinkId] || 0;
+                const customQty = customByDrink[drinkId] || 0;
+
+                if (document.activeElement !== input) {
+                    input.value = String(stdQty);
+                }
+
+                const row = document.getElementById(`drink-row-${drinkId}`);
+                if (row) {
+                    if (stdQty + customQty > 0) {
+                        row.classList.add('bg-orange-50/60', 'dark:bg-[#132E52]/70', 'border-l-4', 'border-l-[#F28C28]');
+                    } else {
+                        row.classList.remove('bg-orange-50/60', 'dark:bg-[#132E52]/70', 'border-l-4', 'border-l-[#F28C28]');
+                    }
+                }
+
+                const badge = document.getElementById(`menu-custom-badge-${drinkId}`);
+                if (badge) {
+                    if (customQty > 0) {
+                        badge.textContent = `+${customQty} custom`;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.textContent = '';
+                        badge.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        function openDrinkModal(drink) {
+            activeModalDrink = drink;
+            modalQty = 1;
+            document.getElementById('modal-drink-cat').textContent = drink.category || 'Drink';
+            document.getElementById('modal-drink-name').textContent = drink.name;
+            document.getElementById('modal-drink-avail').textContent = `${drink.cups_available} available`;
+            document.getElementById('modal-qty-val').value = '1';
+            document.getElementById('modal-drink-note').value = '';
+            document.querySelector('input[name="modal_temp"][value="Iced"]').checked = true;
+            document.querySelector('input[name="modal_size"][value="Regular"]').checked = true;
+            document.querySelectorAll('.modal-addon').forEach(cb => { cb.checked = false; });
+            updateModalPreview();
+            document.getElementById('drink-addons-modal').classList.remove('hidden');
+        }
+
+        function closeDrinkModal() {
+            document.getElementById('drink-addons-modal').classList.add('hidden');
+            activeModalDrink = null;
+        }
+
+        function adjustModalQty(delta) {
+            if (!activeModalDrink) return;
+            const maxAvail = Math.max(1, parseInt(activeModalDrink.cups_available || 1, 10));
+            modalQty = Math.min(maxAvail, Math.max(1, modalQty + delta));
+            document.getElementById('modal-qty-val').value = String(modalQty);
+            updateModalPreview();
+        }
+
+        function handleModalQtyInput(inputEl) {
+            if (!activeModalDrink) return;
+            const raw = inputEl.value.trim();
+            if (raw === '') {
+                modalQty = 1;
+                updateModalPreview();
+                return;
+            }
+            const maxAvail = Math.max(1, parseInt(activeModalDrink.cups_available || 1, 10));
+            modalQty = Math.min(maxAvail, Math.max(1, parseInt(raw, 10) || 1));
+            updateModalPreview();
+        }
+
+        function normalizeModalQtyInput(inputEl) {
+            if (!activeModalDrink) return;
+            const maxAvail = Math.max(1, parseInt(activeModalDrink.cups_available || 1, 10));
+            modalQty = Math.min(maxAvail, Math.max(1, parseInt(inputEl.value, 10) || 1));
+            inputEl.value = String(modalQty);
+            updateModalPreview();
+        }
+
+        function getModalAddonsState() {
+            const temp = document.querySelector('input[name="modal_temp"]:checked')?.value || 'Iced';
+            const sizeEl = document.querySelector('input[name="modal_size"]:checked');
+            const size = sizeEl?.value || 'Regular';
+            let addonsPrice = parseFloat(sizeEl?.dataset.price || '0');
+            const parts = [temp, size];
+            document.querySelectorAll('.modal-addon:checked').forEach(cb => {
+                parts.push('+' + cb.value);
+                addonsPrice += parseFloat(cb.dataset.price || '0');
+            });
+            const note = (document.getElementById('modal-drink-note')?.value || '').trim();
+            if (note) parts.push(note);
+            return { addonsPrice, addonsLabel: parts.join(' • ') };
+        }
+
+        function updateModalPreview() {
+            if (!activeModalDrink) return;
+            const { addonsPrice } = getModalAddonsState();
+            const unitTotal = parseFloat(activeModalDrink.price) + addonsPrice;
+            document.getElementById('modal-line-total').textContent = `₱${(unitTotal * modalQty).toFixed(2)}`;
+        }
+
+        function addModalToTicket() {
+            if (!activeModalDrink) return;
+            const { addonsPrice, addonsLabel } = getModalAddonsState();
+            const lineKey = `${activeModalDrink.id}|${addonsLabel}`;
+            const basePrice = parseFloat(activeModalDrink.price);
+            const existing = ticket.find(i => i.lineKey === lineKey);
+            if (existing) {
+                existing.qty += modalQty;
+            } else {
+                ticket.push({
+                    id: activeModalDrink.id,
+                    lineKey,
+                    name: activeModalDrink.name,
+                    basePrice,
+                    addonsPrice,
+                    price: basePrice + addonsPrice,
+                    addonsLabel,
+                    qty: modalQty,
+                    ingredients: activeModalDrink.ingredients || []
+                });
+            }
+            closeDrinkModal();
+            renderTicket();
+        }
+
+        function updateTicketQty(lineIdx, delta) {
+            const item = ticket[lineIdx];
+            if (!item) return;
+
+            item.qty += delta;
+            if (item.qty <= 0) {
+                ticket.splice(lineIdx, 1);
+            }
+            renderTicket();
+        }
+
+        function handleTicketQtyInput(lineIdx, inputEl) {
+            const item = ticket[lineIdx];
+            if (!item) return;
+            const raw = inputEl.value.trim();
+            if (raw === '') {
+                return;
+            }
+            const parsed = Math.max(0, parseInt(raw, 10) || 0);
+            if (parsed <= 0) {
+                ticket.splice(lineIdx, 1);
+                renderTicket();
+                return;
+            }
+            item.qty = parsed;
+            renderTicket({ preserveActiveTicketInputIdx: lineIdx });
+        }
+
+        function normalizeTicketQtyInput(lineIdx, inputEl) {
+            const item = ticket[lineIdx];
+            if (!item) {
+                renderTicket();
+                return;
+            }
+            const parsed = Math.max(0, parseInt(inputEl.value, 10) || 0);
+            if (parsed <= 0) {
+                ticket.splice(lineIdx, 1);
+            } else {
+                item.qty = parsed;
+            }
+            renderTicket();
+        }
+
+        function removeTicketItem(lineIdx) {
+            ticket.splice(lineIdx, 1);
+            renderTicket();
+        }
+
+        function clearTicket() {
+            ticket = [];
+            renderTicket();
+        }
+
+        function renderTicket(opts = {}) {
+            const container = document.getElementById('ticket-items-container');
+            const totalCupsEl = document.getElementById('ticket-total-cups');
+            const totalPriceEl = document.getElementById('ticket-total-price');
+            const btnComplete = document.getElementById('btn-complete-ticket');
+            const deductionsBox = document.getElementById('ticket-deductions-box');
+            const deductionsList = document.getElementById('ticket-deductions-list');
+            const ticketDataInput = document.getElementById('ticket-data-input');
+            const jumpSummaryEl = document.getElementById('jump-ticket-summary');
+
+            syncMenuCounters();
+
+            if (ticket.length === 0) {
+                container.innerHTML = `
+                    <div id="ticket-empty-msg" class="text-center py-10 text-slate-400">
+                        <span class="text-3xl block mb-2 opacity-50">☕</span>
+                        <p class="text-xs font-medium">Sales ticket is empty.</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Use the item counters on the left or click Options to add drinks.</p>
+                    </div>
+                `;
+                totalCupsEl.textContent = '0 cups';
+                totalPriceEl.textContent = '₱0.00';
+                if (jumpSummaryEl) jumpSummaryEl.textContent = '0 cups · ₱0.00';
+                btnComplete.disabled = true;
+                btnComplete.innerHTML = '<span>Complete Sale &amp; Deduct Stock</span>';
+                deductionsBox.classList.add('hidden');
+                ticketDataInput.value = '[]';
+                return;
+            }
+
+            let totalCups = 0;
+            let totalPrice = 0;
+            let combinedIngredients = {}; // { stock_name: { qty, unit } }
+
+            ticket.forEach((item) => {
+                const subtotal = item.price * item.qty;
+                totalCups += item.qty;
+                totalPrice += subtotal;
+
+                item.ingredients.forEach(ing => {
+                    const req = parseFloat(ing.quantity_required) * item.qty;
+                    if (!combinedIngredients[ing.stock_name]) {
+                        combinedIngredients[ing.stock_name] = { 
+                            qty: 0, 
+                            unit: ing.stock_unit,
+                            current: parseFloat(ing.current_stock || 0)
+                        };
+                    }
+                    combinedIngredients[ing.stock_name].qty += req;
+                });
+            });
+
+            if (opts.preserveActiveTicketInputIdx === undefined) {
+                let html = '';
+                ticket.forEach((item, idx) => {
+                    const subtotal = item.price * item.qty;
+                    html += `
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-[#07172C] border border-slate-200/80 dark:border-[#173863] flex flex-col gap-2.5 text-xs">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <h4 class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-snug break-words">${escapeHtml(item.name)}</h4>
+                                    ${item.addonsLabel ? `<span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">${escapeHtml(item.addonsLabel)}</span>` : ''}
+                                    <span class="text-[11px] text-slate-400 block mt-0.5">₱${item.price.toFixed(2)} each</span>
+                                </div>
+                                <span id="ticket-line-subtotal-${idx}" class="font-extrabold font-mono text-sm text-slate-900 dark:text-white whitespace-nowrap shrink-0">₱${subtotal.toFixed(2)}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-[#173863]/60">
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <button type="button" onclick="updateTicketQty(${idx}, -1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">−</button>
+                                    <input type="number" min="0" step="1" inputmode="numeric" value="${item.qty}" oninput="handleTicketQtyInput(${idx}, this)" onblur="normalizeTicketQtyInput(${idx}, this)" onfocus="this.select()" aria-label="Quantity for ${escapeHtml(item.name)}" class="qty-counter-input w-14 font-mono font-bold text-sm text-slate-900 dark:text-white bg-white dark:bg-[#0C2340] border border-slate-200 dark:border-[#173863] rounded-lg">
+                                    <button type="button" onclick="updateTicketQty(${idx}, 1)" class="w-9 h-9 rounded-lg bg-slate-200 dark:bg-[#132E52] text-slate-700 dark:text-slate-200 text-sm font-bold flex items-center justify-center hover:bg-slate-300 dark:hover:bg-[#1C3E69] transition-colors shrink-0">+</button>
+                                </div>
+                                <button type="button" onclick="removeTicketItem(${idx})" class="min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-bold text-rose-500 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 transition-colors whitespace-nowrap shrink-0">Remove</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                const activeIdx = opts.preserveActiveTicketInputIdx;
+                const activeItem = ticket[activeIdx];
+                const subEl = document.getElementById(`ticket-line-subtotal-${activeIdx}`);
+                if (activeItem && subEl) {
+                    subEl.textContent = `₱${(activeItem.price * activeItem.qty).toFixed(2)}`;
+                }
+            }
+
+            const cupsLabel = `${totalCups} ${totalCups === 1 ? 'cup' : 'cups'}`;
+            totalCupsEl.textContent = cupsLabel;
+            totalPriceEl.textContent = `₱${totalPrice.toFixed(2)}`;
+            if (jumpSummaryEl) jumpSummaryEl.textContent = `${cupsLabel} · ₱${totalPrice.toFixed(2)}`;
+            ticketDataInput.value = JSON.stringify(ticket.map(i => ({ id: i.id, qty: i.qty, addons_price: i.addonsPrice || 0, addons_label: i.addonsLabel || '' })));
+
+            // Check if any ingredient exceeds live available stock
+            let hasInsufficientStock = false;
+            let insufficientDetails = [];
+            let dedHtml = '';
+
+            for (const [name, data] of Object.entries(combinedIngredients)) {
+                const roundedQty = data.qty.toFixed(3);
+                const isOverStock = (data.qty > data.current);
+
+                if (isOverStock) {
+                    hasInsufficientStock = true;
+                    insufficientDetails.push({ name: name, needed: roundedQty, available: data.current.toFixed(2), unit: data.unit });
+                    dedHtml += `
+                        <div class="flex items-start justify-between gap-2 text-[11px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg border border-rose-200 dark:border-rose-900/40">
+                            <span class="min-w-0 flex-1 break-words leading-snug">⚠️ ${escapeHtml(name)} (Shortage):</span>
+                            <span class="font-mono whitespace-nowrap shrink-0">-${roundedQty} / ${data.current.toFixed(2)} ${escapeHtml(data.unit)}</span>
+                        </div>
+                    `;
+                } else {
+                    dedHtml += `
+                        <div class="flex items-start justify-between gap-2 text-[11px] py-0.5">
+                            <span class="min-w-0 flex-1 break-words leading-snug">• ${escapeHtml(name)}:</span>
+                            <b class="font-mono text-amber-600 dark:text-amber-400 whitespace-nowrap shrink-0">-${roundedQty} ${escapeHtml(data.unit)}</b>
+                        </div>
+                    `;
+                }
+            }
+
+            if (hasInsufficientStock) {
+                dedHtml += `
+                    <div class="mt-2 p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 text-[10px] font-semibold flex items-center gap-1.5">
+                        <span>⚠️ Stock warning: Sale exceeds current inventory. Reduce cups or restock.</span>
+                    </div>
+                `;
+                btnComplete.disabled = true;
+                btnComplete.innerHTML = '<span>⚠️ Insufficient Stock for Sale</span>';
+                btnComplete.className = "w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-rose-600 text-white font-extrabold text-sm sm:text-base shadow-md opacity-70 cursor-not-allowed flex items-center justify-center gap-2";
+            } else {
+                btnComplete.disabled = false;
+                btnComplete.innerHTML = '<span>Complete Sale &amp; Deduct Stock</span>';
+                btnComplete.className = "w-full min-h-[50px] py-3.5 px-6 rounded-xl bg-[#F28C28] hover:bg-[#E07B18] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#F28C28]/25 hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
+            }
+
+            deductionsList.innerHTML = dedHtml;
+            deductionsBox.classList.remove('hidden');
+        }
+
+        async function validateTicketSubmit(event) {
+            if (ticket.length === 0) {
+                alert('Your sales ticket is empty.');
+                return false;
+            }
+            const btnComplete = document.getElementById('btn-complete-ticket');
+            if (btnComplete.disabled) {
+                alert('Cannot complete sale: Insufficient stock for one or more ingredients in this ticket. Please adjust quantities.');
+                return false;
+            }
+
+            // Offline First Handling
+            if (!navigator.onLine) {
+                if (event) event.preventDefault();
+                const totalCups = ticket.reduce((sum, item) => sum + item.qty, 0);
+                const totalPrice = ticket.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+                try {
+                    await queueOfflineCoffeeOrder({
+                        orderNumber: 'TKT-OFF-' + Date.now().toString().slice(-6),
+                        items: [...ticket],
+                        totalAmount: totalPrice,
+                        itemsCount: totalCups,
+                        notes: `${ticket.length} items ticket (${totalCups} cups) [Offline Mode]`,
+                        servedBy: <?= json_encode($username) ?>
+                    });
+
+                    showOfflineToast(`🧾 Sales ticket (${totalCups} cups) saved locally in IndexedDB!`, 'warning');
+                    clearTicket();
+                    updateOutboxBadge();
+                } catch (err) {
+                    alert('Failed to save offline ticket: ' + err.message);
+                }
+                return false;
+            }
+
+            return confirm('Complete this sales ticket and automatically deduct all required stock ingredients?');
+        }
+
+        // Offline-Aware Quick Brew Handler
+        async function handleQuickBrewSubmit(event, drink) {
+            if (!navigator.onLine) {
+                if (event) event.preventDefault();
+                try {
+                    await queueOfflineCoffeeOrder({
+                        orderNumber: 'ORD-OFF-' + Date.now().toString().slice(-6),
+                        items: [{
+                            id: drink.id,
+                            name: drink.name,
+                            qty: 1,
+                            price: parseFloat(drink.price),
+                            ingredients: drink.ingredients || []
+                        }],
+                        totalAmount: parseFloat(drink.price),
+                        itemsCount: 1,
+                        notes: 'Quick Brew 1x (Offline Mode)',
+                        servedBy: <?= json_encode($username) ?>
+                    });
+
+                    showOfflineToast(`☕ 1x ${drink.name} brewed & saved locally in IndexedDB!`, 'warning');
+                    updateOutboxBadge();
+                } catch (err) {
+                    alert('Failed to save offline brew: ' + err.message);
+                }
+                return false;
+            }
+            return confirm(`Brew and deduct stock for 1x ${drink.name}?`);
+        }
+
+        // -------------------------------------------------------------
+        // MANUAL DEDUCTION PREVIEW & HELPERS
+        // -------------------------------------------------------------
+        function setQuickQty(val) {
+            document.getElementById('manual-qty-input').value = val;
+            updateManualStockPreview();
+        }
+
+        function updateManualStockPreview() {
+            const select = document.getElementById('manual-item-select');
+            const qtyInput = document.getElementById('manual-qty-input');
+            const unitLabel = document.getElementById('manual-unit-label');
+            
+            const pItemName = document.getElementById('preview-item-name');
+            const pCurrentStock = document.getElementById('preview-current-stock');
+            const pDeductQty = document.getElementById('preview-deduct-qty');
+            const pNewStock = document.getElementById('preview-new-stock');
+
+            const selectedOption = select.options[select.selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                pItemName.textContent = 'None selected';
+                pCurrentStock.textContent = '0.00';
+                pDeductQty.textContent = '-0.00';
+                pNewStock.textContent = '0.00';
+                unitLabel.textContent = 'Unit';
+                return;
+            }
+
+            const currentQty = parseFloat(selectedOption.getAttribute('data-qty') || '0');
+            const unit = selectedOption.getAttribute('data-unit') || '';
+            const name = selectedOption.getAttribute('data-name') || '';
+            const deduct = parseFloat(qtyInput.value || '0');
+
+            unitLabel.textContent = unit;
+            pItemName.textContent = name;
+            pCurrentStock.textContent = `${currentQty.toFixed(2)} ${unit}`;
+            pDeductQty.textContent = `-${deduct.toFixed(3)} ${unit}`;
+
+            const newBalance = Math.max(0, currentQty - deduct);
+            pNewStock.textContent = `${newBalance.toFixed(3)} ${unit}`;
+
+            if (deduct > currentQty) {
+                pNewStock.classList.remove('text-emerald-800', 'dark:text-emerald-300');
+                pNewStock.classList.add('text-rose-600', 'dark:text-rose-400');
+            } else {
+                pNewStock.classList.add('text-emerald-800', 'dark:text-emerald-300');
+                pNewStock.classList.remove('text-rose-600', 'dark:text-rose-400');
+            }
+        }
+
+        async function confirmManualDeduction(event) {
+            const select = document.getElementById('manual-item-select');
+            const qtyInput = document.getElementById('manual-qty-input');
+            const reasonInput = document.querySelector('input[name="reason"]') || { value: 'Shift quick action' };
+            const selectedOption = select.options[select.selectedIndex];
+
+            if (!selectedOption || !selectedOption.value) {
+                alert('Please select an item from stock.');
+                return false;
+            }
+            const deduct = parseFloat(qtyInput.value || '0');
+            if (deduct <= 0 || isNaN(deduct)) {
+                alert('Please enter a valid deduction quantity greater than 0.');
+                return false;
+            }
+            const currentQty = parseFloat(selectedOption.getAttribute('data-qty') || '0');
+            const unit = selectedOption.getAttribute('data-unit') || '';
+            const name = selectedOption.getAttribute('data-name') || '';
+
+            if (deduct > currentQty) {
+                alert(`Warning: Deduction quantity (${deduct} ${unit}) exceeds available stock (${currentQty} ${unit}). Please correct.`);
+                return false;
+            }
+
+            // Offline First Handling
+            if (!navigator.onLine) {
+                if (event) event.preventDefault();
+                try {
+                    await queueOfflineManualDeduction({
+                        itemId: parseInt(selectedOption.value),
+                        itemName: name,
+                        amount: deduct,
+                        unit: unit,
+                        reason: reasonInput.value || 'Shift quick action (offline)',
+                        changeType: 'deduction',
+                        servedBy: <?= json_encode($username) ?>
+                    });
+
+                    showOfflineToast(`⚖️ Deducted ${deduct} ${unit} ${name} (Saved locally in IndexedDB).`, 'warning');
+                    qtyInput.value = '';
+                    updateManualStockPreview();
+                    updateOutboxBadge();
+                } catch (err) {
+                    alert('Failed to record offline deduction: ' + err.message);
+                }
+                return false;
+            }
+
+            return confirm(`Confirm manual stock deduction of ${deduct} ${unit} from '${name}'?`);
+        }
+
+        // -------------------------------------------------------------
+        // SESSIONSTORAGE & LOCAL MEMORY CACHE MANAGEMENT
+        // -------------------------------------------------------------
+        const CURRENT_CATALOG_VERSION = <?= json_encode($catalogVersion) ?>;
+        const INITIAL_MENU_DATA = <?= json_encode($menuItems) ?>;
+        const INITIAL_STOCK_DATA = <?= json_encode($stockItems) ?>;
+        const MENU_DRINKS_BY_ID = Object.fromEntries(INITIAL_MENU_DATA.map(d => [String(d.id), d]));
+
+        function initClientCatalogCache() {
+            try {
+                const storedVer = sessionStorage.getItem('asterisko_catalog_version');
+                if (storedVer !== CURRENT_CATALOG_VERSION) {
+                    sessionStorage.setItem('asterisko_catalog_version', CURRENT_CATALOG_VERSION);
+                    sessionStorage.setItem('asterisko_menu_recipes', JSON.stringify(INITIAL_MENU_DATA));
+                    sessionStorage.setItem('asterisko_stock_catalog', JSON.stringify(INITIAL_STOCK_DATA));
+                    console.info('✓ Asterisko Catalog & Recipes cached in sessionStorage (Version: ' + CURRENT_CATALOG_VERSION + ')');
+                } else {
+                    console.info('✓ Active sessionStorage Catalog Cache is valid (Version: ' + CURRENT_CATALOG_VERSION + ')');
+                }
+
+                // Hydrate IndexedDB store for offline fallback
+                if (typeof hydrateLocalDatabase === 'function') {
+                    hydrateLocalDatabase(INITIAL_MENU_DATA, INITIAL_STOCK_DATA);
+                }
+            } catch (e) {
+                console.warn('SessionStorage unavailable, using local memory fallback.');
+            }
+        }
+        initClientCatalogCache();
+
+        function flushAndSyncCatalog() {
+            try {
+                sessionStorage.removeItem('asterisko_catalog_version');
+                sessionStorage.removeItem('asterisko_menu_recipes');
+                sessionStorage.removeItem('asterisko_stock_catalog');
+            } catch (e) {}
+            window.location.href = 'sales.php?flush_cache=1';
+        }
+    </script>
+</body>
+</html>

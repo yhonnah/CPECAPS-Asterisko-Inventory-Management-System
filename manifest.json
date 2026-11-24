@@ -2,7 +2,7 @@
   "name": "Asterisko Inventory Management System",
   "short_name": "Asterisko POS",
   "description": "Offline-ready inventory and order management system for Asterisko Cafe",
-  "start_url": "/pages/orders.php",
+  "start_url": "/pages/sales.php",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

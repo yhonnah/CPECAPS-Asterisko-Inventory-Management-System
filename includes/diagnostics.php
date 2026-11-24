@@ -21,7 +21,7 @@ function asteriskoErrorRegistry(): array
             'severity' => 'Warning',
             'component' => 'Offline Outbox / PWA',
             'trigger' => 'Client offline or IndexedDB/localStorage queue contains unsynced operations.',
-            'repair' => 'Restore internet connectivity and click Sync in Orders/Stock Count.'
+            'repair' => 'Restore internet connectivity and click Sync in Sales/Stock Count.'
         ],
         [
             'code' => 'ERR-DB-500',
@@ -83,7 +83,7 @@ function asteriskoErrorRegistry(): array
             'code' => 'ERR-STK-400',
             'led' => 'AMBER',
             'severity' => 'Validation',
-            'component' => 'Orders / Dashboard / Waste',
+            'component' => 'Sales / Dashboard / Waste',
             'trigger' => 'Requested deduction exceeds available stock or quantity <= 0.',
             'repair' => 'Enter a positive quantity within available on-hand balance.'
         ],

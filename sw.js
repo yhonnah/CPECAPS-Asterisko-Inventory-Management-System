@@ -1,11 +1,11 @@
 // Asterisko PWA Service Worker (Offline-First Cache Engine)
-const CACHE_NAME = 'asterisko-cache-v7';
+const CACHE_NAME = 'asterisko-cache-v8';
 const PRECACHE_ASSETS = [
     '/manifest.json',
     '/assets/logo.png',
     '/assets/app-enhancements.css',
     '/assets/js/offline-engine.js',
-    '/pages/orders.php',
+    '/pages/sales.php',
     '/pages/dashboard.php',
     '/pages/count.php',
     '/pages/waste.php',
@@ -75,16 +75,16 @@ self.addEventListener('fetch', event => {
                     let cached = await cache.match(request, { ignoreSearch: true });
                     if (cached) return cached;
 
-                    // Match by pathname (e.g. /pages/orders.php, /pages/count.php)
+                    // Match by pathname (e.g. /pages/sales.php, /pages/count.php)
                     cached = await cache.match(url.pathname, { ignoreSearch: true });
                     if (cached) return cached;
 
-                    // Fallback to orders or dashboard
-                    cached = await cache.match('/pages/orders.php') || await cache.match('/pages/dashboard.php');
+                    // Fallback to sales or dashboard
+                    cached = await cache.match('/pages/sales.php') || await cache.match('/pages/dashboard.php');
                     if (cached) return cached;
 
                     return new Response(
-                        `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Offline - Asterisko</title><style>body{font-family:sans-serif;background:#0C2340;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;box-sizing:border-box;text-align:center;}a{color:#F28C28;font-weight:bold;text-decoration:none;}</style></head><body><div><h2>⚠️ Offline Mode</h2><p>You are currently offline. Return to <a href="/pages/orders.php">Orders POS</a> to continue recording orders locally.</p></div></body></html>`,
+                        `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Offline - Asterisko</title><style>body{font-family:sans-serif;background:#0C2340;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;box-sizing:border-box;text-align:center;}a{color:#F28C28;font-weight:bold;text-decoration:none;}</style></head><body><div><h2>⚠️ Offline Mode</h2><p>You are currently offline. Return to <a href="/pages/sales.php">Sales POS</a> to continue recording sales locally.</p></div></body></html>`,
                         { headers: { 'Content-Type': 'text/html' } }
                     );
                 })
